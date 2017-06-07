@@ -178,6 +178,10 @@ bool to_lambda_term(
 		dst.type = TERM_CONSTANT;
 		dst.constant = src.constant.label;
 		return true;
+	} else if (src.type == DATALOG_INTEGER) {
+		dst.type = TERM_INTEGER;
+		dst.integer = src.integer;
+		return true;
 	} else {
 		fprintf(stderr, "ERROR: Unexpected term type.\n");
 		return false;
@@ -571,14 +575,14 @@ bool to_lambda(const datalog_expression& src,
 }
 
 bool to_lambda_example(const datalog_expression& src,
-	example& dst, const hash_map<string, unsigned int>& names)
+	example& dst, hash_map<string, unsigned int>& names)
 {
 	if (!init(dst)) return false;
 	if (src.type != DATALOG_PREDICATE
 	 || src.pred.function != PREDICATE_PARSE
 	 || src.pred.args[0] == NULL || src.pred.args[1] == NULL
 	 || src.pred.args[0]->type != DATALOG_LIST
-	 || src.pred.args[1]->type != DATALOG_PREDICATE) {
+	 || src.pred.args[1]->type != DATALOG_FUNCTION) {
 		fprintf(stderr, "ERROR: Each training example must begin "
 			"with a 'parse' predicate with two arguments: a list "
 			"containing the words of the sentence, and an "
@@ -601,6 +605,13 @@ bool to_lambda_example(const datalog_expression& src,
 			dst.sentence[i] = token->variable;
 		} else if (token->type == DATALOG_CONSTANT) {
 			dst.sentence[i] = token->constant.label;
+		} else if (token->type == DATALOG_INTEGER) {
+			int length = snprintf(NULL, 0, "%d", token->integer);
+			string buffer = string(length + 1);
+			buffer.length = length;
+			if (snprintf(buffer.data, length + 1, "%d", token->integer) != length
+			 || !get_token(buffer, dst.sentence[i], names))
+				return false;
 		} else {
 			fprintf(stderr, "ERROR: Every token in the sentence must be a literal.\n");
 			return false;

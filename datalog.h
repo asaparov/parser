@@ -192,7 +192,7 @@ bool datalog_emit_symbol(array<datalog_token>& tokens, const position& start, ch
 	}
 }
 
-template<bool TokenizeTabs = false>
+template<bool TokenizeTabs = true>
 bool datalog_lex(array<datalog_token>& tokens, FILE* input) {
 	position start = position(1, 1);
 	position current = position(1, 1);

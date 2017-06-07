@@ -122,6 +122,7 @@ enum term_type {
 	TERM_BINARY_FUNCTION,
 	TERM_VARIABLE,
 	TERM_CONSTANT,
+	TERM_INTEGER,
 	TERM_LAMBDA,
 	TERM_COUNT,
 	TERM_SUM
@@ -132,6 +133,7 @@ struct term {
 	union {
 		unsigned int var;
 		unsigned int constant;
+		int integer;
 		argmax* max;
 		argmin* min;
 		unary_function* unary;
@@ -163,6 +165,7 @@ struct term {
 			return;
 		case TERM_VARIABLE:
 		case TERM_CONSTANT:
+		case TERM_INTEGER:
 			return;
 		case TERM_LAMBDA:
 			core::free(*t.lambda);
@@ -666,6 +669,8 @@ bool print(term& t, Stream& out, lambda_printer& printer) {
 		return print_variable(t.var, out, printer);
 	case TERM_CONSTANT:
 		return print_constant(*printer.names[t.constant], out);
+	case TERM_INTEGER:
+		return print(t.integer, out);
 	case TERM_LAMBDA:
 		return print(*t.lambda, out, printer);
 	case TERM_COUNT:
@@ -850,6 +855,7 @@ scope* compute_scope(const term& t, context& ctx)
 	case TERM_VARIABLE:
 		return current_scope->in_scope.add(t.var) ? current_scope : NULL;
 	case TERM_CONSTANT:
+	case TERM_INTEGER:
 		return current_scope;
 	case TERM_LAMBDA:
 		return (compute_scope(*current_scope, ctx, t.lambda->exp)
@@ -1134,6 +1140,7 @@ bool declare_variables(
 	switch (t.type) {
 	case TERM_EMPTY:			return true;
 	case TERM_CONSTANT:			return true;
+	case TERM_INTEGER:			return true;
 	case TERM_ARGMAX:			return declare_variables_minmax(*t.max, current_scope, ctx, undeclareable, declared);
 	case TERM_ARGMIN:			return declare_variables_minmax(*t.min, current_scope, ctx, undeclareable, declared);
 	case TERM_UNARY_FUNCTION:	return declare_variables_unary(*t.unary, current_scope, ctx, undeclareable, declared);

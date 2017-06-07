@@ -37,7 +37,7 @@ int main(int argc, const char** argv) {
 		fprintf(stderr, "ERROR: Unable to open '%s' for reading.\n", argv[1]);
 		return EXIT_FAILURE;
 	}
-	datalog_lex(tokens, input);
+	datalog_lex<true>(tokens, input);
 
 	array<datalog_expression_root*> statements(1024);
 	hash_map<string, unsigned int> names(1024);
@@ -52,16 +52,15 @@ int main(int argc, const char** argv) {
 	}
 	free_tokens(tokens);
 
-	const string** inverse_names = invert(names);
-
 	array<example> data = array<example>((unsigned int) statements.length);
 	for (unsigned int i = 0; i < statements.length; i++) {
 		if (!to_lambda_example(statements[i]->root, data[i], names)) {
 			fprintf(stderr, "ERROR: Unable to convert example %u to lambda expression", i);
 			if (data[i].sentence.length > 0) {
 				fprintf(stderr, ":\n\t\"");
+				const string** inverse_names = invert(names);
 				print_sentence(data[i].sentence, inverse_names, stderr);
-				fprintf(stderr, "\"\n");
+				fprintf(stderr, "\"\n"); free(inverse_names);
 			} else {
 				fprintf(stderr, ".\n");
 			}
@@ -82,6 +81,7 @@ int main(int argc, const char** argv) {
 	}
 
 	FILE* out = fopen(argv[2], "w");
+	const string** inverse_names = invert(names);
 	if (out == NULL)
 		fprintf(stderr, "ERROR: Unable to open '%s' for writing.\n", argv[2]);
 	for (unsigned int i = 0; out != NULL && i < data.length; i++) {
