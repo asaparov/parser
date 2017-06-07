@@ -1,0 +1,7 @@
+*.d
+*.o
+*.exe
+parser
+parser_dbg
+datalog_to_lambda
+datalog_to_lambda_dbg
