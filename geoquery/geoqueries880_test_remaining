@@ -1,0 +1,7 @@
+parse([count,the,states,which,have,elevations,lower,than,what,alabama,has,?], answer(A,count(B,(state(B),loc(C,B),low_point(B,C),lower(C,D),low_point(E,D),const(E,stateid(alabama)),loc(D,E)),A))).
+parse([iowa,borders,how,many,states,?], answer(A,count(B,(const(C,stateid(iowa)),next_to(C,B),state(B)),A))).
+parse([through,which,states,does,the,longest,river,in,texas,run,?], answer(A,(longest(B,(river(B),loc(B,C),const(C,stateid(texas)))),traverse(B,A)))).
+parse([what,state,contains,the,highest,point,of,those,the,colorado,river,traverses,?], answer(A,(state(A),loc(B,A),highest(B,(place(B),loc(B,C),state(C),const(D,riverid(colorado)),river(D),traverse(D,C)))))).
+parse([san,antonio,is,in,what,state,?], answer(A,(const(B,cityid('san antonio',_)),loc(B,A),state(A)))).
+parse([what,is,the,smallest,state,that,borders,the,most,states,?], answer(A,smallest(A,most(A,B,(state(A),next_to(A,B),state(B)))))).
+parse([how,many,states,have,a,higher,point,than,the,highest,point,of,the,state,with,the,largest,capital,city,in,the,us,?], answer(A,count(B,(state(B),loc(C,B),higher(C,D),place(C),highest(D,(place(D),loc(D,E),state(E),loc(F,E),largest(F,(capital(F),city(F),loc(F,G),const(G,countryid(usa))))))),A))).

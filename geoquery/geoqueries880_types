@@ -1,0 +1,177 @@
+place		<: e
+polity		<: countable
+nature		<: countable
+mountain	<: place
+mountain	<: nature
+state		<: polity
+city		<: polity
+country		<: polity
+water		<: nature
+lake		<: water
+river		<: water
+
+high_point	: state -> place -> t
+low_point	: state -> place -> t
+traverse	: river -> polity -> t
+elevation	: place -> i -> t
+river		: river -> t
+state		: state -> t
+higher		: place -> place -> t
+next_to		: state -> state -> t
+next_to		: state -> river -> t
+size		: polity -> i -> t
+population	: polity -> i -> t
+density		: polity -> i -> t
+loc			: city -> state -> t
+loc			: nature -> state -> t
+loc			: place -> state -> t
+loc			: state -> country -> t
+loc			: city -> country -> t
+loc			: nature -> country -> t
+loc			: place -> country -> t
+area		: polity -> i -> t
+lake		: lake -> t
+mountain	: mountain -> t
+place		: place -> t
+major		: city -> t
+major		: water -> t
+capital		: city -> t
+capital		: state -> city -> t
+city		: city -> t
+len			: river -> i -> t
+
+countryid	: country -> country
+stateid		: state -> state
+cityid		: city -> city
+cityid		: city -> state -> city
+placeid		: place -> place
+riverid		: river -> river
+
+highest		: place -> t
+lowest		: place -> t
+longest		: river -> t
+shortest	: river -> t
+largest		: polity -> t
+largest		: water -> t
+smallest	: polity -> t
+smallest	: water -> t
+
+alabama			: state
+alaska			: state
+arizona			: state
+arkansas		: state
+california		: state
+colorado		: state
+delaware		: state
+florida			: state
+georgia			: state
+hawaii			: state
+idaho			: state
+illinois		: state
+indiana			: state
+iowa			: state
+kansas			: state
+kentucky		: state
+louisiana		: state
+maine			: state
+maryland		: state
+massachusetts	: state
+michigan		: state
+minnesota		: state
+mississippi		: state
+missouri		: state
+montana			: state
+nebraska		: state
+nevada			: state
+'new hampshire'	: state
+'new jersey'	: state
+'new mexico'	: state
+'new york'		: state
+'north carolina' : state
+'north dakota'	: state
+ohio			: state
+oklahoma		: state
+oregon			: state
+pennsylvania	: state
+'rhode island'	: state
+'south carolina' : state
+'south dakota'	: state
+tennessee		: state
+texas			: state
+utah			: state
+vermont			: state
+virginia		: state
+washington		: state
+'west virginia'	: state
+wisconsin		: state
+wyoming			: state
+albany			: city
+atlanta			: city
+austin			: city
+'baton rouge'	: city
+boston			: city
+boulder			: city
+chicago			: city
+columbus		: city
+dallas			: city
+denver			: city
+'des moines'	: city
+detroit			: city
+dover			: city
+durham			: city
+erie			: city
+flint			: city
+'fort wayne'	: city
+houston			: city
+indianapolis	: city
+kalamazoo		: city
+miami			: city
+minneapolis		: city
+montgomery		: city
+'new orleans'	: city
+'new york'		: city
+pittsburgh		: city
+plano			: city
+portland		: city
+riverside		: city
+rochester		: city
+sacramento		: city
+salem			: city
+'salt lake city' : city
+'san antonio'	: city
+'san diego'		: city
+'san francisco'	: city
+'san jose'		: city
+'scotts valley'	: city
+seattle			: city
+spokane			: city
+springfield		: city
+tempe			: city
+tucson			: city
+washington		: city
+usa				: country
+chattahoochee	: river
+colorado		: river
+delaware		: river
+mississippi		: river
+missouri		: river
+'north platte'	: river
+ohio			: river
+potomac			: river
+red				: river
+'rio grande'	: river
+'death valley'	: place
+'guadalupe peak' : place
+'mount mckinley' : place
+'mount whitney'	: place
+az				: state
+dc				: state
+ga				: state
+ma				: state
+me				: state
+mn				: state
+mo				: state
+pa				: state
+sd				: state
+tx				: state
+wa				: state

@@ -1,0 +1,14 @@
+/*parse([what,jobs,in,austin,or,dallas,desire,a,degree,?], answer(A,(job(A),((loc(A,P),const(P,'austin'));(loc(A,D),const(D,'dallas'))),des_deg(A)))).*/
+parse([does,anyone,still,use,mvs,?],answer(J,(job(J),platform(J,P),const(P,'mvs')))).
+parse([what,kind,of,jobs,could,i,find,for,an,old,cobol,programmer,?],answer(J,(job(J),language(J,L),const(L,'cobol'),title(J,T),const(T,'Programmer')))).
+parse([what,can,i,find,using,java,on,unix,?],answer(J,(job(J),language(J,L),const(L,'java'),platform(J,P),const(P,'unix')))).
+parse([id,like,to,see,the,jobs,in,houston,for,a,prolog,programmer,making,at,least,50000,a,year,invloving,databases,?],answer(J,(job(J),loc(J,L),const(L,'houston'),language(J,G),const(G,'prolog'),title(J,T),const(T,'Programmer'),salary_greater_than(J,50000,year),area(J,A),const(A,'database')))).
+parse([there,must,be,some,jobs,out,there,for,a,'c++',programmer,that,thinks,in,unix,databases,?],answer(J,(job(J),language(J,G),const(G,'c++'),title(J,T),const(T,'Programmer'),platform(J,P),const(P,'unix'),area(J,A),const(A,'database')))).
+parse([do,any,jobs,exist,programming,for,apple,on,pdp11s,?],answer(J,(job(J),platform(J,P),const(P,'pdp11')))).
+parse([what,jobs,do,you,have,?],answer(J,job(J))).
+parse([what,jobs,can,a,delphi,developer,find,in,san,antonio,on,windows,?],answer(J,(job(J),language(J,L),const(L,'delphi'),title(J,T),const(T,'Developer'),loc(J,C),const(C,'san antonio'),platform(J,P),const(P,'windows')))).
+parse([prolog,ai,and,lisp,and,graphics,?],answer(J,(job(J),language(J,G),const(G,'prolog'),language(J,A),const(A,'lisp'),language(J,H),const(H,'lisp'),area(J,B),const(B,'graphics')))).
+parse([what,position,in,microsoft,do,i,need,a,phd,to,work,?],answer(J,(job(J),company(J,M),const(M,'Microsoft'),req_deg(J,Z),const(Z,'PhD')))).
+parse([show,jobs,that,are,not,in,austin,pay,less,than,10000,require,knowledge,of,'c++',pascal,and,java,and,desire,a,phd,?], answer(A,(job(A),\+(loc(A,C),const(C,'austin')),salary_less_than(A,10000,year),language(A,L),const(L,'c++'),language(A,N),const(N,'pascal'),language(A,O),const(O,'java'),des_deg(A,D),const(D,'PhD')))).
+parse([list,the,jobs,requiring,java,a,bscs,2,years,experience,?],answer(A,(job(A),language(A,J),const(J,java),req_deg(A,B),const(B,'BSCS'),req_exp(A,E),const(E,2)))).
+parse([can,you,show,me,vb,jobs,with,50000,salary,with,databases,and,excel,?],answer(J,(job(J),language(J,L),const(L,'vb'),salary_greater_than(J,50000,year),area(J,A),const(A,'database'),application(J,N),const(N,'excel')))).

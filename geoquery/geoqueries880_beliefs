@@ -1,0 +1,108 @@
+parse(stateid(alabama)).
+parse(stateid(alaska)).
+parse(stateid(arizona)).
+parse(stateid(arkansas)).
+parse(stateid(california)).
+parse(stateid(colorado)).
+parse(stateid(delaware)).
+parse(stateid(florida)).
+parse(stateid(georgia)).
+parse(stateid(hawaii)).
+parse(stateid(idaho)).
+parse(stateid(illinois)).
+parse(stateid(indiana)).
+parse(stateid(iowa)).
+parse(stateid(kansas)).
+parse(stateid(kentucky)).
+parse(stateid(louisiana)).
+parse(stateid(maine)).
+parse(stateid(maryland)).
+parse(stateid(massachusetts)).
+parse(stateid(michigan)).
+parse(stateid(minnesota)).
+parse(stateid(mississippi)).
+parse(stateid(missouri)).
+parse(stateid(montana)).
+parse(stateid(nebraska)).
+parse(stateid(nevada)).
+parse(stateid('new hampshire')).
+parse(stateid('new jersey')).
+parse(stateid('new mexico')).
+parse(stateid('new york')).
+parse(stateid('north carolina')).
+parse(stateid('north dakota')).
+parse(stateid(ohio)).
+parse(stateid(oklahoma)).
+parse(stateid(oregon)).
+parse(stateid(pennsylvania)).
+parse(stateid('rhode island')).
+parse(stateid('south carolina')).
+parse(stateid('south dakota')).
+parse(stateid(tennessee)).
+parse(stateid(texas)).
+parse(stateid(utah)).
+parse(stateid(vermont)).
+parse(stateid(virginia)).
+parse(stateid(washington)).
+parse(stateid('west virginia')).
+parse(stateid(wisconsin)).
+parse(stateid(wyoming)).
+parse(cityid(albany)).
+parse(cityid(atlanta)).
+parse(cityid(austin)).
+parse(cityid('baton rouge')).
+parse(cityid(boston)).
+parse(cityid(boulder)).
+parse(cityid(chicago)).
+parse(cityid(columbus)).
+parse(cityid(dallas)).
+parse(cityid(denver)).
+parse(cityid('des moines')).
+parse(cityid(detroit)).
+parse(cityid(dover)).
+parse(cityid(durham)).
+parse(cityid(erie)).
+parse(cityid(flint)).
+parse(cityid('fort wayne')).
+parse(cityid(houston)).
+parse(cityid(indianapolis)).
+parse(cityid(kalamazoo)).
+parse(cityid(miami)).
+parse(cityid(minneapolis)).
+parse(cityid(montgomery)).
+parse(cityid('new orleans')).
+parse(cityid('new york')).
+parse(cityid(pittsburgh)).
+parse(cityid(plano)).
+parse(cityid(portland)).
+parse(cityid(riverside)).
+parse(cityid(rochester)).
+parse(cityid(sacramento)).
+parse(cityid(salem)).
+parse(cityid('salt lake city')).
+parse(cityid('san antonio')).
+parse(cityid('san diego')).
+parse(cityid('san francisco')).
+parse(cityid('san jose')).
+parse(cityid('scotts valley')).
+parse(cityid(seattle)).
+parse(cityid(spokane)).
+parse(cityid(springfield)).
+parse(cityid(tempe)).
+parse(cityid(tucson)).
+parse(cityid(washington)).
+parse(countryid(usa)).
+parse(riverid(chattahoochee)).
+parse(riverid(colorado)).
+parse(riverid('death valley')).
+parse(riverid(delaware)).
+parse(riverid('guadalupe peak')).
+parse(riverid(mississippi)).
+parse(riverid(missouri)).
+parse(riverid('mount mckinley')).
+parse(riverid('mount whitney')).
+parse(riverid('north platte')).
+parse(riverid(ohio)).
+parse(riverid(potomac)).
+parse(riverid(red)).
+parse(riverid('rio grande')).

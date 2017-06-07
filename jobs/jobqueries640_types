@@ -1,0 +1,183 @@
+job			<: e
+time		<: e
+degree		<: e
+company		<: e
+recruiter	<: e
+application	<: e
+title		<: e
+degree		<: e
+platform	<: e
+polity		<: e
+language	<: e
+area		<: e
+
+salary_greater_than	: job -> i -> time -> t
+salary_less_than	: job -> i -> time -> t
+req_exp				: job -> t
+req_exp				: job -> i -> t
+req_deg				: job -> t
+req_deg				: job -> degree -> t
+company				: job -> company -> t
+recruiter			: job -> recruiter -> t
+job					: job -> t
+application			: job -> application -> t
+title				: job -> title -> t
+des_exp				: job -> t
+des_exp				: job -> i -> t
+des_deg				: job -> t
+des_deg				: job -> degree -> t
+platform			: job -> platform -> t
+loc					: job -> polity -> t
+language			: job -> language -> t
+area				: job -> area -> t
+
+'3d graphics'		: area
+'ada'				: language
+'ai'				: area
+'aix'				: platform
+'animation'			: area
+'apache'			: application
+'Apple'				: company
+'Applied Materials'	: company
+'assembly'			: language
+'austin'			: polity
+'autocad'			: application
+'BA'				: degree
+'BACS'				: degree
+'Boeing'			: company
+'boston'			: polity
+'BS'				: degree
+'BSCS'				: degree
+'BSEE'				: degree
+'c'					: language
+'c++'				: language
+'california'		: polity
+'canada'			: polity
+'cics'				: language
+'client/server'		: area
+'cobol'				: language
+'cobol ii'			: language
+'colorado'			: polity
+'com'				: area
+'commodores'		: platform
+'Compaq'			: company
+'Consultant'		: title
+'dallas'			: polity
+'database'			: area
+'data warehousing'	: area
+'Dell'				: company
+'delphi'			: language
+'Developer'			: title
+'device driver'		: area
+'engineer'			: title
+'ethernet'			: area
+'excel'				: application
+'fortran'			: language
+'games'				: area
+'graphics'			: area
+'gui'				: area
+'haskell'			: language
+'houston'			: polity
+'HP'				: company
+'html'				: language
+'IBM'				: company
+'IBM'				: platform
+'Ic Design Engineer' : title
+'intern'			: title
+'internet'			: area
+'j++'				: language
+'java'				: language
+'JPL'				: company
+'lan'				: area
+'latex'				: language
+'LCS'				: recruiter
+'linux'				: platform
+'lisp'				: language
+'Lockheed Martin Aeronautics' : company
+'Longhorn'			: recruiter
+'los alamos'		: polity
+'MA'				: degree
+'mac'				: platform
+'management'		: area
+'Manufacturing Manager' : title
+'master'			: degree
+'MBA'				: degree
+'mfc'				: area
+'Microsoft'			: company
+'microsoft word'	: application
+'MSCS'				: degree
+'MSEE'				: degree
+'mvs'				: platform
+'nashville'			: polity
+'National Instruments' : company
+'NetWare Administrator' : title
+'network'			: area
+'networking'		: area
+'new york'			: polity
+'novell'			: platform
+'odbc'				: area
+'oil pipeline modeling' : area
+'ole'				: area
+'oracle'			: application
+'pascal'			: language
+'pc'				: platform
+'pdp11'				: platform
+'perl'				: language
+'PhD'				: degree
+'Phil Smith'		: recruiter
+'playstation'		: platform
+'powerbuilder'		: language
+'Programmer'		: title
+'Project Manager'	: title
+'prolog'			: language
+'research assistant' : title
+'rpg'				: language
+'san antonio'		: polity
+'san jose'			: polity
+'seattle'			: polity
+'Senior Consulting Engineer' : title
+'Senior Software Developer' : title
+'shell'				: language
+'silicon graphics'	: platform
+'Software Developer' : title
+'Software Engineer'	: title
+'software qa'		: area
+'solaris'			: platform
+'speedy3dgraphics'	: application
+'sql'				: language
+'Sql Engineer'		: title
+'sql server'		: application
+'statistics'		: area
+'sun'				: platform
+'System Administrator' : title
+'Systems Administrator' : title
+'Systems Analyst'	: title
+'tcl/tk'			: language
+'tcp/ip'			: area
+'telecommunications' : area
+'Test Engineer'		: title
+'texas'				: polity
+'Tivoli'			: company
+'Trilogy'			: company
+'tulsa'				: polity
+'unix'				: platform
+'usa'				: polity
+'vax'				: platform
+'vb'				: language
+'vc++'				: language
+'Verification Engineer' : title
+'visual basic'		: language
+'visual c++'		: language
+'visual j++'		: language
+'vms'				: platform
+'wan'				: area
+'washington'		: polity
+'web'				: area
+'Web Developer'		: title
+'windows'			: platform
+'windows 95'		: platform
+'windows nt'		: platform
+'x86'				: platform
+year				: time
+month				: time
+hour				: time

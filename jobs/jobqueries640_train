@@ -1,0 +1,429 @@
+parse([what,jobs,are,there,for,web,developer,who,know,'c++',?],answer(A,(job(A),title(A,W),const(W,'Web Developer'),language(A,C),const(C,'c++')))).
+parse([what,systems,analyst,jobs,are,there,in,austin,?],answer(A,(title(A,W),const(W,'Systems Analyst'),job(A),loc(A,P),const(P,'austin')))).
+parse([what,jobs,pay,60000,are,located,in,austin,and,require,a,degree,?],answer(A,(job(A),salary_greater_than(A,60000,year),loc(A,C),const(C,'austin'),req_deg(A)))).
+parse([what,jobs,are,there,for,pascal,programmers,who,dont,know,'c++',?],answer(A,(job(A),language(A,P),const(P,'pascal'),\+ (language(A,C),const(C,'c++'))))).
+parse([what,jobs,use,cobol,on,ibm,machines,and,pay,70000,?],answer(A,(job(A),language(A,C),const(C,'cobol'),platform(A,I),const(I,'IBM'),salary_greater_than(A,70000,year)))).
+parse([what,jobs,use,'c++',on,mac,and,pay,70000,?],answer(A,(job(A),language(A,C),const(C,'c++'),platform(A,I),const(I,'mac'),salary_greater_than(A,70000,year)))).
+parse([what,jobs,desire,a,degree,but,dont,use,'c++',?],answer(A,(job(A),des_deg(A),\+ (language(A,C),const(C,'c++'))))).
+parse([show,me,the,jobs,using,'c++',that,require,a,bscs,but,desire,a,mscs,?],answer(C,(job(C),language(C,L),const(L,'c++'),req_deg(C,D),const(D,'BSCS'),des_deg(C,E),const(E,'MSCS')))).
+parse([what,jobs,on,pc,are,for,programming,assembly,and,desire,5,years,experience,?],answer(C,(job(C),platform(C,B),const(B,'pc'),language(C,A),const(A,'assembly'),des_exp(C,D),const(D,5)))).
+parse([show,me,jobs,for,dell,requiring,experience,on,unix,?],answer(A,(job(A),company(A,C),const(C,'Dell'),req_exp(A),platform(A,P),const(P,'unix')))).
+parse([show,me,jobs,at,dell,requiring,no,experience,and,a,bscs,?],answer(A,(job(A),company(A,C),const(C,'Dell'),\+req_exp(A),req_deg(A,D),const(D,'BSCS')))).
+parse([show,me,systems,analyst,jobs,at,tivoli,?],answer(A,(title(A,T),const(T,'Systems Analyst'),job(A),company(A,C),const(C,'Tivoli')))).
+parse([show,me,austin,jobs,with,a,salary,of,50000,?],answer(D,(loc(D,C),const(C,'austin'),job(D),salary_greater_than(D,50000,year)))).
+parse([find,all,network,administration,jobs,in,austin,?],answer(D,(area(D,A),const(A,'network'),job(D),loc(D,C),const(C,'austin')))).
+parse([find,all,'c++',jobs,in,austin,?],answer(D,(language(D,B),const(B,'c++'),job(D),loc(D,C),const(C,'austin')))).
+parse([show,me,a,dell,job,in,austin,requiring,a,bscs,?],answer(D,(company(D,Z),const(Z,'Dell'),job(D),loc(D,C),const(C,'austin'),req_deg(D,W),const(W,'BSCS')))).
+parse([which,jobs,in,houston,offer,over,50000,in,graphics,?],answer(A,(job(A),loc(A,C),const(C,'houston'),salary_greater_than(A,50000,year),area(A,B),const(B,'graphics')))).
+parse([which,jobs,at,trilogy,deal,with,'c++',?],answer(A,(job(A),company(A,C),const(C,'Trilogy'),language(A,B),const(B,'c++')))).
+parse([which,jobs,are,for,bsee,majors,with,at,least,5,years,experience,in,windows,nt,?],answer(A,(job(A),req_deg(A,B),const(B,'BSEE'),req_exp(A,C),const(C,5),platform(A,D),const(D,'windows nt')))).
+parse([what,are,the,positions,within,hp,that,pay,40000,per,year,?],answer(A,(job(A),company(A,C),const(C,'HP'),salary_greater_than(A,40000,year)))).
+parse([what,jobs,in,boston,have,openings,for,a,'c++',programmer,?],answer(A,(job(A),loc(A,C),const(C,'boston'),language(A,L),const(L,'c++')))).
+parse([show,me,the,job,application,for,ic,design,engineer,?],answer(B,(job(B),title(B,A),const(A,'Ic Design Engineer')))).
+parse([are,there,any,jobs,specializing,in,ai,with,jpl,?],answer(A,(job(A),area(A,B),const(B,'ai'),company(A,C),const(C,'JPL')))).
+parse([what,jobs,are,longhorn,employment,hiring,for,?],answer(A,(job(A),recruiter(A,L),const(L,'Longhorn')))).
+parse([show,me,the,jobs,concerning,game,developer,on,a,playstation,?],answer(A,(job(A),area(A,G),const(G,'games'),title(A,T),const(T,'Developer'),platform(A,P),const(P,'playstation')))).
+parse([what,jobs,in,austin,have,a,salary,of,60000,?],answer(A,(job(A),loc(A,B),const(B,'austin'),salary_greater_than(A,60000,year)))).
+parse([show,me,jobs,requiring,a,bscs,on,suns,?],answer(A,(job(A),req_deg(A,D),const(D,'BSCS'),platform(A,P),const(P,'sun')))).
+parse([what,jobs,are,there,doing,computer,graphics,on,silicon,graphics,machines,?],answer(A,(job(A),area(A,B),const(B,'graphics'),platform(A,C),const(C,'silicon graphics')))).
+parse([which,jobs,pay,60000,that,do,not,require,a,phd,?],answer(A,(job(A),salary_greater_than(A,60000,year),\+ (req_deg(A,D),const(D,'PhD'))))).
+parse([what,job,is,there,for,'c++',but,not,visual,'c++',?],answer(J,(job(J),language(J,L),const(L,'c++'),\+ (language(J,V),const(V,'visual c++'))))).
+parse([what,jobs,in,houston,require,a,bacs,?],answer(B,(job(B),loc(B,C),const(C,'houston'),req_deg(B,D),const(D,'BACS')))).
+parse([what,jobs,are,available,using,apache,with,a,specialty,area,of,networking,?],answer(B,(job(B),application(B,A),const(A,'apache'),area(B,R),const(R,'networking')))).
+parse([show,me,the,jobs,using,perl,with,lockheed,martin,aeronautics,in,colorado,?],answer(A,(job(A),language(A,L),const(L,'perl'),company(A,C),const(C,'Lockheed Martin Aeronautics'),loc(A,S),const(S,'colorado')))).
+parse([what,jobs,pay,40000,per,year,that,require,a,bscs,?],answer(A,(job(A),salary_greater_than(A,40000,year),req_deg(A,D),const(D,'BSCS')))).
+parse([show,me,the,jobs,in,texas,using,ai,on,unix,?],answer(A,(job(A),loc(A,S),const(S,'texas'),area(A,B),const(B,'ai'),platform(A,P),const(P,'unix')))).
+parse([are,there,any,jobs,at,dell,that,require,no,experience,and,pay,50000,?],answer(A,(job(A),company(A,C),const(C,'Dell'),\+req_exp(A),salary_greater_than(A,50000,year)))).
+parse([list,all,jobs,using,'c++',and,java,in,california,?],answer(A,(job(A),language(A,B),const(B,'c++'),language(A,C),const(C,'java'),loc(A,D),const(D,'california')))).
+parse([show,all,intern,positions,in,texas,with,network,and,java,?],answer(A,(title(A,B),const(B,'intern'),job(A),loc(A,C),const(C,'texas'),area(A,D),const(D,'network'),language(A,E),const(E,'java')))).
+parse([show,me,jobs,in,austin,using,solaris,that,do,not,require,a,bscs,?],answer(A,(job(A),loc(A,B),const(B,'austin'),platform(A,C),const(C,'solaris'),\+ (req_deg(A,D),const(D,'BSCS'))))).
+parse([what,jobs,in,austin,only,require,a,bscs,and,no,experience,?],answer(A,(job(A),loc(A,C),const(C,'austin'),req_deg(A,D),const(D,'BSCS'),\+req_exp(A)))).
+parse([what,jobs,have,a,recruiter,named,phil,smith,?],answer(A,(job(A),recruiter(A,R),const(R,'Phil Smith')))).
+parse([what,system,administrator,jobs,are,available,from,dell,?],answer(A,(title(A,S),const(S,'System Administrator'),job(A),company(A,C),const(C,'Dell')))).
+parse([what,jobs,using,java,and,perl,are,available,in,dallas,and,pay,50000,a,year,?],answer(A,(job(A),language(A,L),const(L,'java'),language(A,L2),const(L2,'perl'),loc(A,C),const(C,'dallas'),salary_greater_than(A,50000,year)))).
+parse([are,there,any,jobs,in,the,us,with,the,title,verification,engineer,?],answer(A,(job(A),title(A,T),const(T,'Verification Engineer')))).
+parse([list,the,positions,that,require,a,knowledge,of,microsoft,excel,?],answer(A,(job(A),application(A,B),const(B,'excel')))).
+parse([show,me,positions,in,web,programming,?],answer(A,(job(A),area(A,B),const(B,'web')))).
+parse([give,some,jobs,in,dallas,on,a,sun,system,?],answer(A,(job(A),loc(A,B),const(B,'dallas'),platform(A,C),const(C,'sun')))).
+parse([show,me,jobs,using,lisp,that,require,a,bscs,and,desire,a,msee,?],answer(A,(job(A),language(A,L),const(L,'lisp'),req_deg(A,B),const(B,'BSCS'),des_deg(A,C),const(C,'MSEE')))).
+parse([what,jobs,in,austin,require,5,years,of,experience,but,desire,10,years,of,experience,?],answer(A,(job(A),loc(A,D),const(D,'austin'),req_exp(A,B),const(B,5),des_exp(A,C),const(C,10)))).
+parse([what,jobs,at,dell,require,a,bscs,?],answer(B,(job(B),company(B,C),const(C,'Dell'),req_deg(B,A),const(A,'BSCS')))).
+parse([what,jobs,in,austin,require,no,experience,?],answer(A,(job(A),loc(A,C),const(C,'austin'),\+req_exp(A)))).
+parse([what,jobs,are,there,with,a,salary,of,40000,?],answer(A,(job(A),salary_greater_than(A,40000,year)))).
+parse([what,'c++',jobs,are,in,austin,?],answer(A,(language(A,L),const(L,'c++'),job(A),loc(A,C),const(C,'austin')))).
+parse([what,are,the,'c++',jobs,in,austin,requiring,a,bscs,?],answer(A,(language(A,L),const(L,'c++'),job(A),loc(A,C),const(C,'austin'),req_deg(A,D),const(D,'BSCS')))).
+parse([what,jobs,are,there,in,texas,that,use,java,and,require,no,experience,?],answer(A,(job(A),loc(A,S),const(S,'texas'),language(A,L),const(L,'java'),\+req_exp(A)))).
+parse([show,me,the,jobs,in,austin,that,desire,3,years,of,experience,and,use,'c++',?],answer(A,(job(A),loc(A,C),const(C,'austin'),des_exp(A,T),const(T,3),language(A,L),const(L,'c++')))).
+parse([show,me,jobs,requiring,no,experience,?],answer(A,(job(A),\+req_exp(A)))).
+parse([show,me,jobs,in,texas,?],answer(A,(job(A),loc(A,B),const(B,'texas')))).
+parse([show,me,jobs,not,involving,'c++',?],answer(A,(job(A),\+ (language(A,L),const(L,'c++'))))).
+parse([show,me,graphics,jobs,which,phil,smith,is,recruiting,for,?],answer(A,(area(A,C),const(C,'graphics'),job(A),recruiter(A,B),const(B,'Phil Smith')))).
+parse([what,ai,positions,require,only,a,bscs,?],answer(J,(area(J,A),const(A,'ai'),job(J),req_deg(J,B),const(B,'BSCS')))).
+parse([show,me,the,jobs,with,30000,salary,?],answer(A,(job(A),salary_greater_than(A,30000,year)))).
+parse([show,me,the,research,assistant,job,in,austin,?],answer(A,(title(A,C),const(C,'research assistant'),job(A),loc(A,B),const(B,'austin')))).
+parse([any,jobs,available,using,database,?],answer(A,(job(A),area(A,B),const(B,'database')))).
+parse([are,there,any,jobs,with,a,salary,of,100000,?],answer(A,(job(A),salary_greater_than(A,100000,year)))).
+parse([are,there,any,project,manager,positions,open,?],answer(A,(title(A,B),const(B,'Project Manager'),job(A)))).
+parse([are,there,any,autocad,jobs,open,?],answer(A,(application(A,B),const(B,'autocad'),job(A)))).
+parse([what,microsoft,jobs,do,not,require,a,bscs,?],answer(J,(company(J,M),const(M,'Microsoft'),job(J),\+(req_deg(J,D),const(D,'BSCS'))))).
+parse([what,ibm,jobs,require,using,java,on,commodores,?],answer(J,(platform(J,P),const(P,'IBM'),job(J),language(J,A),const(A,'java'),platform(J,C),const(C,'commodores')))).
+parse([what,jobs,require,10,years,of,experience,require,a,phd,in,cs,are,in,cobol,and,are,located,in,texas,?],answer(J,(job(J),req_exp(J,Y),const(Y,10),req_deg(J,P),const(P,'PhD'),language(J,L),const(L,'cobol'),loc(J,T),const(T,'texas')))).
+parse([what,jobs,does,lcs,recruit,for,?],answer(J,(job(J),recruiter(J,B),const(B,'LCS')))).
+parse([show,me,houston,jobs,using,c,in,the,specialty,area,of,oil,pipeline,modeling,?],answer(A,(loc(A,P),const(P,'houston'),job(A),language(A,L),const(L,'c'),area(A,S),const(S,'oil pipeline modeling')))).
+parse([show,me,jobs,in,tulsa,using,fortran,on,vax,requiring,a,bscs,?],answer(A,(job(A),loc(A,P),const(P,'tulsa'),language(A,L),const(L,'fortran'),platform(A,H),const(H,'vax'),req_deg(A,D),const(D,'BSCS')))).
+parse([show,me,jobs,with,the,playstation,in,the,specialty,area,of,animation,?],answer(A,(job(A),platform(A,C),const(C,'playstation'),area(A,S),const(S,'animation')))).
+parse([show,me,management,jobs,in,boston,requiring,an,mba,and,the,knowledge,of,visual,basic,?],answer(A,(area(A,S),const(S,'management'),job(A),loc(A,P),const(P,'boston'),req_deg(A,D),const(D,'MBA'),language(A,L),const(L,'visual basic')))).
+parse([show,me,jobs,in,computer,graphics,requiring,a,ba,in,art,and,knowledge,of,speedy3dgraphics,?],answer(A,(job(A),area(A,S),const(S,'graphics'),req_deg(A,D),const(D,'BA'),application(A,X),const(X,'speedy3dgraphics')))).
+parse([show,me,the,jobs,at,companies,in,austin,that,want,a,degree,in,bscs,?],answer(A,(job(A),loc(A,C),const(C,'austin'),des_deg(A,B),const(B,'BSCS')))).
+parse([show,the,jobs,offering,40000,working,with,c,on,windows,nt,?],answer(A,(job(A),salary_greater_than(A,40000,year),language(A,L),const(L,'c'),platform(A,P),const(P,'windows nt')))).
+parse([show,the,jobs,with,the,title,systems,analyst,requiring,2,years,of,experience,?],answer(A,(job(A),title(A,T),const(T,'Systems Analyst'),req_exp(A,E),const(E,2)))).
+parse([show,the,jobs,using,lisp,not,requiring,a,degree,in,cs,?],answer(A,(job(A),language(A,L),const(L,'lisp'),\+ (req_deg(A,D),const(D,'BSCS'))))).
+parse([what,positions,are,there,in,networking,?],answer(A,(job(A),area(A,N),const(N,'networking')))).
+parse([show,me,all,job,that,are,available,?],answer(J,job(J))).
+parse([show,the,jobs,for,bscs,in,austin,?],answer(C,(req_deg(C,D),const(D,'BSCS'),loc(C,A),const(A,'austin')))).
+parse([what,are,the,jobs,that,require,experience,with,microsoft,word,?],answer(J,(job(J),req_exp(J),application(J,M),const(M,'microsoft word')))).
+parse([are,there,any,jobs,using,'c++',with,dell,?],answer(A,(job(A),language(A,C),const(C,'c++'),company(A,B),const(B,'Dell')))).
+parse([show,me,the,jobs,that,require,2,years,experience,?],answer(A,(job(A),req_exp(A,B),const(B,2)))).
+parse([are,there,any,programmer,jobs,open,?],answer(A,(title(A,P),const(P,'Programmer'),job(A)))).
+parse([what,jobs,as,an,sql,engineer,pay,100000,?],answer(A,(job(A),title(A,C),const(C,'Sql Engineer'),salary_greater_than(A,100000,year)))).
+parse([are,there,any,jobs,using,java,that,dont,require,a,bscs,?],answer(A,(job(A),language(A,B),const(B,'java'),\+ (req_deg(A,C),const(C,'BSCS'))))).
+parse([show,me,the,'c++',jobs,in,nashville,that,desire,2,years,experience,?],answer(A,(language(A,B),const(B,'c++'),job(A),loc(A,C),const(C,'nashville'),des_exp(A,E),const(E,2)))).
+parse([show,me,the,jobs,using,lisp,requiring,a,bscs,?],answer(A,(job(A),language(A,L),const(L,'lisp'),req_deg(A,D),const(D,'BSCS')))).
+parse([are,there,any,jobs,in,'c++',that,the,salary,is,50000,?],answer(A,(job(A),language(A,L),const(L,'c++'),salary_greater_than(A,50000,year)))).
+parse([show,me,the,jobs,that,are,not,in,haskell,?],answer(A,(job(A),\+ (language(A,L),const(L,'haskell'))))).
+parse([show,me,the,jobs,requiring,3,years,of,experience,at,tivoli,?],answer(J,(job(J),req_exp(J,T),const(T,3),company(J,C),const(C,'Tivoli')))).
+parse([what,jobs,using,fortran,are,there,in,los,alamos,?],answer(J,(job(J),language(J,F),const(F,'fortran'),loc(J,L),const(L,'los alamos')))).
+parse([show,me,the,networking,jobs,in,houston,with,a,salary,of,50000,?],answer(J,(area(J,A),const(A,'networking'),job(J),loc(J,L),const(L,'houston'),salary_greater_than(J,50000,year)))).
+parse([show,me,the,senior,software,developer,jobs,which,require,a,master,?],answer(J,(job(J),title(J,T),const(T,'Senior Software Developer'),req_deg(J,D),const(D,'master')))).
+parse([what,jobs,desire,2,years,of,experience,with,powerbuilder,on,windows,nt,?],answer(J,(job(J),des_exp(J,T),const(T,2),language(J,A),const(A,'powerbuilder'),platform(J,P),const(P,'windows nt')))).
+parse([show,me,houston,jobs,using,'c++',on,pc,?],answer(A,(loc(A,C),const(C,'houston'),job(A),language(A,L),const(L,'c++'),platform(A,P),const(P,'pc')))).
+parse([what,oracle,jobs,are,there,with,compaq,in,houston,using,pc,?],answer(A,(application(A,L),const(L,'oracle'),job(A),company(A,C),const(C,'Compaq'),loc(A,D),const(D,'houston'),platform(A,P),const(P,'pc')))).
+parse([are,there,any,jobs,in,austin,requiring,at,least,a,bscs,and,knowing,latex,?],answer(A,(job(A),loc(A,Z),const(Z,'austin'),req_deg(A,D),const(D,'BSCS'),language(A,L),const(L,'latex')))).
+parse([what,are,the,jobs,in,washington,that,require,at,least,5,years,of,experience,?],answer(A,(job(A),loc(A,C),const(C,'washington'),req_exp(A,E),const(E,5)))).
+parse([are,there,any,jobs,using,java,that,are,not,with,tivoli,?],answer(A,(job(A),language(A,L),const(L,'java'),\+ (company(A,C),const(C,'Tivoli'))))).
+parse([show,me,the,jobs,that,operate,on,sun,?],answer(A,(job(A),platform(A,P),const(P,'sun')))).
+parse([are,there,any,mac,programmer,jobs,?],answer(B,(platform(B,P),const(P,'mac'),title(B,A),const(A,'Programmer'),job(B)))).
+parse([what,are,the,jobs,that,pay,50000,per,year,?],answer(J,(job(J),salary_greater_than(J,50000,year)))).
+parse([show,jobs,in,austin,that,require,a,bscs,?],answer(A,(job(A),loc(A,C),const(C,'austin'),req_deg(A,D),const(D,'BSCS')))).
+parse([give,me,jobs,requiring,bs,?],answer(_7295,(job(_7295),req_deg(_7295,_7310),const(_7310,'BS')))).
+parse([show,the,jobs,on,sun,?],answer(_7263,(job(_7263),platform(_7263,_7278),const(_7278,'sun')))).
+parse([what,jobs,are,there,on,aix,?],answer(_7193,(job(_7193),platform(_7193,_7210),const(_7210,'aix')))).
+parse([list,jobs,requiring,bsee,?], answer(_7125,(job(_7125),req_deg(_7125,_7138),const(_7138,'BSEE')))).
+parse([tell,me,jobs,in,networking,?], answer(_7093,(job(_7093),area(_7093,_7108),const(_7108,'networking')))).
+parse([are,there,any,jobs,on,sun,?], answer(_7057,(job(_7057),platform(_7057,_7074),const(_7074,'sun')))).
+parse([are,there,any,jobs,requiring,bscs,?], answer(_7021,(job(_7021),req_deg(_7021,_7038),const(_7038,'BSCS')))).
+parse([are,there,any,jobs,for,a,graphics,specialist,?], answer(_6983,(job(_6983),area(_6983,_7002),const(_7002,'graphics')))).
+parse([what,jobs,are,there,in,usa,?], answer(_6877,(job(_6877),loc(_6877,_6894),const(_6894,'usa')))).
+parse([list,the,jobs,in,'c++',?], answer(_6843,(job(_6843),language(_6843,_6858),const(_6858,'c++')))).
+parse([show,jobs,using,visual,basic,?], answer(_6809,(job(_6809),language(_6809,_6822),const(_6822,'visual basic')))).
+parse([tell,me,the,jobs,using,powerbuilder,?], answer(_6773,(job(_6773),language(_6773,_6790),const(_6790,'powerbuilder')))).
+parse([show,jobs,using,powerbuilder,?], answer(_6743,(job(_6743),language(_6743,_6756),const(_6756,'powerbuilder')))).
+parse([list,the,jobs,for,a,database,specialist,?], answer(_6671,(job(_6671),area(_6671,_6688),const(_6688,'database')))).
+parse([show,the,jobs,requiring,ba,?], answer(_6637,(job(_6637),req_deg(_6637,_6652),const(_6652,'BA')))).
+parse([are,there,any,jobs,requiring,ba,?], answer(_6565,(job(_6565),req_deg(_6565,_6582),const(_6582,'BA')))).
+parse([what,jobs,are,there,requiring,bs,?], answer(_6529,(job(_6529),req_deg(_6529,_6546),const(_6546,'BS')))).
+parse([list,the,jobs,for,a,client,server,specialist,?], answer(_6453,(job(_6453),area(_6453,_6470),const(_6470,'client/server')))).
+parse([are,there,any,jobs,on,novell,?], answer(_6419,(job(_6419),platform(_6419,_6436),const(_6436,'novell')))).
+parse([show,jobs,using,cics,?], answer(_6389,(job(_6389),language(_6389,_6402),const(_6402,'cics')))).
+parse([show,the,jobs,on,vms,?], answer(_6357,(job(_6357),platform(_6357,_6372),const(_6372,'vms')))).
+parse([are,there,any,jobs,on,ibm,?], answer(_6285,(job(_6285),platform(_6285,_6302),const(_6302,'IBM')))).
+parse([show,the,jobs,for,a,com,specialist,?], answer(_6211,(job(_6211),area(_6211,_6228),const(_6228,'com')))).
+parse([show,jobs,in,html,?], answer(_6179,(job(_6179),language(_6179,_6192),const(_6192,'html')))).
+parse([give,me,jobs,in,cobol,ii,?], answer(_6143,(job(_6143),language(_6143,_6158),const(_6158,'cobol ii')))).
+parse([tell,me,jobs,using,html,?], answer(_6109,(job(_6109),language(_6109,_6124),const(_6124,'html')))).
+parse([what,jobs,are,there,for,a,database,specialist,?], answer(_6069,(job(_6069),area(_6069,_6088),const(_6088,'database')))).
+parse([tell,me,the,jobs,on,mvs,?], answer(_5997,(job(_5997),platform(_5997,_6014),const(_6014,'mvs')))).
+parse([what,jobs,are,there,in,data,warehousing,?], answer(_5959,(job(_5959),area(_5959,_5976),const(_5976,'data warehousing')))).
+parse([list,the,jobs,using,cobol,ii,?], answer(_5889,(job(_5889),language(_5889,_5904),const(_5904,'cobol ii')))).
+parse([give,me,the,jobs,in,visual,'c++',?], answer(_5851,(job(_5851),language(_5851,_5868),const(_5868,'visual c++')))).
+parse([what,jobs,are,there,for,a,gui,specialist,?], answer(_5641,(job(_5641),area(_5641,_5660),const(_5660,'gui')))).
+parse([show,the,jobs,in,visual,'c++',?], answer(_5605,(job(_5605),language(_5605,_5620),const(_5620,'visual c++')))).
+parse([what,jobs,are,there,in,houston,?], answer(_5569,(job(_5569),loc(_5569,_5586),const(_5586,'houston')))).
+parse([show,the,jobs,requiring,bs,in,usa,?], answer(_5487,(job(_5487),req_deg(_5487,_5502),const(_5502,'BS'),loc(_5487,_5512),const(_5512,'usa')))).
+parse([give,me,jobs,using,visual,'c++',?], answer(_5381,(job(_5381),language(_5381,_5396),const(_5396,'visual c++')))).
+parse([what,jobs,are,there,in,games,?], answer(_5345,(job(_5345),area(_5345,_5362),const(_5362,'games')))).
+parse([list,the,jobs,in,database,?], answer(_5311,(job(_5311),area(_5311,_5326),const(_5326,'database')))).
+parse([what,jobs,are,there,on,x86,?], answer(_5277,(job(_5277),platform(_5277,_5294),const(_5294,'x86')))).
+parse([show,the,jobs,using,html,?], answer(_5243,(job(_5243),language(_5243,_5258),const(_5258,'html')))).
+parse([tell,me,the,jobs,requiring,bs,?], answer(_5207,(job(_5207),req_deg(_5207,_5224),const(_5224,'BS')))).
+parse([are,there,any,jobs,in,san,antonio,?], answer(_5171,(job(_5171),loc(_5171,_5188),const(_5188,'san antonio')))).
+parse([are,there,any,jobs,using,sql,?], answer(_5135,(job(_5135),language(_5135,_5152),const(_5152,'sql')))).
+parse([tell,me,the,jobs,on,windows,nt,?], answer(_5063,(job(_5063),platform(_5063,_5080),const(_5080,'windows nt')))).
+parse([list,jobs,in,wan,?], answer(_5033,(job(_5033),area(_5033,_5046),const(_5046,'wan')))).
+parse([what,jobs,are,there,using,rpg,?], answer(_4961,(job(_4961),language(_4961,_4978),const(_4978,'rpg')))).
+parse([show,the,jobs,in,austin,?], answer(_4927,(job(_4927),loc(_4927,_4942),const(_4942,'austin')))).
+parse([show,the,jobs,requiring,bsee,?], answer(_4895,(job(_4895),req_deg(_4895,_4910),const(_4910,'BSEE')))).
+parse([are,there,any,jobs,in,san,antonio,?], answer(_4757,(job(_4757),loc(_4757,_4774),const(_4774,'san antonio')))).
+parse([what,jobs,are,there,requiring,bsee,?], answer(_4619,(job(_4619),req_deg(_4619,_4636),const(_4636,'BSEE')))).
+parse([give,me,the,jobs,for,a,games,specialist,?], answer(_4579,(job(_4579),area(_4579,_4598),const(_4598,'games')))).
+parse([list,the,jobs,requiring,bs,?], answer(_4511,(job(_4511),req_deg(_4511,_4526),const(_4526,'BS')))).
+parse([are,there,any,jobs,for,a,client,server,specialist,?], answer(_4469,(job(_4469),area(_4469,_4488),const(_4488,'client/server')))).
+parse([are,there,any,jobs,using,powerbuilder,?], answer(_4433,(job(_4433),language(_4433,_4450),const(_4450,'powerbuilder')))).
+parse([are,there,any,jobs,requiring,bscs,?], answer(_4399,(job(_4399),req_deg(_4399,_4416),const(_4416,'BSCS')))).
+parse([list,jobs,on,sun,?], answer(_4367,(job(_4367),platform(_4367,_4380),const(_4380,'sun')))).
+parse([tell,me,the,jobs,requiring,bs,in,usa,?], answer(_4315,(job(_4315),req_deg(_4315,_4332),const(_4332,'BS'),loc(_4315,_4342),const(_4342,'usa')))).
+parse([list,jobs,in,austin,?], answer(_4285,(job(_4285),loc(_4285,_4298),const(_4298,'austin')))).
+parse([show,the,jobs,for,a,odbc,specialist,?], answer(_4247,(job(_4247),area(_4247,_4264),const(_4264,'odbc')))).
+parse([show,the,jobs,in,dallas,?], answer(_4183,(job(_4183),loc(_4183,_4198),const(_4198,'dallas')))).
+parse([are,there,any,jobs,requiring,bs,?], answer(_4149,(job(_4149),req_deg(_4149,_4166),const(_4166,'BS')))).
+parse([list,jobs,requiring,ba,?], answer(_4051,(job(_4051),req_deg(_4051,_4064),const(_4064,'BA')))).
+parse([are,there,any,jobs,requiring,bs,?], answer(_4015,(job(_4015),req_deg(_4015,_4032),const(_4032,'BS')))).
+parse([give,me,the,jobs,requiring,bsee,?], answer(_3979,(job(_3979),req_deg(_3979,_3996),const(_3996,'BSEE')))).
+parse([show,jobs,on,windows,?], answer(_3913,(job(_3913),platform(_3913,_3926),const(_3926,'windows')))).
+parse([what,jobs,are,there,for,a,'3d',graphics,specialist,?], answer(_3835,(job(_3835),area(_3835,_3854),const(_3854,'3d graphics')))).
+parse([what,jobs,are,there,requiring,bscs,?], answer(_3799,(job(_3799),req_deg(_3799,_3816),const(_3816,'BSCS')))).
+parse([what,jobs,are,there,on,windows,95,?], answer(_3761,(job(_3761),platform(_3761,_3778),const(_3778,'windows 95')))).
+parse([list,the,jobs,using,cics,?], answer(_3727,(job(_3727),language(_3727,_3742),const(_3742,'cics')))).
+parse([list,the,jobs,on,unix,?], answer(_3641,(job(_3641),platform(_3641,_3656),const(_3656,'unix')))).
+parse([what,jobs,are,there,requiring,ba,?], answer(_3539,(job(_3539),req_deg(_3539,_3556),const(_3556,'BA')))).
+parse([are,there,any,jobs,on,windows,?], answer(_3503,(job(_3503),platform(_3503,_3520),const(_3520,'windows')))).
+parse([what,jobs,are,there,for,a,networking,specialist,?], answer(_3359,(job(_3359),area(_3359,_3378),const(_3378,'networking')))).
+parse([give,me,jobs,for,a,data,warehousing,specialist,?], answer(_3319,(job(_3319),area(_3319,_3336),const(_3336,'data warehousing')))).
+parse([list,jobs,using,sql,?], answer(_3149,(job(_3149),language(_3149,_3162),const(_3162,'sql')))).
+parse([give,me,the,jobs,for,a,lan,specialist,?], answer(_3109,(job(_3109),area(_3109,_3128),const(_3128,'lan')))).
+parse([list,jobs,in,client,server,?], answer(_3075,(job(_3075),area(_3075,_3088),const(_3088,'client/server')))).
+parse([are,there,any,jobs,in,lan,?], answer(_3039,(job(_3039),area(_3039,_3056),const(_3056,'lan')))).
+parse([show,jobs,in,usa,?], answer(_3007,(job(_3007),loc(_3007,_3020),const(_3020,'usa')))).
+parse([are,there,any,jobs,for,a,data,warehousing,specialist,?], answer(_2861,(job(_2861),area(_2861,_2880),const(_2880,'data warehousing')))).
+parse([what,jobs,are,there,using,cobol,?], answer(_2757,(job(_2757),language(_2757,_2774),const(_2774,'cobol')))).
+parse([what,jobs,are,there,on,vms,?], answer(_2685,(job(_2685),platform(_2685,_2702),const(_2702,'vms')))).
+parse([what,jobs,are,there,for,a,com,specialist,?], answer(_2647,(job(_2647),area(_2647,_2666),const(_2666,'com')))).
+parse([tell,me,jobs,using,visual,basic,?], answer(_2575,(job(_2575),language(_2575,_2590),const(_2590,'visual basic')))).
+parse([what,jobs,are,there,in,usa,on,ibm,?], answer(_2523,(job(_2523),loc(_2523,_2540),const(_2540,'usa'),platform(_2523,_2550),const(_2550,'IBM')))).
+parse([show,jobs,requiring,ba,?], answer(_2457,(job(_2457),req_deg(_2457,_2470),const(_2470,'BA')))).
+parse([give,me,jobs,in,san,antonio,?], answer(_2383,(job(_2383),loc(_2383,_2398),const(_2398,'san antonio')))).
+parse([give,me,jobs,requiring,bs,?], answer(_2279,(job(_2279),req_deg(_2279,_2294),const(_2294,'BS')))).
+parse([what,jobs,are,there,on,windows,nt,?], answer(_2241,(job(_2241),platform(_2241,_2258),const(_2258,'windows nt')))).
+parse([list,the,jobs,using,html,for,a,games,specialist,?], answer(_2151,(job(_2151),language(_2151,_2166),const(_2166,'html'),area(_2151,_2178),const(_2178,'games')))).
+parse([are,there,any,jobs,requiring,ba,?], answer(_2117,(job(_2117),req_deg(_2117,_2134),const(_2134,'BA')))).
+parse([what,jobs,are,there,on,x86,?], answer(_2081,(job(_2081),platform(_2081,_2098),const(_2098,'x86')))).
+parse([give,me,the,jobs,on,unix,?], answer(_2007,(job(_2007),platform(_2007,_2024),const(_2024,'unix')))).
+parse([what,jobs,are,there,using,'tcl/tk',?], answer(_1973,(job(_1973),language(_1973,_1990),const(_1990,'tcl/tk')))).
+parse([are,there,any,jobs,using,assembly,in,usa,?], answer(_1921,(job(_1921),language(_1921,_1938),const(_1938,'assembly'),loc(_1921,_1948),const(_1948,'usa')))).
+parse([give,me,the,jobs,for,a,database,specialist,in,usa,?], answer(_1865,(job(_1865),area(_1865,_1884),const(_1884,'database'),loc(_1865,_1896),const(_1896,'usa')))).
+parse([give,me,the,jobs,for,a,games,specialist,?], answer(_1727,(job(_1727),area(_1727,_1746),const(_1746,'games')))).
+parse([are,there,any,jobs,using,cobol,?], answer(_1691,(job(_1691),language(_1691,_1708),const(_1708,'cobol')))).
+parse([give,me,jobs,in,dallas,?], answer(_1659,(job(_1659),loc(_1659,_1674),const(_1674,'dallas')))).
+parse([tell,me,the,jobs,using,visual,basic,?], answer(_1549,(job(_1549),language(_1549,_1566),const(_1566,'visual basic')))).
+parse([list,jobs,in,austin,?], answer(_1517,(job(_1517),loc(_1517,_1530),const(_1530,'austin')))).
+parse([what,jobs,are,there,using,sql,?], answer(_1481,(job(_1481),language(_1481,_1498),const(_1498,'sql')))).
+parse([list,the,jobs,in,visual,'c++',?], answer(_1405,(job(_1405),language(_1405,_1420),const(_1420,'visual c++')))).
+parse([are,there,any,jobs,in,austin,?], answer(_1369,(job(_1369),loc(_1369,_1386),const(_1386,'austin')))).
+parse([are,there,any,software,developer,jobs,requiring,bs,?], answer(_1229,(title(_1229,_1242),const(_1242,'Software Developer'),job(_1229),req_deg(_1229,_1256),const(_1256,'BS')))).
+parse([tell,me,the,jobs,in,'3d',graphics,?], answer(_1157,(job(_1157),area(_1157,_1174),const(_1174,'3d graphics')))).
+parse([give,me,jobs,on,vms,using,sql,?], answer(_1107,(job(_1107),platform(_1107,_1122),const(_1122,'vms'),language(_1107,_1132),const(_1132,'sql')))).
+parse([are,there,any,jobs,requiring,bsee,?], answer(_1071,(job(_1071),req_deg(_1071,_1088),const(_1088,'BSEE')))).
+parse([list,the,jobs,using,assembly,?], answer(_1037,(job(_1037),language(_1037,_1052),const(_1052,'assembly')))).
+parse([give,me,the,jobs,in,dallas,?], answer(_1001,(job(_1001),loc(_1001,_1018),const(_1018,'dallas')))).
+parse([list,jobs,using,assembly,?], answer(_969,(job(_969),language(_969,_982),const(_982,'assembly')))).
+parse([show,the,jobs,on,pc,requiring,bscs,?], answer(_921,(job(_921),platform(_921,_936),const(_936,'pc'),req_deg(_921,_946),const(_946,'BSCS')))).
+parse([are,there,any,jobs,requiring,bsee,?], answer(_887,(job(_887),req_deg(_887,_904),const(_904,'BSEE')))).
+parse([show,the,jobs,in,client,server,?], answer(_851,(job(_851),area(_851,_866),const(_866,'client/server')))).
+parse([tell,me,jobs,for,a,device,driver,specialist,?], answer(_813,(job(_813),area(_813,_830),const(_830,'device driver')))).
+parse([what,jobs,are,there,for,a,'3d',graphics,specialist,?], answer(_773,(job(_773),area(_773,_792),const(_792,'3d graphics')))).
+parse([give,me,the,jobs,using,sql,?], answer(_737,(job(_737),language(_737,_754),const(_754,'sql')))).
+parse([list,jobs,requiring,bscs,using,java,?], answer(_689,(job(_689),req_deg(_689,_702),const(_702,'BSCS'),language(_689,_712),const(_712,'java')))).
+parse([show,jobs,for,a,data,warehousing,specialist,?], answer(_651,(job(_651),area(_651,_666),const(_666,'data warehousing')))).
+parse([tell,me,jobs,using,cobol,ii,?], answer(_615,(job(_615),language(_615,_630),const(_630,'cobol ii')))).
+parse([what,jobs,are,there,using,cics,?], answer(_511,(job(_511),language(_511,_528),const(_528,'cics')))).
+parse([show,the,jobs,on,mvs,?], answer(_441,(job(_441),platform(_441,_456),const(_456,'mvs')))).
+parse([show,jobs,requiring,bsee,?], answer(_343,(job(_343),req_deg(_343,_356),const(_356,'BSEE')))).
+parse([tell,me,the,jobs,requiring,ba,using,cobol,?], answer(_261,(job(_261),req_deg(_261,_278),const(_278,'BA'),language(_261,_288),const(_288,'cobol')))).
+parse([give,me,jobs,in,san,antonio,using,cobol,?], answer(_209,(job(_209),loc(_209,_224),const(_224,'san antonio'),language(_209,_236),const(_236,'cobol')))).
+parse([list,jobs,in,cobol,ii,?], answer(_175,(job(_175),language(_175,_188),const(_188,'cobol ii')))).
+parse([show,the,jobs,in,san,antonio,?], answer(_139,(job(_139),loc(_139,_154),const(_154,'san antonio')))).
+parse([are,there,any,jobs,on,vax,?], answer(_71,(job(_71),platform(_71,_88),const(_88,'vax')))).
+parse([what,jobs,require,a,bscs,?],answer(J,(job(J),req_deg(J,D),const(D,'BSCS')))).
+parse([are,there,any,jobs,for,a,programmer,?],answer(J,(job(J),title(J,T),const(T,'Programmer')))).
+parse([what,jobs,need,at,least,2,years,of,experience,?],answer(J,(job(J),req_exp(J,E),const(E,2)))).
+parse([what,jobs,are,there,for,a,test,engineer,using,java,?],answer(A,(job(A),title(A,T),const(T,'Test Engineer'),language(A,L),const(L,'java')))).
+parse([are,there,any,jobs,that,require,a,knowledge,of,linux,in,san,antonio,?],answer(A,(job(A),platform(A,P),const(P,'linux'),loc(A,L),const(L,'san antonio')))).
+parse([give,me,jobs,on,the,mac,using,perl,?],answer(J,(job(J),platform(J,P),const(P,'mac'),language(J,L),const(L,'perl')))).
+parse([what,jobs,are,there,for,a,visual,basic,developer,?],answer(J,(job(J),language(J,L),const(L,'visual basic'),title(J,T),const(T,'Developer')))).
+parse([what,are,all,the,jobs,?],answer(J,job(J))).
+parse([could,you,list,all,the,jobs,?],answer(J,job(J))).
+parse([give,me,a,list,of,all,the,jobs,?],answer(J,job(J))).
+parse([show,me,jobs,in,austin,that,use,java,on,unix,for,a,developer,paying,at,least,50000,?],answer(J,(job(J),loc(J,L),const(L,'austin'),language(J,G),const(G,'java'),platform(J,P),const(P,'unix'),title(J,T),const(T,'Developer'),salary_greater_than(J,50000,year)))).
+parse([what,jobs,use,'c++',with,the,web,on,macs,?],answer(J,(job(J),language(J,L),const(L,'c++'),area(J,A),const(A,'web'),platform(J,P),const(P,'mac')))).
+parse([what,jobs,in,california,pay,60000,for,sql,development,?],answer(J,(job(J),loc(J,C),const(C,'california'),salary_greater_than(J,60000,year),language(J,L),const(L,'sql'),title(J,T),const(T,'Developer')))).
+parse([what,jobs,in,austin,are,for,a,lisp,programmer,that,involve,unix,and,the,internet,?],answer(J,(job(J),loc(J,L),const(L,'austin'),language(J,G),const(G,'lisp'),title(J,T),const(T,'Programmer'),platform(J,P),const(P,'unix'),area(J,A),const(A,'internet')))).
+parse([show,me,everything,?],answer(J,job(J))).
+parse([what,jobs,are,there,?],answer(J,job(J))).
+parse([all,of,it,?],answer(J,job(J))).
+parse([everything,?],answer(J,job(J))).
+parse([what,jobs,in,san,jose,offer,a,java,programmer,for,40000,a,year,?],answer(J,(job(J),loc(J,L),const(L,'san jose'),language(J,G),const(G,'java'),title(J,T),const(T,'Programmer'),salary_greater_than(J,40000,year)))).
+parse([what,jobs,in,california,require,java,and,internet,experience,?],answer(J,(job(J),loc(J,L),const(L,'california'),language(J,G),const(G,'java'),area(J,A),const(A,'internet'),req_exp(J)))).
+parse([are,there,jobs,using,vb,in,seattle,with,sql,server,and,on,windows,nt,?],answer(J,(job(J),language(J,G),const(G,'vb'),loc(J,L),const(L,'seattle'),application(J,N),const(N,'sql server'),platform(J,P),const(P,'windows nt')))).
+parse([are,there,any,jobs,in,austin,developing,games,in,x86,using,assembly,?],answer(J,(job(J),loc(J,L),const(L,'austin'),area(J,A),const(A,'games'),platform(J,P),const(P,'x86'),language(J,G),const(G,'assembly')))).
+parse([what,jobs,are,there,that,dont,require,a,degree,but,use,perl,?],answer(A,(job(A),\+req_deg(A),language(A,P),const(P,perl)))).
+parse([what,jobs,are,there,for,web,developer,who,know,'c++',?],answer(A,(job(A),title(A,W),const(W,'Web Developer'),language(A,C),const(C,'c++')))).
+parse([what,jobs,desire,a,degree,but,dont,use,'c++',?],answer(A,(job(A),des_deg(A),\+ (language(A,C),const(C,'c++'))))).
+parse([show,me,the,jobs,using,'c++',that,require,a,bscs,but,desire,a,mscs,?],answer(C,(job(C),language(C,L),const(L,'c++'),req_deg(C,D),const(D,'BSCS'),des_deg(C,E),const(E,'MSCS')))).
+parse([what,are,the,software,engineer,jobs,available,using,ada,?],answer(C,(title(C,B),const(B,'Software Engineer'),job(C),language(C,L),const(L,ada)))).
+parse([which,system,administrator,jobs,in,dallas,require,2,years,experience,and,pay,50000,?],answer(C,(title(C,A),const(A,'System Administrator'),job(C),loc(C,B),const(B,dallas),req_exp(C,D),const(D,2),salary_greater_than(C,50000,year)))).
+parse([what,jobs,on,pc,are,for,programming,assembly,and,desire,5,years,experience,?],answer(C,(job(C),platform(C,B),const(B,pc),language(C,A),const(A,assembly),des_exp(C,D),const(D,5)))).
+parse([show,me,jobs,are,dell,requiring,experience,on,unix,?],answer(A,(job(A),company(A,C),const(C,'Dell'),req_exp(A),platform(A,P),const(P,unix)))).
+parse([show,me,new,york,jobs,requiring,a,bscs,?],answer(A,(loc(A,C),const(C,'new york'),job(A),req_deg(A,D),const(D,'BSCS')))).
+parse([show,me,jobs,at,dell,requiring,no,experience,and,a,bscs,?],answer(A,(job(A),company(A,C),const(C,'Dell'),\+req_exp(A),req_deg(A,W),const(W,'BSCS')))).
+parse([show,me,systems,analyst,jobs,at,ibm,?],answer(A,(title(A,T),const(T,'Systems Analyst'),job(A),company(A,C),const(C,'IBM')))).
+parse([show,me,programmer,jobs,requiring,no,experience,on,unix,?],answer(A,(title(A,Z),const(Z,'Programmer'),job(A),\+(req_exp(A),platform(A,U),const(U,unix))))).
+parse([show,me,austin,jobs,with,a,salary,of,50000,?],answer(D,(loc(D,C),const(C,austin),job(D),salary_greater_than(D,50000,year)))).
+parse([find,all,network,administration,jobs,in,austin,?],answer(D,(area(D,Z),const(Z,'network'),job(D),loc(D,C),const(C,austin)))).
+parse([show,me,a,dell,job,in,austin,requiring,a,bscs,?],answer(D,(company(D,Z),const(Z,'Dell'),job(D),loc(D,C),const(C,austin),req_deg(D,W),const(W,'BSCS')))).
+parse([which,jobs,in,houston,offer,over,50000,in,graphics,?],answer(A,(job(A),loc(A,C),const(C,houston),salary_greater_than(A,50000,year),area(A,B),const(B,graphics)))).
+parse([which,jobs,at,trilogy,deal,with,'c++',?],answer(A,(job(A),company(A,C),const(C,'Trilogy'),language(A,B),const(B,'c++')))).
+parse([which,jobs,are,for,bsee,majors,with,at,least,5,years,experience,in,windows,nt,?],answer(A,(job(A),req_deg(A,B),const(B,'BSEE'),req_exp(A,C),const(C,5),platform(A,D),const(D,'windows nt')))).
+parse([what,are,the,positions,within,hp,that,pay,40000,per,year,?],answer(A,(job(A),company(A,C),const(C,'HP'),salary_greater_than(A,40000,year)))).
+parse([what,jobs,in,boston,have,openings,for,a,'c++',programmer,?],answer(A,(job(A),loc(A,C),const(C,boston),language(A,L),const(L,'c++')))).
+parse([are,there,any,jobs,specializing,in,ai,with,jpl,?],answer(A,(job(A),area(A,B),const(B,ai),company(A,C),const(C,'JPL')))).
+parse([what,jobs,are,longhorn,employment,hiring,for,?],answer(A,(job(A),recruiter(A,L),const(L,'Longhorn')))).
+parse([show,me,the,jobs,concerning,games,development,on,a,playstation,?],answer(A,(job(A),area(A,G),const(G,games),platform(A,P),const(P,playstation)))).
+parse([what,jobs,in,austin,have,a,salary,of,60000,?],answer(A,(job(A),loc(A,B),const(B,austin),salary_greater_than(A,60000,year)))).
+parse([show,me,jobs,requiring,a,bscs,on,sun,?],answer(A,(job(A),req_deg(A,D),const(D,'BSCS'),platform(A,P),const(P,sun)))).
+parse([show,me,programmer,jobs,in,tulsa,?],answer(A,(title(A,T),const(T,'Programmer'),job(A),loc(A,C),const(C,tulsa)))).
+parse([show,me,'c++',jobs,requiring,a,bscs,in,austin,?],answer(A,(language(A,L),const(L,'c++'),job(A),req_deg(A,D),const(D,'BSCS'),loc(A,C),const(C,austin)))).
+parse([show,me,jobs,desiring,a,mscs,in,austin,with,microsoft,?],answer(A,(job(A),des_deg(A,D),const(D,'MSCS'),loc(A,C),const(C,austin),company(A,X),const(X,'Microsoft')))).
+parse([how,much,experience,is,wanted,for,a,job,at,microsoft,?],answer(B,(req_exp(A,B),job(A),company(A,D),const(D,'Microsoft')))).
+parse([what,programming,languages,are,desired,for,a,job,as,a,programmer,at,ibm,?],answer(B,(language(A,B),job(A),title(A,D),const(D,'Programmer'),company(A,E),const(E,'IBM')))).
+parse([list,the,companies,that,desire,'c++',experience,?],answer(C,(company(A,C),language(A,D),const(D,'c++'),des_exp(A)))).
+parse([list,the,required,experience,for,a,job,using,lisp,?],answer(C,(req_exp(A,C),job(A),language(A,D),const(D,lisp)))).
+parse([what,are,the,jobs,using,'c++',with,salaries,of,50000,?],answer(B,(job(B),language(B,L),const(L,'c++'),salary_greater_than(B,50000,year)))).
+parse([what,locations,offer,jobs,using,java,on,sun,?],answer(L,(loc(B,L),job(B),language(B,G),const(G,java),platform(B,P),const(P,sun)))).
+parse([what,jobs,are,available,using,apache,with,a,specialty,area,of,networking,?],answer(B,(job(B),application(B,A),const(A,apache),area(B,R),const(R,networking)))).
+parse([what,positions,are,there,that,use,'c++',and,java,?],answer(P,(job(P),language(P,L1),const(L1,'c++'),language(P,L2),const(L2,java)))).
+parse([show,me,the,jobs,using,perl,with,lockheed,martin,aeronautics,in,colorado,?],answer(A,(job(A),language(A,L),const(L,perl),company(A,C),const(C,'Lockheed Martin Aeronautics'),loc(A,S),const(S,colorado)))).
+parse([what,jobs,pay,40000,per,year,that,desire,a,bscs,?],answer(A,(job(A),salary_greater_than(A,40000,year),des_deg(A,D),const(D,'BSCS')))).
+parse([show,me,all,of,the,software,engineer,jobs,in,austin,?],answer(B,(title(B,A),const(A,'Software Engineer'),job(B),loc(B,C),const(C,austin)))).
+parse([show,me,the,jobs,in,texas,using,ai,on,unix,?],answer(A,(job(A),loc(A,S),const(S,texas),area(A,B),const(B,ai),platform(A,P),const(P,unix)))).
+parse([show,me,jobs,in,austin,using,solaris,that,do,not,require,a,bscs,?],answer(A,(job(A),loc(A,B),const(B,austin),platform(A,C),const(C,solaris),\+ (req_deg(A,D),const(D,'BSCS'))))).
+parse([give,me,the,jobs,using,'c++',that,dont,require,windows,?],answer(A,(job(A),language(A,B),const(B,'c++'),\+ (platform(A,C),const(C,windows))))).
+parse([are,there,any,jobs,requiring,a,bscs,for,boeing,in,seattle,?],answer(A,(job(A),req_deg(A,B),const(B,'BSCS'),company(A,D),const(D,'Boeing'),loc(A,C),const(C,seattle)))).
+parse([show,me,the,hardware,platforms,associated,with,a,netware,administrator,with,ibm,?],answer(H,(platform(A,H),title(A,T),const(T,'NetWare Administrator'),company(A,C),const(C,'IBM')))).
+parse([what,programmer,positions,in,austin,require,no,experience,?],answer(A,(title(A,T),const(T,'Programmer'),job(A),loc(A,C),const(C,austin),\+req_exp(A)))).
+parse([what,system,administrator,jobs,are,available,from,dell,?],answer(A,(title(A,S),const(S,'System Administrator'),job(A),company(A,C),const(C,'Dell')))).
+parse([what,are,the,degree,requirements,for,a,software,engineer,?],answer(A,(req_deg(B,A),title(B,T),const(T,'Software Engineer')))).
+parse([list,the,positions,that,require,a,knowledge,of,microsoft,excel,?],answer(A,(job(A),application(A,B),const(B,excel)))).
+parse([what,jobs,in,austin,require,5,years,of,experience,but,desire,10,years,of,experience,?],answer(A,(job(A),loc(A,D),const(D,austin),req_exp(A,B),const(B,5),des_exp(A,C),const(C,10)))).
+parse([what,ai,jobs,are,there,in,texas,that,pay,65000,?],answer(A,(area(A,B),const(B,ai),job(A),loc(A,T),const(T,texas),salary_greater_than(A,65000,year)))).
+parse([what,jobs,in,austin,require,no,experience,?],answer(A,(job(A),loc(A,C),const(C,austin),\+req_exp(A)))).
+parse([what,jobs,are,there,with,a,salary,of,40000,?],answer(A,(job(A),salary_greater_than(A,40000,year)))).
+parse([what,'c++',jobs,are,in,austin,?],answer(A,(language(A,L),const(L,'c++'),job(A),loc(A,C),const(C,austin)))).
+parse([what,are,the,'c++',jobs,in,austin,requiring,a,bscs,?],answer(A,(language(A,L),const(L,'c++'),job(A),loc(A,C),const(C,austin),req_deg(A,D),const(D,'BSCS')))).
+parse([what,jobs,are,there,in,texas,that,use,java,and,require,no,experience,?],answer(A,(job(A),loc(A,S),const(S,texas),language(A,L),const(L,java),\+req_exp(A)))).
+parse([show,me,the,jobs,in,austin,that,desire,3,years,of,experience,and,use,'c++',?],answer(A,(job(A),loc(A,C),const(C,austin),des_exp(A,T),const(T,3),language(A,L),const(L,'c++')))).
+parse([show,me,jobs,requiring,no,experience,?],answer(A,(job(A),\+req_exp(A)))).
+parse([show,me,jobs,at,dell,earning,60000,?],answer(A,(job(A),company(A,B),const(B,'Dell'),salary_greater_than(A,60000,year)))).
+parse([show,me,jobs,not,involving,'c++',?],answer(A,(job(A),\+ (language(A,L),const(L,'c++'))))).
+parse([show,me,graphics,jobs,which,phil,smith,is,recruiting,for,?],answer(A,(area(A,C),const(C,graphics),job(A),recruiter(A,B),const(B,'Phil Smith')))).
+parse([show,me,the,jobs,with,30000,salary,?],answer(A,(job(A),salary_greater_than(A,30000,year)))).
+parse([show,me,the,research,assistant,job,in,austin,?],answer(A,(title(A,C),const(C,'research assistant'),job(A),loc(A,B),const(B,austin)))).
+parse([show,me,the,jobs,that,require,1,year,of,experience,but,desire,2,years,of,experience,?],answer(A,(job(A),req_exp(A,B),const(B,1),des_exp(A,C),const(C,2)))).
+parse([are,there,any,computer,jobs,in,the,field,of,statistics,?],answer(A,(job(A),area(A,B),const(B,statistics)))).
+parse([show,me,austin,jobs,desiring,a,bscs,?],answer(A,(loc(A,C),const(C,austin),job(A),des_deg(A,B),const(B,'BSCS')))).
+parse([any,jobs,available,using,database,?],answer(A,(job(A),area(A,B),const(B,database)))).
+parse([are,there,any,project,manager,positions,open,?],answer(A,(title(A,B),const(B,'Project Manager'),job(A)))).
+parse([what,java,jobs,are,there,with,ibm,in,austin,?],answer(A,(language(A,L),const(L,java),job(A),company(A,C),const(C,'IBM'),loc(A,D),const(D,austin)))).
+parse([are,there,any,autocad,jobs,open,?],answer(A,(application(A,B),const(B,autocad),job(A)))).
+parse([are,there,any,jobs,in,houston,?],answer(A,(job(A),loc(A,B),const(B,houston)))).
+parse([what,jobs,pay,40000,?],answer(J,(job(J),salary_greater_than(J,40000,year)))).
+parse([what,microsoft,jobs,do,not,require,a,bscs,?],answer(J,(company(J,M),const(M,'Microsoft'),job(J),\+(req_deg(J,D),const(D,'BSCS'))))).
+parse([what,ibm,jobs,require,using,java,on,commodores,?],answer(J,(company(J,I),const(I,'IBM'),job(J),language(J,A),const(A,java),platform(J,C),const(C,commodores)))).
+parse([what,jobs,require,10,years,of,experience,require,a,phd,are,in,cobol,and,are,located,in,texas,?],answer(J,(job(J),req_exp(J,Y),const(Y,10),req_deg(J,P),const(P,'PhD'),language(J,L),const(L,cobol),loc(J,T),const(T,texas)))).
+parse([what,jobs,does,microsoft,recruit,for,?],answer(J,(job(J),company(J,B),const(B, 'Microsoft')))).
+parse([show,me,houston,jobs,using,c,in,the,specialty,area,of,oil,pipeline,modeling,?],answer(A,(loc(A,P),const(P,houston),job(A),language(A,L),const(L,c),area(A,S),const(S,'oil pipeline modeling')))). 
+parse([show,me,jobs,in,tulsa,using,fortran,on,vax,requiring,a,bscs,?],answer(A,(job(A),loc(A,P),const(P,tulsa),language(A,L),const(L,fortran),platform(A,H),const(H,vax),req_deg(A,D),const(D,'BSCS')))).
+parse([show,me,management,jobs,in,boston,requiring,an,mba,and,the,knowledge,of,visual,basic,?],answer(A,(area(A,S),const(S,management),job(A),loc(A,P),const(P,boston),req_deg(A,D),const(D,'MBA'),language(A,L),const(L,'visual basic')))).
+parse([show,me,jobs,in,computer,graphics,requiring,a,ba,in,art,and,knowledge,of,'speedy3dgraphics',?],answer(A,(job(A),area(A,S),const(S,'graphics'),req_deg(A,D),const(D,'BA'),application(A,X),const(X,'speedy3dgraphics')))).
+parse([show,me,the,jobs,at,companies,in,austin,that,want,a,degree,in,bscs,?],answer(A,(job(A),loc(A,C),const(C,austin),des_deg(A,B),const(B,'BSCS')))).
+parse([show,the,jobs,offering,40000,working,with,c,on,windows,nt,?],answer(A,(job(A),salary_greater_than(A,40000,year),language(A,L),const(L,c),platform(A,P),const(P,'windows nt')))).
+parse([show,the,jobs,with,the,title,systems,programmer,requiring,2,years,of,experience,?],answer(A,(job(A),title(A,T),const(T,'Programmer'),req_exp(A,E),const(E,2)))).
+parse([show,the,jobs,using,lisp,not,requiring,a,bscs,?],answer(A,(job(A),language(A,L),const(L,lisp),\+ (req_deg(A,D),const(D,'BSCS'))))).
+parse([show,me,all,job,that,are,available,?],answer(J,job(J))).
+parse([show,the,companies,that,are,looking,for,bscs,in,austin,?],answer(C,(company(X,C),req_deg(X,D),const(D,'BSCS'),loc(X,A),const(A,austin)))).
+parse([what,are,the,jobs,that,require,experience,with,microsoft,word,?],answer(J,(job(J),req_exp(J),application(J,M),const(M,'microsoft word')))).
+parse([are,there,any,jobs,using,'c++',with,dell,?],answer(A,(job(A),language(A,C),const(C,'c++'),company(A,B),const(B,'Dell')))).
+parse([show,me,the,jobs,using,java,with,salaries,greater,than,50000,?],answer(B,(job(B),language(B,L),const(L,java),salary_greater_than(B,50000,year)))).
+parse([show,me,the,jobs,that,require,2,years,experience,?],answer(A,(job(A),req_exp(A,B),const(B,2)))).
+parse([what,jobs,are,in,seattle,that,are,not,at,microsoft,?],answer(A,(job(A),loc(A,B),const(B,seattle),\+ (company(A,N),const(N,'Microsoft'))))).
+parse([what,jobs,as,manufacturing,manager,pay,100000,?],answer(A,(job(A),title(A,C),const(C,'Manufacturing Manager'),salary_greater_than(A,100000,year)))).
+parse([show,me,the,jobs,using,lisp,requiring,a,bscs,?],answer(A,(job(A),language(A,L),const(L,lisp),req_deg(A,D),const(D,'BSCS')))).
+parse([show,me,the,jobs,that,are,not,in,haskell,?],answer(A,(job(A),\+ (language(A,L),const(L,haskell))))).
+parse([are,there,any,jobs,that,require,the,knowledge,of,linux,platform,?],answer(A,(job(A),platform(A,P),const(P,linux)))).
+parse([what,jobs,using,fortran,are,there,in,houston,?],answer(J,(job(J),language(J,F),const(F,fortran),loc(J,L),const(L,'houston')))).
+parse([show,me,the,senior,development,engineer,jobs,which,require,a,master,?],answer(J,(title(J,T),const(T,'Senior Development Engineer'),job(J),req_deg(J,D),const(D,master)))).
+parse([what,jobs,desire,2,years,of,experience,with,powerbuilder,on,windows,nt,?],answer(J,(job(J),des_exp(J,T),const(T,2),language(J,A),const(A,powerbuilder),platform(J,P),const(P,'windows nt')))).
+parse([are,there,any,jobs,using,java,that,are,not,with,ibm,?],answer(A,(job(A),language(A,L),const(L,java),\+ (company(A,C),const(C,'IBM'))))).
+parse([are,there,any,mac,programmer,jobs,?],answer(B,(platform(B,P),const(P,mac),title(B,A),const(A,'Programmer'),job(B)))).
+parse([show,jobs,in,austin,that,require,a,bscs,?],answer(A,(job(A),loc(A,C),const(C,austin),req_deg(A,D),const(D,'BSCS')))).
+parse([what,jobs,are,there,for,'c++',unix,developer,?],answer(A,(job(A),language(A,L),const(L,'c++'),platform(A,P),const(P,'unix'),title(A,D), const(D,'Developer')))).
+parse([what,jobs,are,there,in,austin,for,project,manager,area,games,on,mac,using,pascal,?],answer(A,(job(A),loc(A,B),const(B,'austin'),title(A,T),const(T,'Project Manager'),area(A,K),const(K,'games'),platform(A,W),const(W,'mac'),language(A,L),const(L,'pascal')))).
+parse([what,jobs,are,there,for,assembly,programmer,that,require,a,bscs,?],answer(A,(job(A),language(A,S),const(S,'assembly'),req_deg(A,D),const(D,'BSCS')))).
+parse([what,software,engineer,jobs,are,there,that,use,'c++',?],answer(A,(title(A,S),const(S,'Software Engineer'),job(A),language(A,C),const(C,'c++')))).
+parse([what,jobs,in,ibm,in,austin,do,not,need,a,degree,?],answer(J,(job(J),company(J,C),const(C,'IBM'),loc(J,L),const(L,'austin'),\+(req_deg(J))))).
+parse([what,jobs,in,austin,need,knowledge,in,unix,?],answer(J,(job(J),loc(J,L),const(L,'austin'),platform(J,P),const(P,'unix')))).
+parse([what,jobs,require,knowledge,of,'c++',but,not,perl,?],answer(A,(job(A),language(A,C),const(C,'c++'),\+ (language(A,P),const(P,'perl'))))).
+parse([what,are,the,jobs,in,austin,requiring,knowledge,of,oracle,?],answer(A,(job(A),loc(A,C),const(C,'austin'),application(A,O),const(O,'oracle')))).
+parse([show,me,jobs,with,a,salary,greater,than,50000,dollars,a,year,?],answer(A,(job(A),salary_greater_than(A,50000,year)))).
+parse([what,jobs,in,san,antonio,require,the,use,of,cobol,?],answer(A,(job(A),loc(A,L),const(L,'san antonio'),language(A,C),const(C,'cobol')))).
+parse([give,me,jobs,that,require,ethernet,experience,but,no,html,?], answer(A,(job(A),area(A,E),const(E,'ethernet'),req_exp(A),\+ (language(A,H),const(H,'html'))))).
+parse([what,jobs,are,there,in,dallas,that,requires,a,mscs,?], answer(A,(job(A),loc(A,C),const(C,'dallas'),req_deg(A,D),const(D,'MSCS')))).
+parse([what,jobs,are,there,in,austin,that,requires,experience,with,unix,?], answer(A,(job(A),loc(A,C),const(C,'austin'),req_exp(A),platform(A,P),const(P,'unix')))).
+parse([show,me,developer,jobs,requiring,experience,with,mac,?], answer(A,(title(A,T),const(T,'Developer'),job(A),req_exp(A),platform(A,P),const(P,'mac')))).
+parse([what,jobs,are,there,with,a,salary,of,more,than,50000,dollars,per,year,?], answer(A,(job(A),salary_greater_than(A,50000,year)))).
+parse([what,jobs,in,austin,require,10,years,of,experience,?], answer(A,(job(A),loc(A,P),const(P,'austin'),req_exp(A,E),const(E,10)))).
+parse([what,jobs,in,austin,require,knowledge,of,the,platform,unix,?], answer(A,(job(A),loc(A,P),const(P,'austin'),platform(A,U),const(U,'unix')))).
+parse([show,me,jobs,located,in,austin,for,'c++',programmers,?], answer(A,(job(A),loc(A,C),const(C,'austin'),language(A,D),const(D,'c++'),title(A,T),const(T,'Programmer')))).
+parse([show,jobs,for,a,shell,programmer,familiar,with,the,unix,environment,?], answer(J,(job(J),language(J,L),const(L,'shell'),platform(J,P),const(P,'unix')))).
+parse([show,jobs,that,do,not,require,a,degree,for,visual,basic,programmers,?], answer(J,(job(J),\+ req_deg(J),language(J,L),const(L,'visual basic'),title(J,T),const(T,'Programmer')))).
+parse([what,jobs,in,austin,use,'c++',and,java,?], answer(A,(job(A),loc(A,C),const(C,'austin'),language(A,B),const(B,'c++'),language(A,D),const(D,'java')))).
+parse([what,jobs,require,a,bscs,degree,and,desire,an,mscs,degree,?], answer(A,(job(A),req_deg(A,B),const(B,'BSCS'),des_deg(A,M),const(M,'MSCS')))).
+parse([what,austin,jobs,that,use,cobol,do,not,require,any,experience,?], answer(A,(loc(A,B),const(B,'austin'),job(A),language(A,C),const(C,'cobol'),\+ req_exp(A)))).
+parse([what,jobs,require,knowledge,of,'c++',but,not,perl,?], answer(A,(job(A),language(A,C),const(C,'c++'),\+ (language(A,D),const(D,'perl'))))).
+parse([what,jobs,in,dallas,require,experience,with,unix,?], answer(A,(job(A),loc(A,C),const(C,'dallas'),req_exp(A),platform(A,U),const(U,'unix')))).
+parse([are,there,any,systems,administrator,jobs,in,austin,?], answer(A,(title(A,C),const(C,'Systems Administrator'),job(A),loc(A,D),const(D,'austin')))).
+parse([show,me,austin,jobs,requiring,a,bscs,degree,with,a,salary,greater,than,50000,per,year,?], answer(A,(loc(A,E),const(E,'austin'),job(A),req_deg(A,D),const(D,'BSCS'),salary_greater_than(A,50000,year)))).
+parse([show,me,jobs,at,dell,requiring,a,bscs,degree,?], answer(A,(job(A),company(A,B),const(B,'Dell'),req_deg(A,C),const(C,'BSCS')))).
+parse([what,jobs,in,houston,are,there,that,requires,a,bscs,with,1,year,of,experience,?], answer(A,(job(A),loc(A,H),const(H,'houston'),req_deg(A,D),const(D,'BSCS'),req_exp(A,E),const(E,1)))).
+parse([what,jobs,are,there,in,austin,with,a,salary,of,at,least,100000,per,year,?], answer(A,(job(A),loc(A,P),const(P,'austin'),salary_greater_than(A,100000,year)))).
+parse([what,jobs,do,not,require,a,degree,but,pay,more,than,60000,?], answer(J, (job(J),\+ req_deg(J),salary_greater_than(J,60000,year)))).
+parse([what,jobs,are,available,for,someone,who,know,oracle,on,solaris,?], answer(J, (job(J),platform(J,P),const(P,'solaris'),application(J,A),const(A,'oracle')))).
+parse([what,web,developer,jobs,are,there,in,austin,?], answer(A,(title(A,W),const(W,'Web Developer'),job(A),loc(A,P),const(P,'austin')))).
+parse([what,jobs,use,html,but,do,not,require,a,degree,?], answer(A,(job(A),language(A,H),const(H,html),\+ req_deg(A)))).
+parse([show,me,dallas,jobs,requiring,a,bscs,?], answer(A, (loc(A,C),const(C,'dallas'),job(A),req_deg(A,D),const(D,'BSCS')))).
+parse([what,web,related,jobs,require,a,bscs,but,no,experience,?], answer(A, (area(A,F),const(F,'web'),job(A),req_deg(A,D),const(D,'BSCS'),\+ req_exp(A)))).
+parse([what,tivoli,jobs,are,there,that,require,a,bscs,degree,?], answer(J, (company(J,C),const(C,'Tivoli'),job(J),req_deg(J,D),const(D,'BSCS')))).
+parse([what,jobs,are,there,in,austin,for,people,with,knowledge,of,the,application,oracle,?], answer(J, (job(J),loc(J,L),const(L,'austin'),application(J,A),const(A,'oracle')))).
+parse([what,jobs,are,there,for,programmers,that,know,assembly,?], answer(J, (job(J),title(J,T),const(T,'Programmer'),language(J,L),const(L,'assembly')))).
+parse([are,there,any,mac,jobs,open,?], answer(J, (platform(J,P),const(P,'mac'),job(J)))).
+parse([are,there,any,jobs,in,austin,paying,over,100000,per,year,?], answer(J, (job(J),loc(J,L),const(L,'austin'),salary_greater_than(J,100000,year)))).
+parse([what,jobs,are,there,in,austin,that,require,a,bscs,degree,?], answer(A, (job(A),loc(A,L),const(L,'austin'),req_deg(A,D),const(D,'BSCS')))).
+parse([what,jobs,are,there,in,austin,that,require,5,years,experience,?], answer(A, (job(A),loc(A,L),const(L,'austin'),req_exp(A,Y),const(Y,5)))).
+parse([what,project,manager,jobs,are,there,that,require,experience,?], answer(A, (title(A,T),const(T,'Project Manager'),job(A),req_exp(A)))).
+parse([which,jobs,require,c,and,'c++',but,not,java,?], answer(A,(job(A),language(A,B),const(B,'c'),language(A,C),const(C,'c++'),\+ (language(A,D),const(D,'java'))))).
+parse([what,austin,area,web,jobs,require,java,and,'c++',?], answer(A, (loc(A,B),const(B,'austin'),area(A,C),const(C,'web'),job(A),language(A,D),const(D,'java'),language(A,E),const(E,'c++')))).
+parse([what,jobs,in,dallas,require,a,bscs,and,'c++',but,not,java,?], answer(A, (job(A),loc(A,B),const(B,'dallas'),req_deg(A,C),const(C,'BSCS'),language(A,D),const(D,'c++'),\+ (language(A,E),const(E,'java'))))).
+parse([what,jobs,require,a,degree,for,pascal,programmers,who,do,not,know,'c++',?], answer(A,(job(A),req_deg(A),language(A,P),const(P,'pascal'),\+ (language(A,C),const(C,'c++'))))).
+parse([what,jobs,have,a,salary,greater,than,20,an,hour,?], answer(A,(job(A),salary_greater_than(A,20,hour)))).
+parse([what,developer,jobs,in,austin,require,a,bscs,and,'c++',?], answer(A,(title(A,D),const(D,'Developer'),job(A),loc(A,U),const(U,'austin'),req_deg(A,B),const(B,'BSCS'),language(A,C),const(C,'c++')))).
+parse([what,jobs,require,a,bscs,and,experience,with,oracle,?], answer(J,(job(J),req_deg(J,B),const(B,'BSCS'),req_exp(J),application(J,O),const(O,'oracle')))).
+parse([what,are,the,jobs,for,a,'c++',programmer,in,austin,?], answer(J,(job(J),language(J,C),const(C,'c++'),title(J,P),const(P,'Programmer'),loc(J,A),const(A,'austin')))).
+parse([show,me,a,job,that,requires,'c++',and,java,and,is,in,austin,?], answer(A,(job(A),language(A,C),const(C,'c++'),language(A,D),const(D,'java'),loc(A,L),const(L,'austin')))).
+parse([what,job,is,there,for,a,bscs,with,5,years,of,experience,?], answer(A,(job(A),req_deg(A,D),const(D,'BSCS'),req_exp(A,X),const(X,5)))).
+parse([what,jobs,are,there,which,require,java,on,windows,and,unix,?], answer(A, (job(A),language(A,M),const(M,'java'),platform(A,W),const(W,'windows'),platform(A,L),const(L,'unix')))).
+parse([what,jobs,are,there,for,'c++',programmers,which,pay,more,than,60000,per,year,?], answer(A, (job(A),language(A,L),const(L,'c++'),title(A,T),const(T,'Programmer'),salary_greater_than(A,60000,year)))).
+parse([what,jobs,are,there,outside,austin,which,pay,less,than,60000,per,year,?], answer(A, (job(A),\+ (loc(A,L),const(L,'austin')),salary_less_than(A,60000,year)))).
+parse([what,jobs,require,experience,in,'c++',and,java,but,not,perl,?], answer(A,(job(A),req_exp(A),language(A,B),const(B,'c++'),language(A,C),const(C,'java'),\+ (language(A,D),const(D,'perl'))))).
+parse([what,jobs,require,a,bscs,and,no,experience,?], answer(A,(job(A),req_deg(A,D),const(D,'BSCS'),\+ req_exp(A)))).
+parse([show,me,web,developer,job,openings,at,trilogy,?], answer(A,(title(A,W),const(W,'Web Developer'),job(A),company(A,C),const(C,'Trilogy')))).
+parse([show,me,jobs,paying,greater,than,50000,per,year,?], answer(A, (job(A),salary_greater_than(A,50000,year)))).
+parse([what,jobs,require,at,least,1,year,of,experience,in,'c++',?], answer(A, (job(A),req_exp(A,X),const(X,1),language(A,C),const(C,'c++')))).
+parse([what,jobs,require,'c++',and,pays,a,salary,greater,than,90000,per,year,?], answer(A, (job(A),language(A,C),const(C,'c++'),salary_greater_than(A,90000,year)))).
+parse([what,jobs,in,austin,require,a,bscs,degree,and,deal,with,'tcp/ip',?], answer(J, (job(J),loc(J,L),const(L,'austin'),req_deg(J,D),const(D,'BSCS'),area(J,A),const(A,'tcp/ip')))).
+parse([what,web,jobs,are,available,that,need,mac,experience,and,no,degree,?], answer(J, (area(J,A),const(A,'web'),job(J),platform(J,P),const(P,'mac'),req_exp(J),\+ req_deg(J)))).
+parse([what,jobs,pay,at,least,80000,dollars,per,year,?], answer(J, (job(J),salary_greater_than(J,80000,year)))).
+parse([what,jobs,are,there,for,programmers,who,know,java,?], answer(A, (job(A),title(A,T),const(T,'Programmer'),language(A,P),const(P,'java')))).
+parse([what,jobs,in,austin,desiring,a,bscs,are,there,for,a,'c++',programmer,?], answer(A, (job(A),loc(A,C),const(C,'austin'),des_deg(A,D),const(D,'BSCS'),language(A,P),const(P,'c++')))).
+parse([are,there,jobs,that,do,not,require,a,degree,in,houston,?], answer(A, (job(A),\+ req_deg(A),loc(A,C),const(C,'houston')))).
+parse([show,me,jobs,in,dallas,requiring,knowledge,of,linux,and,pays,more,than,50000,a,year,?], answer(A, (job(A),loc(A,C),const(C,'dallas'),platform(A,P),const(P,'linux'),salary_greater_than(A,50000,year)))).
+parse([what,jobs,as,a,senior,software,developer,are,available,in,houston,but,not,san,antonio,?], answer(A, (job(A),title(A,W),const(W,'Senior Software Developer'),loc(A,C1),const(C1,'houston'),\+ (loc(A,C2),const(C2,'san antonio'))))).
+parse([which,system,administrator,jobs,in,dallas,require,2,years,experience,and,pay,50000,?],answer(C,(job(C),loc(C,B),const(B,'dallas'),title(C,A),const(A,'System Administrator'),req_exp(C,D),const(D,2),salary_greater_than(C,50000,year)))).

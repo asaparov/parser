@@ -1,0 +1,139 @@
+parse(N_CONSTANT, [alabama], alabama).
+parse(N_CONSTANT, [alaska], alaska).
+parse(N_CONSTANT, [arizona], arizona).
+parse(N_CONSTANT, [arkansas], arkansas).
+parse(N_CONSTANT, [california], california).
+parse(N_CONSTANT, [colorado], colorado).
+parse(N_CONSTANT, [delaware], delaware).
+parse(N_CONSTANT, [florida], florida).
+parse(N_CONSTANT, [georgia], georgia).
+parse(N_CONSTANT, [hawaii], hawaii).
+parse(N_CONSTANT, [idaho], idaho).
+parse(N_CONSTANT, [illinois], illinois).
+parse(N_CONSTANT, [indiana], indiana).
+parse(N_CONSTANT, [iowa], iowa).
+parse(N_CONSTANT, [kansas], kansas).
+parse(N_CONSTANT, [kentucky], kentucky).
+parse(N_CONSTANT, [louisiana], louisiana).
+parse(N_CONSTANT, [maine], maine).
+parse(N_CONSTANT, [maryland], maryland).
+parse(N_CONSTANT, [massachusetts], massachusetts).
+parse(N_CONSTANT, [michigan], michigan).
+parse(N_CONSTANT, [minnesota], minnesota).
+parse(N_CONSTANT, [mississippi], mississippi).
+parse(N_CONSTANT, [missouri], missouri).
+parse(N_CONSTANT, [montana], montana).
+parse(N_CONSTANT, [nebraska], nebraska).
+parse(N_CONSTANT, [nevada], nevada).
+parse(N_CONSTANT, [new,hampshire], 'new hampshire').
+parse(N_CONSTANT, [new,jersey], 'new jersey').
+parse(N_CONSTANT, [new,mexico], 'new mexico').
+parse(N_CONSTANT, [new,york], 'new york').
+parse(N_CONSTANT, [north,carolina], 'north carolina').
+parse(N_CONSTANT, [north,dakota], 'north dakota').
+parse(N_CONSTANT, [ohio], ohio).
+parse(N_CONSTANT, [oklahoma], oklahoma).
+parse(N_CONSTANT, [oregon], oregon).
+parse(N_CONSTANT, [pennsylvania], pennsylvania).
+parse(N_CONSTANT, [rhode,island], 'rhode island').
+parse(N_CONSTANT, [south,carolina], 'south carolina').
+parse(N_CONSTANT, [south,dakota], 'south dakota').
+parse(N_CONSTANT, [tennessee], tennessee).
+parse(N_CONSTANT, [texas], texas).
+parse(N_CONSTANT, [utah], utah).
+parse(N_CONSTANT, [vermont], vermont).
+parse(N_CONSTANT, [virginia], virginia).
+parse(N_CONSTANT, [washington], washington).
+parse(N_CONSTANT, [west,virginia], 'west virginia').
+parse(N_CONSTANT, [wisconsin], wisconsin).
+parse(N_CONSTANT, [wyoming], wyoming).
+parse(N_CONSTANT, [albany], albany).
+parse(N_CONSTANT, [atlanta], atlanta).
+parse(N_CONSTANT, [austin], austin).
+parse(N_CONSTANT, [baton,rouge], 'baton rouge').
+parse(N_CONSTANT, [boston], boston).
+parse(N_CONSTANT, [boulder], boulder).
+parse(N_CONSTANT, [chicago], chicago).
+parse(N_CONSTANT, [columbus], columbus).
+parse(N_CONSTANT, [dallas], dallas).
+parse(N_CONSTANT, [denver], denver).
+parse(N_CONSTANT, [des,moines], 'des moines').
+parse(N_CONSTANT, [detroit], detroit).
+parse(N_CONSTANT, [dover], dover).
+parse(N_CONSTANT, [durham], durham).
+parse(N_CONSTANT, [erie], erie).
+parse(N_CONSTANT, [flint], flint).
+parse(N_CONSTANT, [fort,wayne], 'fort wayne').
+parse(N_CONSTANT, [houston], houston).
+parse(N_CONSTANT, [indianapolis], indianapolis).
+parse(N_CONSTANT, [kalamazoo], kalamazoo).
+parse(N_CONSTANT, [miami], miami).
+parse(N_CONSTANT, [minneapolis], minneapolis).
+parse(N_CONSTANT, [montgomery], montgomery).
+parse(N_CONSTANT, [new,orleans], 'new orleans').
+parse(N_CONSTANT, [new,york,city], 'new york').
+parse(N_CONSTANT, [pittsburgh], pittsburgh).
+parse(N_CONSTANT, [plano], plano).
+parse(N_CONSTANT, [portland], portland).
+parse(N_CONSTANT, [riverside], riverside).
+parse(N_CONSTANT, [rochester], rochester).
+parse(N_CONSTANT, [sacramento], sacramento).
+parse(N_CONSTANT, [salem], salem).
+parse(N_CONSTANT, [salt,lake,city], 'salt lake city').
+parse(N_CONSTANT, [san,antonio], 'san antonio').
+parse(N_CONSTANT, [san,diego], 'san diego').
+parse(N_CONSTANT, [san,francisco], 'san francisco').
+parse(N_CONSTANT, [san,jose], 'san jose').
+parse(N_CONSTANT, [scotts,valley], 'scotts valley').
+parse(N_CONSTANT, [seattle], seattle).
+parse(N_CONSTANT, [spokane], spokane).
+parse(N_CONSTANT, [springfield], springfield).
+parse(N_CONSTANT, [tempe], tempe).
+parse(N_CONSTANT, [tucson], tucson).
+parse(N_CONSTANT, [united,states], usa).
+parse(N_CONSTANT, [usa], usa).
+parse(N_CONSTANT, [us], usa).
+parse(N_CONSTANT, [chattahoochee], chattahoochee).
+parse(N_CONSTANT, [colorado], colorado).
+parse(N_CONSTANT, [north,platte], 'north platte').
+parse(N_CONSTANT, [potomac], potomac).
+parse(N_CONSTANT, [red], red).
+parse(N_CONSTANT, [rio,grande], 'rio grande').
+parse(N_CONSTANT, [death,valley], 'death valley').
+parse(N_CONSTANT, [guadalupe,peak], 'guadalupe peak').
+parse(N_CONSTANT, [mount,mckinley], 'mount mckinley').
+parse(N_CONSTANT, [mount,whitney], 'mount whitney').
+parse(N_CONSTANT_ARG2, [arizona], az).
+parse(N_CONSTANT_ARG2, [dc], dc).
+parse(N_CONSTANT_ARG2, [georgia], ga).
+parse(N_CONSTANT_ARG2, [massachusetts], ma).
+parse(N_CONSTANT_ARG2, [maine], me).
+parse(N_CONSTANT_ARG2, [minnesota], mn).
+parse(N_CONSTANT_ARG2, [missouri], mo).
+parse(N_CONSTANT_ARG2, [pennsylvania], pa).
+parse(N_CONSTANT_ARG2, [south,dakota], sd).
+parse(N_CONSTANT_ARG2, [texas], tx).
+parse(N_CONSTANT_ARG2, [washington], wa).
+parse(ADJ, [combined], sum(B,(),A)).
+parse(ADJ, [total], sum(B,(),A)).
+parse(ADJ, [highest], highest(A,())).
+parse(ADJ, [maximum], highest(A,())).
+parse(ADJ, [tallest], highest(A,())).
+parse(ADJ, [lowest], lowest(A,())).
+parse(ADJ, [longest], longest(A,())).
+parse(ADJ, [biggest], longest(A,())).
+parse(ADJ, [largest], longest(A,())).
+parse(ADJ, [shortest], shortest(A,())).
+parse(ADJ, [largest], largest(A,())).
+parse(ADJ, [biggest], largest(A,())).
+parse(ADJ, [greatest], largest(A,())).
+parse(ADJ, [highest], largest(A,())).
+parse(ADJ, [most], largest(A,())).
+parse(ADJ, [smallest], smallest(A,())).
+parse(ADJ, [least], smallest(A,())).
+parse(ADJ, [lowest], smallest(A,())).
+parse(ADJ, [sparsest], smallest(A,())).
+parse(ADJ, [sparsest], smallest(A,())).
+parse(ADJ, [most], most(A,B,())).
+parse(ADJ, [fewest], fewest(A,B,())).
+parse(ADJ, [least], fewest(A,B,())).

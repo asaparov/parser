@@ -1,0 +1,180 @@
+parse(N_CONSTANT, [3d,graphics], '3d graphics').
+parse(N_CONSTANT, [ada], 'ada').
+parse(N_CONSTANT, [ai], 'ai').
+parse(N_CONSTANT, [aix], 'aix').
+parse(N_CONSTANT, [animation], 'animation').
+parse(N_CONSTANT, [apache], 'apache').
+parse(N_CONSTANT, [apple], 'Apple').
+parse(N_CONSTANT, [applied,materials], 'Applied Materials').
+parse(N_CONSTANT, [assembly], 'assembly').
+parse(N_CONSTANT, [austin], 'austin').
+parse(N_CONSTANT, [autocad], 'autocad').
+parse(N_CONSTANT, [ba], 'BA').
+parse(N_CONSTANT, [bacs], 'BACS').
+parse(N_CONSTANT, [boeing], 'Boeing').
+parse(N_CONSTANT, [boston], 'boston').
+parse(N_CONSTANT, [bs], 'BS').
+parse(N_CONSTANT, [bscs], 'BSCS').
+parse(N_CONSTANT, [bsee], 'BSEE').
+parse(N_CONSTANT, [c], 'c').
+parse(N_CONSTANT, [c++], 'c++').
+parse(N_CONSTANT, [california], 'california').
+parse(N_CONSTANT, [canada], 'canada').
+parse(N_CONSTANT, [cics], 'cics').
+parse(N_CONSTANT, [client,server], 'client/server').
+parse(N_CONSTANT, [cobol], 'cobol').
+parse(N_CONSTANT, [cobol,ii], 'cobol ii').
+parse(N_CONSTANT, [colorado], 'colorado').
+parse(N_CONSTANT, [com], 'com').
+parse(N_CONSTANT, [commodores], 'commodores').
+parse(N_CONSTANT, [compaq], 'Compaq').
+parse(N_CONSTANT, [consultant], 'Consultant').
+parse(N_CONSTANT, [consultants], 'Consultant').
+parse(N_CONSTANT, [dallas], 'dallas').
+parse(N_CONSTANT, [database], 'database').
+parse(N_CONSTANT, [data,warehousing], 'data warehousing').
+parse(N_CONSTANT, [dell], 'Dell').
+parse(N_CONSTANT, [delphi], 'delphi').
+parse(N_CONSTANT, [developer], 'Developer').
+parse(N_CONSTANT, [developers], 'Developer').
+parse(N_CONSTANT, [development], 'Developer').
+parse(N_CONSTANT, [device,driver], 'device driver').
+parse(N_CONSTANT, [engineer], 'engineer').
+parse(N_CONSTANT, [ethernet], 'ethernet').
+parse(N_CONSTANT, [excel], 'excel').
+parse(N_CONSTANT, [fortran], 'fortran').
+parse(N_CONSTANT, [games], 'games').
+parse(N_CONSTANT, [graphics], 'graphics').
+parse(N_CONSTANT, [gui], 'gui').
+parse(N_CONSTANT, [haskell], 'haskell').
+parse(N_CONSTANT, [houston], 'houston').
+parse(N_CONSTANT, [hp], 'HP').
+parse(N_CONSTANT, [html], 'html').
+parse(N_CONSTANT, [ibm], 'IBM').
+parse(N_CONSTANT, [ic,design,engineer], 'Ic Design Engineer').
+parse(N_CONSTANT, [intern], 'intern').
+parse(N_CONSTANT, [internet], 'internet').
+parse(N_CONSTANT, [java], 'java').
+parse(N_CONSTANT, [jpl], 'JPL').
+parse(N_CONSTANT, [lan], 'lan').
+parse(N_CONSTANT, [latex], 'latex').
+parse(N_CONSTANT, [lcs], 'LCS').
+parse(N_CONSTANT, [linux], 'linux').
+parse(N_CONSTANT, [lisp], 'lisp').
+parse(N_CONSTANT, [lockheed,martin,aeronautics], 'Lockheed Martin Aeronautics').
+parse(N_CONSTANT, [longhorn], 'Longhorn').
+parse(N_CONSTANT, [los,alamos], 'los alamos').
+parse(N_CONSTANT, [ma], 'MA').
+parse(N_CONSTANT, [mac], 'mac').
+parse(N_CONSTANT, [macs], 'mac').
+parse(N_CONSTANT, [management], 'management').
+parse(N_CONSTANT, [manufacturing,manager], 'Manufacturing Manager').
+parse(N_CONSTANT, [master], 'master').
+parse(N_CONSTANT, [mba], 'MBA').
+parse(N_CONSTANT, [mfc], 'mfc').
+parse(N_CONSTANT, [microsoft], 'Microsoft').
+parse(N_CONSTANT, [microsoft,word], 'microsoft word').
+parse(N_CONSTANT, [mscs], 'MSCS').
+parse(N_CONSTANT, [msee], 'MSEE').
+parse(N_CONSTANT, [mvs], 'mvs').
+parse(N_CONSTANT, [nashville], 'nashville').
+parse(N_CONSTANT, [national,instruments], 'National Instruments').
+parse(N_CONSTANT, [netware,administrator], 'NetWare Administrator').
+parse(N_CONSTANT, [network], 'network').
+parse(N_CONSTANT, [network,administration], 'network').
+parse(N_CONSTANT, [networking], 'networking').
+parse(N_CONSTANT, [new,york], 'new york').
+parse(N_CONSTANT, [novell], 'novell').
+parse(N_CONSTANT, [odbc], 'odbc').
+parse(N_CONSTANT, [oil,pipeline,modeling], 'oil pipeline modeling').
+parse(N_CONSTANT, [ole], 'ole').
+parse(N_CONSTANT, [oracle], 'oracle').
+parse(N_CONSTANT, [pascal], 'pascal').
+parse(N_CONSTANT, [pc], 'pc').
+parse(N_CONSTANT, [pcs], 'pc').
+parse(N_CONSTANT, [pdp11], 'pdp11').
+parse(N_CONSTANT, [perl], 'perl').
+parse(N_CONSTANT, [phd], 'PhD').
+parse(N_CONSTANT, [phil,smith], 'Phil Smith').
+parse(N_CONSTANT, [playstation], 'playstation').
+parse(N_CONSTANT, [powerbuilder], 'powerbuilder').
+parse(N_CONSTANT, [programmer], 'Programmer').
+parse(N_CONSTANT, [programmers], 'Programmer').
+parse(N_CONSTANT, [project,manager], 'Project Manager').
+parse(N_CONSTANT, [prolog], 'prolog').
+parse(N_CONSTANT, [research,assistant], 'research assistant').
+parse(N_CONSTANT, [rpg], 'rpg').
+parse(N_CONSTANT, [san,antonio], 'san antonio').
+parse(N_CONSTANT, [san,jose], 'san jose').
+parse(N_CONSTANT, [seattle], 'seattle').
+parse(N_CONSTANT, [senior,consulting,engineer], 'Senior Consulting Engineer').
+parse(N_CONSTANT, [senior,software,developer], 'Senior Software Developer').
+parse(N_CONSTANT, [shell], 'shell').
+parse(N_CONSTANT, [silicon,graphics], 'silicon graphics').
+parse(N_CONSTANT, [software,developer], 'Software Developer').
+parse(N_CONSTANT, [software,engineer], 'Software Engineer').
+parse(N_CONSTANT, [software,qa], 'software qa').
+parse(N_CONSTANT, [solaris], 'solaris').
+parse(N_CONSTANT, [speedy3dgraphics], 'speedy3dgraphics').
+parse(N_CONSTANT, [sql], 'sql').
+parse(N_CONSTANT, [sql,engineer], 'Sql Engineer').
+parse(N_CONSTANT, [sql,server], 'sql server').
+parse(N_CONSTANT, [statistics], 'statistics').
+parse(N_CONSTANT, [sun], 'sun').
+parse(N_CONSTANT, [system,administrator], 'System Administrator').
+parse(N_CONSTANT, [systems,administrator], 'Systems Administrator').
+parse(N_CONSTANT, [systems,analyst], 'Systems Analyst').
+parse(N_CONSTANT, ['tcl/tk'], 'tcl/tk').
+parse(N_CONSTANT, ['tcp/ip'], 'tcp/ip').
+parse(N_CONSTANT, [tcp,ip], 'tcp/ip').
+parse(N_CONSTANT, [telecommunications], 'telecommunications').
+parse(N_CONSTANT, [test,engineer], 'Test Engineer').
+parse(N_CONSTANT, [texas], 'texas').
+parse(N_CONSTANT, [tivoli], 'Tivoli').
+parse(N_CONSTANT, [trilogy], 'Trilogy').
+parse(N_CONSTANT, [tulsa], 'tulsa').
+parse(N_CONSTANT, [unix], 'unix').
+parse(N_CONSTANT, [usa], 'usa').
+parse(N_CONSTANT, [vax], 'vax').
+parse(N_CONSTANT, [vb], 'vb').
+parse(N_CONSTANT, ['vc++'], 'vc++').
+parse(N_CONSTANT, [verification,engineer], 'Verification Engineer').
+parse(N_CONSTANT, [visual,basic], 'visual basic').
+parse(N_CONSTANT, [visual,'c++'], 'visual c++').
+parse(N_CONSTANT, [visual,'j++'], 'visual j++').
+parse(N_CONSTANT, [vms], 'vms').
+parse(N_CONSTANT, [wan], 'wan').
+parse(N_CONSTANT, [washington], 'washington').
+parse(N_CONSTANT, [web], 'web').
+parse(N_CONSTANT, [web,developer], 'Web Developer').
+parse(N_CONSTANT, [windows], 'windows').
+parse(N_CONSTANT, [windows,95], 'windows 95').
+parse(N_CONSTANT, [windows,nt], 'windows nt').
+parse(N_CONSTANT, [x86], 'x86').
+parse(N_CONSTANT, [year], 'year').
+parse(N_CONSTANT, [years], 'year').
+parse(N_CONSTANT, [month], 'month').
+parse(N_CONSTANT, [hour], 'hour').
+parse(ADJ, [combined], sum(B,(),A)).
+parse(ADJ, [total], sum(B,(),A)).
+parse(ADJ, [highest], highest(A,())).
+parse(ADJ, [maximum], highest(A,())).
+parse(ADJ, [tallest], highest(A,())).
+parse(ADJ, [lowest], lowest(A,())).
+parse(ADJ, [longest], longest(A,())).
+parse(ADJ, [biggest], longest(A,())).
+parse(ADJ, [largest], longest(A,())).
+parse(ADJ, [shortest], shortest(A,())).
+parse(ADJ, [largest], largest(A,())).
+parse(ADJ, [biggest], largest(A,())).
+parse(ADJ, [greatest], largest(A,())).
+parse(ADJ, [highest], largest(A,())).
+parse(ADJ, [most], largest(A,())).
+parse(ADJ, [smallest], smallest(A,())).
+parse(ADJ, [least], smallest(A,())).
+parse(ADJ, [lowest], smallest(A,())).
+parse(ADJ, [sparsest], smallest(A,())).
+parse(ADJ, [sparsest], smallest(A,())).
+parse(ADJ, [most], most(A,B,())).
+parse(ADJ, [fewest], fewest(A,B,())).
+parse(ADJ, [least], fewest(A,B,())).
