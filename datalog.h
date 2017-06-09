@@ -1062,6 +1062,13 @@ inline bool init(unsigned int& variable, unsigned int src,
 	return true;
 }
 
+inline bool init(unsigned int& variable, unsigned int src,
+		const array_map<unsigned int, unsigned int>& variable_map)
+{
+	variable = variable_map.get(src);
+	return true;
+}
+
 template<typename... Args>
 inline bool init(datalog_expression*& expression, datalog_expression* src, Args&&... args)
 {
@@ -1383,32 +1390,47 @@ inline bool build_variable_map(unsigned int src,
 }
 
 template<int Offset = 0>
-bool build_variable_map(const datalog_expression& exp,
-		array<unsigned int>& src_variable_map, array<unsigned int>& dst_variable_map)
+inline bool build_variable_map(unsigned int variable,
+		array_map<unsigned int, unsigned int>& variable_map)
+{
+	if (!variable_map.ensure_capacity(variable_map.size + 1)) return false;
+	unsigned int index = variable_map.index_of(variable);
+	if (index < variable_map.size) {
+		return true;
+	} else {
+		variable_map.keys[index] = variable;
+		variable_map.values[index] = variable_map.size + 1;
+		variable_map.size++;
+		return true;
+	}
+}
+
+template<int Offset = 0, typename... Args>
+bool build_variable_map(const datalog_expression& exp, Args&&... args)
 {
 	switch (exp.type) {
 	case DATALOG_PREDICATE:
 		for (unsigned int i = 0; i < array_length(exp.pred.args); i++) {
 			if (exp.pred.args[i] == NULL) break;
-			if (!build_variable_map<Offset>(*exp.pred.args[i], src_variable_map, dst_variable_map)) return false;
+			if (!build_variable_map<Offset>(*exp.pred.args[i], std::forward<Args>(args)...)) return false;
 		}
 		return true;
 	case DATALOG_FUNCTION:
 		for (unsigned int i = 0; i < array_length(exp.func.vars); i++) {
 			if (exp.func.vars[i] == 0) break;
-			if (!build_variable_map<Offset>(exp.func.vars[i], src_variable_map, dst_variable_map)) return false;
+			if (!build_variable_map<Offset>(exp.func.vars[i], std::forward<Args>(args)...)) return false;
 		}
-		return build_variable_map<Offset>(*exp.func.arg, src_variable_map, dst_variable_map);
+		return build_variable_map<Offset>(*exp.func.arg, std::forward<Args>(args)...);
 	case DATALOG_TUPLE:
 		for (datalog_expression* arg : exp.tuple.elements)
-			if (!build_variable_map<Offset>(*arg, src_variable_map, dst_variable_map)) return false;
+			if (!build_variable_map<Offset>(*arg, std::forward<Args>(args)...)) return false;
 		return true;
 	case DATALOG_LIST:
 		for (datalog_expression* arg : exp.list.elements)
-			if (!build_variable_map<Offset>(*arg, src_variable_map, dst_variable_map)) return false;
+			if (!build_variable_map<Offset>(*arg, std::forward<Args>(args)...)) return false;
 		return true;
 	case DATALOG_VARIABLE:
-		return build_variable_map<Offset>(exp.variable, src_variable_map, dst_variable_map);
+		return build_variable_map<Offset>(exp.variable, std::forward<Args>(args)...);
 	case DATALOG_CONSTANT:
 	case DATALOG_INTEGER:
 	case DATALOG_EMPTY:
@@ -1423,32 +1445,33 @@ inline void apply_variable_map(unsigned int& variable, const array<unsigned int>
 	variable = variable_map[variable];
 }
 
-void apply_variable_map(datalog_expression& exp, const array<unsigned int>& variable_map)
+template<typename... Args>
+void apply_variable_map(datalog_expression& exp, const Args&... variable_map)
 {
 	switch (exp.type) {
 	case DATALOG_PREDICATE:
 		for (unsigned int i = 0; i < array_length(exp.pred.args); i++) {
 			if (exp.pred.args[i] == NULL) break;
-			apply_variable_map(*exp.pred.args[i], variable_map);
+			apply_variable_map(*exp.pred.args[i], variable_map...);
 		}
 		return;
 	case DATALOG_FUNCTION:
 		for (unsigned int i = 0; i < array_length(exp.func.vars); i++) {
 			if (exp.func.vars[i] == 0) break;
-			apply_variable_map(exp.func.vars[i], variable_map);
+			apply_variable_map(exp.func.vars[i], variable_map...);
 		}
-		apply_variable_map(*exp.func.arg, variable_map);
+		apply_variable_map(*exp.func.arg, variable_map...);
 		return;
 	case DATALOG_TUPLE:
 		for (datalog_expression* arg : exp.tuple.elements)
-			apply_variable_map(*arg, variable_map);
+			apply_variable_map(*arg, variable_map...);
 		return;
 	case DATALOG_LIST:
 		for (datalog_expression* arg : exp.list.elements)
-			apply_variable_map(*arg, variable_map);
+			apply_variable_map(*arg, variable_map...);
 		return;
 	case DATALOG_VARIABLE:
-		apply_variable_map(exp.variable, variable_map);
+		apply_variable_map(exp.variable, variable_map...);
 		return;
 	case DATALOG_CONSTANT:
 	case DATALOG_INTEGER:
@@ -1792,6 +1815,256 @@ inline bool operator == (const datalog_expression_root& first, const datalog_exp
 inline bool operator != (const datalog_expression_root& first, const datalog_expression_root& second) {
 	return first.index != second.index || first.concord != second.concord
 		|| first.inf != second.inf || first.root != second.root;
+}
+
+/* forward declarations */
+
+bool canonicalize(const datalog_expression& src, datalog_expression& dst);
+
+struct canonicalizer { };
+
+inline bool less_than(
+		const datalog_expression& first,
+		const datalog_expression& second,
+		const canonicalizer& sorter)
+{
+	if (first.type < second.type) return true;
+	else if (first.type > second.type) return false;
+	switch (first.type) {
+	case DATALOG_PREDICATE:
+		if (first.pred.function < second.pred.function) return true;
+		else if (first.pred.function > second.pred.function) return false;
+		else if (first.pred.excluded_count < second.pred.excluded_count) return true;
+		else if (first.pred.excluded_count > second.pred.excluded_count) return false;
+		for (unsigned int i = 0; i < first.pred.excluded_count; i++) {
+			if (first.pred.excluded[i] < second.pred.excluded[i]) return true;
+			else if (first.pred.excluded[i] > second.pred.excluded[i]) return false;
+		} for (unsigned int i = 0; i < array_length(first.pred.args); i++) {
+			if (first.pred.args[i] == NULL) {
+				if (second.pred.args[i] == NULL) {
+					continue;
+				} else {
+					return true;
+				}
+			} else {
+				if (second.pred.args[i] == NULL) {
+					return false;
+				} else if (less_than(*first.pred.args[i], *second.pred.args[i], sorter)) {
+					return true;
+				} else if (less_than(*second.pred.args[i], *first.pred.args[i], sorter)) {
+					return false;
+				}
+			}
+		}
+		return false;
+	case DATALOG_FUNCTION:
+		if (first.func.function < second.func.function) return true;
+		else if (first.func.function > second.func.function) return false;
+		else if (first.func.excluded_count < second.func.excluded_count) return true;
+		else if (first.func.excluded_count > second.func.excluded_count) return false;
+		else if (first.func.arg == NULL) {
+			if (second.func.arg == NULL) {
+				return false;
+			} else {
+				return true;
+			}
+		} else {
+			if (second.func.arg == NULL) {
+				return true;
+			} else {
+				return less_than(*first.func.arg, *second.func.arg, sorter);
+			}
+		}
+	case DATALOG_TUPLE:
+		if (first.tuple.position < second.tuple.position) return true;
+		else if (first.tuple.position > second.tuple.position) return false;
+		else if (first.tuple.elements.length < second.tuple.elements.length) return true;
+		else if (first.tuple.elements.length > second.tuple.elements.length) return false;
+		for (unsigned int i = 0; i < first.tuple.elements.length; i++) {
+			if (less_than(*first.tuple.elements[i], *second.tuple.elements[i], sorter)) {
+				return true;
+			} else if (less_than(*second.tuple.elements[i], *first.tuple.elements[i], sorter)) {
+				return false;
+			}
+		}
+		return false;
+	case DATALOG_LIST:
+		if (first.list.elements.length < second.list.elements.length) return true;
+		else if (first.list.elements.length > second.list.elements.length) return false;
+		for (unsigned int i = 0; i < first.list.elements.length; i++) {
+			if (less_than(*first.list.elements[i], *second.list.elements[i], sorter)) {
+				return true;
+			} else if (less_than(*second.list.elements[i], *first.list.elements[i], sorter)) {
+				return false;
+			}
+		}
+		return false;
+	case DATALOG_CONSTANT:
+		return first.constant < second.constant;
+	case DATALOG_INTEGER:
+		return first.integer < second.integer;
+	case DATALOG_VARIABLE:
+	case DATALOG_EMPTY:
+	case DATALOG_ANY:
+		return true;
+	}
+	fprintf(stderr, "less_than ERROR: Unrecognized expression type during canonicalization.\n");
+	exit(EXIT_FAILURE);
+}
+
+inline bool less_than(
+		const datalog_expression* first,
+		const datalog_expression* second,
+		const canonicalizer& sorter)
+{
+	return less_than(*first, *second, sorter);
+}
+
+bool canonicalize(const datalog_tuple& src, datalog_expression& dst)
+{
+	if (src.elements.length == 1 && src.position == POSITION_EXACT)
+		return canonicalize(*src.elements[0], dst);
+
+	/* canonicalize the tuple elements */
+	if (!init_tuple(dst, src.position, src.elements.length))
+		return false;
+	for (unsigned int i = 0; i < src.elements.length; i++) {
+		if (!new_expression(dst.tuple.elements[i])) {
+			free(dst); return false;
+		} else if (!canonicalize(*src.elements[i], *dst.tuple.elements[i])) {
+			free(dst.tuple.elements[i]);
+			free(dst); return false;
+		}
+		dst.tuple.elements.length++;
+	}
+
+	/* sort the tuple elements */
+	if (dst.tuple.elements.length > 1)
+		sort(dst.tuple.elements, canonicalizer());
+
+	/* remove duplicate elements */
+	unsigned int dst_index = 0;
+	for (unsigned int i = 1; i < dst.tuple.elements.length; i++) {
+		if (dst.tuple.elements[dst_index] != dst.tuple.elements[i]) {
+			dst.tuple.elements[++dst_index] = dst.tuple.elements[i];
+		} else {
+			free(*dst.tuple.elements[i]);
+			free(dst.tuple.elements[i]);
+		}
+	}
+	dst.tuple.elements.length = dst_index + 1;
+	return true;
+}
+
+bool canonicalize(const datalog_expression& src, datalog_expression& dst) {
+	switch (src.type) {
+	case DATALOG_PREDICATE:
+		dst.pred.function = src.pred.function;
+		if (src.pred.excluded_count > 0 && !init_excluded(dst.pred.excluded, src.pred.excluded, src.pred.excluded_count))
+			return false;
+		dst.pred.excluded_count = src.pred.excluded_count;
+		for (unsigned int i = 0; i < array_length(src.pred.args); i++)
+			dst.pred.args[i] = NULL;
+		for (unsigned int i = 0; i < array_length(src.pred.args); i++) {
+			if (src.pred.args[i] == NULL) {
+				continue;
+			} else if (!new_expression(dst.pred.args[i])) {
+				free(dst.pred); return false;
+			} else if (!canonicalize(*src.pred.args[i], *dst.pred.args[i])) {
+				free(dst.pred.args[i]);
+				dst.pred.args[i] = NULL;
+				free(dst.pred); return false;
+			}
+		}
+		dst.type = DATALOG_PREDICATE;
+		dst.reference_count = 1;
+		return true;
+	case DATALOG_FUNCTION:
+		if (!new_expression(dst.func.arg)) return false;
+		dst.func.function = src.func.function;
+		if (src.func.excluded_count > 0 && !init_excluded(dst.func.excluded, src.func.excluded, src.func.excluded_count)) {
+			free(dst.func.arg); return false;
+		}
+		dst.func.excluded_count = src.func.excluded_count;
+		dst.type = DATALOG_FUNCTION;
+		dst.reference_count = 1;
+		for (unsigned int i = 0; i < array_length(src.func.vars); i++)
+			dst.func.vars[i] = src.func.vars[i];
+		return canonicalize(*src.func.arg, *dst.func.arg);
+	case DATALOG_TUPLE:
+		return canonicalize(src.tuple, dst);
+	case DATALOG_LIST:
+		if (!array_init(dst.list.elements, src.list.elements.length)) return false;
+		dst.type = DATALOG_LIST;
+		dst.reference_count = 1;
+		for (unsigned int i = 0; i < src.list.elements.length; i++) {
+			if (!new_expression(dst.list.elements[i])) {
+				free(dst); return false;
+			} else if (!canonicalize(*src.list.elements[i], *dst.list.elements[i])) {
+				free(dst.list.elements[i]);
+				free(dst); return false;
+			}
+			dst.list.elements.length++;
+		}
+		return true;
+	case DATALOG_CONSTANT:
+		if (!init(dst.constant, src.constant)) return false;
+		dst.type = DATALOG_CONSTANT;
+		dst.reference_count = 1;
+		return true;
+	case DATALOG_INTEGER:
+		dst.integer = src.integer;
+		dst.type = DATALOG_INTEGER;
+		dst.reference_count = 1;
+		return true;
+	case DATALOG_VARIABLE:
+		dst.variable = src.variable;
+		dst.type = DATALOG_VARIABLE;
+		dst.reference_count = 1;
+		return true;
+	case DATALOG_EMPTY:
+	case DATALOG_ANY:
+		dst.type = src.type;
+		dst.reference_count = 1;
+		return true;
+	}
+	fprintf(stderr, "canonicalize ERROR: Unrecognized expression type.\n");
+	exit(EXIT_FAILURE);
+}
+
+bool equivalent(const datalog_expression& first, const datalog_expression& second)
+{
+	/* canonicalize the logical form structure (modulo variables) */
+	datalog_expression first_canonical;
+	datalog_expression second_canonical;
+	if (!canonicalize(first, first_canonical)
+	 || !canonicalize(second, second_canonical)) {
+		free(first_canonical); exit(EXIT_FAILURE);
+	}
+
+	/* relabel variables in prefix order */
+	datalog_expression first_relabeled;
+	datalog_expression second_relabeled;
+	array_map<unsigned int, unsigned int> first_variable_map = array_map<unsigned int, unsigned int>(8);
+	array_map<unsigned int, unsigned int> second_variable_map = array_map<unsigned int, unsigned int>(8);
+	if (!build_variable_map(first_canonical, first_variable_map)
+	 || !build_variable_map(second_canonical, second_variable_map)
+	 || !init(first_relabeled, first_canonical, first_variable_map)
+	 || !init(second_relabeled, second_canonical, second_variable_map)) {
+		free(first_canonical); free(second_canonical);
+		free(first_relabeled); exit(EXIT_FAILURE);
+	}
+	free(first_canonical); free(second_canonical);
+
+	bool are_equivalent = (first_relabeled == second_relabeled);
+	free(first_relabeled); free(second_relabeled);
+	return are_equivalent;
+}
+
+inline bool equivalent(const datalog_expression_root& first, const datalog_expression_root& second)
+{
+	return first.index == second.index && first.concord == second.concord
+		&& first.inf == second.inf && equivalent(first.root, second.root);
 }
 
 template<typename Stream>

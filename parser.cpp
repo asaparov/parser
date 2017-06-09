@@ -58,6 +58,7 @@ double constant_hdp_alpha[] = { 0.01, 0.1 };
 datalog_prior prior(32, 5, 128, edge_hdp_alpha, constant_hdp_alpha);
 datalog_ontology ontology;
 morphology morph;
+bool enable_morphology = true;
 std::mutex console_lock;
 
 thread_local bool debug_type_check = true;
@@ -73,10 +74,18 @@ inline double log_probability(const datalog_expression_root& exp) {
 }
 
 inline const fixed_array<token>& morphology_parse(unsigned int word) {
+#if !defined(NDEBUG)
+	if (!enable_morphology)
+		fprintf(stderr, "morphology_parse WARNING: Morphology model is disabled by command-line flag.\n");
+#endif
 	return morph.parse(word);
 }
 
 inline bool morphology_is_auxiliary_verb(unsigned int word) {
+#if !defined(NDEBUG)
+	if (!enable_morphology)
+		fprintf(stderr, "morphology_parse WARNING: Morphology model is disabled by command-line flag.\n");
+#endif
 	return morph.is_auxiliary_verb(word);
 }
 
@@ -228,10 +237,7 @@ void parse(const hdp_grammar_type& G_src,
 	copy(G_src, G);
 	while (true)
 	{
-static unsigned int sentence_ids[] = { 20, 37 };
-if (counter >= array_length(sentence_ids)) break;
-unsigned int id = sentence_ids[counter++];
-//		unsigned int id = counter++;
+		unsigned int id = counter++;
 		if (id >= sentence_count)
 			break;
 
@@ -256,76 +262,48 @@ unsigned int id = sentence_ids[counter++];
 		parser_prefix = prefix;
 
 		datalog_expression_root logical_form;
+		logical_form.index = NUMBER_ALL;
+		logical_form.concord = NUMBER_NONE;
+		logical_form.inf = INFLECTION_NONE;
 		syntax_node<datalog_expression_root>& parsed_syntax =
 			*((syntax_node<datalog_expression_root>*) alloca(sizeof(syntax_node<datalog_expression_root>)));
 		auto sentence = tokenized_sentence<datalog_expression_root>(sentences[id]);
 
 		double true_log_likelihood = 1.0, true_log_prior = 1.0;
 		datalog_expression_root true_logical_form = *logical_forms[id];
-debug_flag = false;
 minimum_priority = 0.0;
-debug_type_check = false;
 		if (parse<false>(parsed_syntax, true_logical_form, G, sentence, terminal_printer.map, time_limit)) {
-debug2 = true;
-			print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
+			//print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
 			true_log_likelihood = log_probability(G, parsed_syntax, true_logical_form);
 			true_log_prior = log_probability<MODE_PARSE, true>(true_logical_form);
-debug2 = false;
+			datalog_expression_root logical_form_set;
+			logical_form_set.index = NUMBER_ALL;
+			logical_form_set.concord = NUMBER_NONE;
+			logical_form_set.inf = INFLECTION_NONE;
 			fprintf(out, "%sParse log probability: %lf (prior: %lf)\n", prefix, true_log_likelihood, true_log_prior);
-			is_parseable(parsed_syntax, true_logical_form, G, nonterminal_printer, terminal_printer, terminal_printer.map);
+			is_parseable(parsed_syntax, true_logical_form, G, logical_form_set, nonterminal_printer, terminal_printer, terminal_printer.map);
 			free(parsed_syntax);
+			free(logical_form_set);
 minimum_priority = exp(true_log_likelihood + true_log_prior - 1.0e-12);
 		} else {
 			fprintf(out, "%sWARNING: Unable to parse sentence %u with the true logical form.\n", prefix, id);
 minimum_priority = 0.0;
 		}
-debug_type_check = true;
 //debug_flag = true;
-double type_correct_log_likelihood = 1.0, type_correct_log_prior = 1.0;
-if (parse<false>(parsed_syntax, true_logical_form, G, sentence, terminal_printer.map, time_limit)) {
-type_correct_log_likelihood = log_probability(G, parsed_syntax, true_logical_form);
-type_correct_log_prior = log_probability<MODE_PARSE, true>(true_logical_form);
-if (true_log_likelihood != 1.0 && true_log_likelihood + true_log_prior > type_correct_log_likelihood + type_correct_log_prior)
-	fprintf(out, "%sWARNING: The type-correct parse result has lower log probability than the type-incorrect result.\n", prefix);
-free(parsed_syntax);
-} else {
-	fprintf(out, "%sWARNING: The type-correct parse returned nothing.\n", prefix);
-}
 		if (parse<false>(parsed_syntax, logical_form, G, sentence, terminal_printer.map, time_limit)) {
 			console_lock.lock();
-			if (logical_form != *logical_forms[id]) {
-				//printf("Sampled derivation:\n");
-				//print(*syntax[id], out, nonterminal_printer, terminal_printer); print("\n", out);
+			if (!equivalent(logical_form, *logical_forms[id])) {
 				fprintf(out, "%sTrue logical form:      ", prefix); print(*logical_forms[id], out, terminal_printer); print('\n', out);
 				fprintf(out, "%sPredicted logical form: ", prefix); print(logical_form, out, terminal_printer); print('\n', out);
-debug2 = true;
 				print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
 				double predicted_log_likelihood = log_probability(G, parsed_syntax, logical_form);
 				double predicted_log_prior = log_probability<MODE_PARSE, true>(logical_form);
-debug2 = false;
 				fprintf(out, "%sParse log probability: %lf (prior: %lf)\n",
 						prefix, predicted_log_likelihood, predicted_log_prior);
 				if (true_log_likelihood != 1.0 && !std::isinf(predicted_log_likelihood)
 				 && true_log_likelihood + true_log_prior > predicted_log_likelihood + predicted_log_prior)
 					fprintf(out, "%sWARNING: The predicted derivation has lower probability than the true derivation.\n", prefix);
 			}
-			/*for (unsigned int j = 0; j < 10; j++) {
-				syntax_node<datalog_expression>* sampled_tree;
-				printf("Sampled derivation tree %u:\n", j);
-
-				int success;
-				do {
-					success = sample(G, sampled_tree, *logical_forms[id]);
-					if (success == -1) {
-						fprintf(stderr, "ERROR: Failed to sample sentence.\n");
-						break;
-					}
-				} while (success != 0);
-				if (success == -1) break;
-
-				print(*sampled_tree, out, nonterminal_printer, terminal_printer); print('\n', out);
-				free(*sampled_tree); free(sampled_tree);
-			}*/
 			free(logical_form); free(parsed_syntax);
 		} else {
 			console_lock.lock();
@@ -417,7 +395,13 @@ debug_nonterminal_printer = &nonterminal_printer;
 
 	/* iterate over the train sentences and check that the logical forms can be parsed */
 	for (unsigned int i = 0; i < train_data.length; i++) {
-		if (!is_parseable(*syntax[i], *train_logical_forms[i], G, nonterminal_printer, terminal_printer, name_ids)) {
+		datalog_expression_root logical_form_set;
+		logical_form_set.index = NUMBER_ALL;
+		logical_form_set.concord = NUMBER_NONE;
+		logical_form_set.inf = INFLECTION_NONE;
+		if (!is_parseable(*syntax[i], *train_logical_forms[i], G,
+				logical_form_set, nonterminal_printer, terminal_printer, name_ids))
+		{
 			printf("Sentence %u is not parseable:\n", i);
 			print(*train_logical_forms[i], out, terminal_printer); print('\n', out);
 			print(*syntax[i], out, nonterminal_printer, terminal_printer); print("\n\n", out);
@@ -866,6 +850,10 @@ enum command {
 	COMMAND_GENERATE
 };
 
+inline bool parse_option(const char* arg, const char* to_match) {
+	return (strcmp(arg, to_match) == 0);
+}
+
 inline bool parse_option(const char* arg,
 		const char* to_match, const char*& dst)
 {
@@ -923,6 +911,7 @@ int main(int argc, const char** argv)
 		if (parse_option(argv[i] + 2, "iterations", iterations_arg)) continue;
 		if (parse_option(argv[i] + 2, "time-limit", time_limit_arg)) continue;
 		if (parse_option(argv[i] + 2, "threads", thread_count_arg)) continue;
+		if (parse_option(argv[i] + 2, "no-morphology")) { enable_morphology = false; continue; }
 		else {
 			fprintf(stderr, "Unrecognized command-line option: '%s'.\n", argv[i]);
 			return EXIT_FAILURE;
@@ -961,9 +950,9 @@ int main(int argc, const char** argv)
 	}
 
 	/* read the word inflection database */
-	if (!morphology_read(morph, names, agid_filepath, uncountable_filepath)) {
-		for (auto entry : names) free(entry.key);
-		return false;
+	if (enable_morphology && !morphology_read(morph, names, agid_filepath, uncountable_filepath)) {
+		for (auto entry : names) { free(entry.key); }
+		return EXIT_FAILURE;
 	}
 
 	/* run the commands */
