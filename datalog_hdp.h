@@ -761,6 +761,7 @@ private:
 			hash_set<datalog_term>& edge_observations,
 			hash_set<unsigned int>& constant_observations)
 	{
+		unsigned int head;
 		switch (func.function) {
 		case PREDICATE_COUNT:
 		case PREDICATE_SUM:
@@ -768,7 +769,8 @@ private:
 				fprintf(stderr, "compute_paths ERROR: Unexpected variables for higher-order function.\n");
 				return false;
 			}
-			if (!add_parent_edge<ARG_POSITION_UNARY>(func.vars[0], func.function, paths, edge_observations)) return false;
+			head = func.vars[0];
+			if (!add_parent_edge<ARG_POSITION_UNARY>(head, func.function, paths, edge_observations)) return false;
 			break;
 
 		case PREDICATE_HIGHEST:
@@ -781,7 +783,8 @@ private:
 				fprintf(stderr, "compute_paths ERROR: Unexpected variables for higher-order function.\n");
 				return false;
 			}
-			if (!add_child_edge(func.vars[0], func.function, paths, edge_observations, ARG_POSITION_FIRST)) return false;
+			head = func.vars[0];
+			if (!add_child_edge(head, func.function, paths, edge_observations, ARG_POSITION_FIRST)) return false;
 			break;
 
 		case PREDICATE_MOST:
@@ -790,11 +793,19 @@ private:
 				fprintf(stderr, "compute_paths ERROR: Unexpected variables for higher-order function.\n");
 				return false;
 			}
-			if (!add_child_edge(func.vars[0], func.function, paths, edge_observations, ARG_POSITION_FIRST))
+			head = func.vars[0];
+			if (!add_child_edge(head, func.function, paths, edge_observations, ARG_POSITION_FIRST))
 				return false;
 			break;
 
 		case PREDICATE_NOT:
+			head = get_head(*func.arg);
+			if (head == DATALOG_LABEL_EMPTY || head == DATALOG_LABEL_WILDCARD) {
+				fprintf(stderr, "datalog_prior.compute_paths ERROR: Found a negation scope with no definite head variable.\n");
+				return false;
+			} else if (!add_child_edge(head, func.function, paths, edge_observations, ARG_POSITION_FIRST)) {
+				return false;
+			}
 			break;
 
 		case PREDICATE_ANSWER:
@@ -804,16 +815,18 @@ private:
 		}
 
 		if (func.arg->type == DATALOG_PREDICATE) {
-			return compute_paths(func.arg->pred, paths, edge_observations, constant_observations);
+			if (!compute_paths(func.arg->pred, paths, edge_observations, constant_observations)) return false;
 		} else if (func.arg->type == DATALOG_TUPLE) {
-			return compute_paths(func.arg->tuple, paths, edge_observations, constant_observations);
+			if (!compute_paths(func.arg->tuple, paths, edge_observations, constant_observations)) return false;
 		} else if (func.arg->type == DATALOG_FUNCTION) {
-			return compute_paths(func.arg->func, paths, edge_observations, constant_observations);
+			if (!compute_paths(func.arg->func, paths, edge_observations, constant_observations)) return false;
 		} else {
 			fprintf(stderr, "datalog_prior.compute_paths ERROR: Found a higher-order function"
 					" with an argument that is not a predicate, tuple, or another higher-order function.\n");
 			return false;
 		}
+
+		return add_child_edge(head, DATALOG_LABEL_EMPTY, paths, edge_observations, DATALOG_LABEL_EMPTY);
 	}
 
 	bool compute_paths(const datalog_tuple& tuple,
@@ -1230,7 +1243,7 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 			double& log_probability,
 			bool& any_edge_insertable)
 	{
-		bool not_empty;
+		unsigned int head = DATALOG_LABEL_WILDCARD;
 		switch (func.function) {
 		case PREDICATE_COUNT:
 		case PREDICATE_SUM:
@@ -1239,7 +1252,8 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 				log_probability = -std::numeric_limits<double>::infinity();
 				return true;
 			}
-			if (!add_parent_edge<CompleteContext, ARG_POSITION_UNARY>(func.vars[0], func.function,
+			head = func.vars[0];
+			if (!add_parent_edge<CompleteContext, ARG_POSITION_UNARY>(head, func.function,
 					func.excluded, func.excluded_count, paths, log_probability, any_edge_insertable)) return false;
 			break;
 
@@ -1253,7 +1267,8 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 				fprintf(stderr, "compute_paths ERROR: Unexpected variables for higher-order function.\n");
 				return false;
 			}
-			if (!add_child_edge(func.vars[0], func.function, func.excluded, func.excluded_count,
+			head = func.vars[0];
+			if (!add_child_edge(head, func.function, func.excluded, func.excluded_count,
 					paths, log_probability, any_edge_insertable, ARG_POSITION_FIRST)) return false;
 			break;
 
@@ -1264,14 +1279,27 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 				log_probability = -std::numeric_limits<double>::infinity();
 				return true;
 			}
-			not_empty = false; //paths[func.vars[1] - 1].not_empty;
-			//if (!add_child_edge(func.vars[1], func.function, func.excluded, func.excluded_count, paths, log_probability, any_edge_insertable, ARG_POSITION_SECOND))
-			//	return false;
-			if (!not_empty && !add_child_edge(func.vars[0], func.function, func.excluded, func.excluded_count, paths, log_probability, any_edge_insertable, ARG_POSITION_FIRST))
+			head = func.vars[0];
+			if (!add_child_edge(head, func.function, func.excluded, func.excluded_count, paths, log_probability, any_edge_insertable, ARG_POSITION_FIRST))
 				return false;
 			break;
 
 		case PREDICATE_NOT:
+			/* since the head variable is not readily available in this structure, we have to compute it manually */
+			if (CompleteContext) {
+				head = get_head(*func.arg);
+				if (head == DATALOG_LABEL_EMPTY) {
+					log_probability = -std::numeric_limits<double>::infinity();
+				} else if (head != DATALOG_LABEL_WILDCARD
+				 && !add_child_edge(head, func.function, func.excluded, func.excluded_count,
+						 paths, log_probability, any_edge_insertable, ARG_POSITION_FIRST))
+				{
+					return false;
+				}
+			}
+			/* if the expression isn't complete, the head may change via transformations such as delete_left_head_keep_function */
+			break;
+
 		case PREDICATE_ANSWER:
 		case DATALOG_LABEL_WILDCARD:
 			break;
@@ -1299,17 +1327,19 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 		} else if (func.arg->type == DATALOG_EMPTY) {
 			if (CompleteContext)
 				log_probability = -std::numeric_limits<double>::infinity();
-			return true;
 		} else if (func.arg->type == DATALOG_ANY) {
 			/* TODO: can any edge really appear in an ANY subexpression? */
 			set_any_edges(paths, any_edge_insertable);
-			return true;
 		} else {
 			fprintf(stderr, "datalog_prior.compute_paths ERROR: Found a higher-order function"
 					" with an argument that is not a predicate, tuple, or another higher-order function.\n");
 			return false;
 		}
-		return true;
+
+		if (!CompleteContext || head == DATALOG_LABEL_WILDCARD || head == DATALOG_LABEL_EMPTY)
+			return true;
+		return add_child_edge(head, DATALOG_LABEL_EMPTY, NULL, 0, paths,
+				log_probability, any_edge_insertable, DATALOG_LABEL_EMPTY);
 	}
 
 	template<bool CompleteContext>

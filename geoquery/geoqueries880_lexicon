@@ -40,10 +40,12 @@ parse(N_CONSTANT, [south,carolina], 'south carolina').
 parse(N_CONSTANT, [south,dakota], 'south dakota').
 parse(N_CONSTANT, [tennessee], tennessee).
 parse(N_CONSTANT, [texas], texas).
+parse(N_CONSTANT, [texas,state], texas).
 parse(N_CONSTANT, [utah], utah).
 parse(N_CONSTANT, [vermont], vermont).
 parse(N_CONSTANT, [virginia], virginia).
 parse(N_CONSTANT, [washington], washington).
+parse(N_CONSTANT, [washington,state], washington).
 parse(N_CONSTANT, [west,virginia], 'west virginia').
 parse(N_CONSTANT, [wisconsin], wisconsin).
 parse(N_CONSTANT, [wyoming], wyoming).

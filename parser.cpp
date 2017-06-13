@@ -7,7 +7,6 @@
 
 #include "datalog.h"
 #include "datalog_hdp.h"
-#include "graphquestions.h"
 #include "parser_data.h"
 
 #include <atomic>
@@ -227,8 +226,9 @@ void parse(const hdp_grammar_type& G_src,
 		const datalog_expression_root* const* logical_forms,
 		const hash_set<unsigned int>& known_tokens,
 		const string_map_scribe& terminal_printer,
-		const string_map_scribe& nonterminal_printer,
-		FILE* out, std::atomic_uint& unanswered,
+		const string_map_scribe& nonterminal_printer, FILE* out,
+		std::atomic_uint& unanswered,
+		std::atomic_uint& incorrect,
 		std::atomic_uint& counter,
 		unsigned int time_limit)
 {
@@ -240,6 +240,8 @@ void parse(const hdp_grammar_type& G_src,
 		unsigned int id = counter++;
 		if (id >= sentence_count)
 			break;
+//id = 83;
+//if (counter > 1) break;
 
 		bool skip = false;
 		console_lock.lock();
@@ -273,14 +275,16 @@ void parse(const hdp_grammar_type& G_src,
 		datalog_expression_root true_logical_form = *logical_forms[id];
 minimum_priority = 0.0;
 		if (parse<false>(parsed_syntax, true_logical_form, G, sentence, terminal_printer.map, time_limit)) {
-			//print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
+//debug2 = true;
+//			print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
 			true_log_likelihood = log_probability(G, parsed_syntax, true_logical_form);
 			true_log_prior = log_probability<MODE_PARSE, true>(true_logical_form);
+//debug2 = false;
 			datalog_expression_root logical_form_set;
 			logical_form_set.index = NUMBER_ALL;
 			logical_form_set.concord = NUMBER_NONE;
 			logical_form_set.inf = INFLECTION_NONE;
-			fprintf(out, "%sParse log probability: %lf (prior: %lf)\n", prefix, true_log_likelihood, true_log_prior);
+//			fprintf(out, "%sParse log probability: %lf (prior: %lf)\n", prefix, true_log_likelihood, true_log_prior);
 			is_parseable(parsed_syntax, true_logical_form, G, logical_form_set, nonterminal_printer, terminal_printer, terminal_printer.map);
 			free(parsed_syntax);
 			free(logical_form_set);
@@ -295,14 +299,17 @@ minimum_priority = 0.0;
 			if (!equivalent(logical_form, *logical_forms[id])) {
 				fprintf(out, "%sTrue logical form:      ", prefix); print(*logical_forms[id], out, terminal_printer); print('\n', out);
 				fprintf(out, "%sPredicted logical form: ", prefix); print(logical_form, out, terminal_printer); print('\n', out);
+//debug2 = true;
 				print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
 				double predicted_log_likelihood = log_probability(G, parsed_syntax, logical_form);
 				double predicted_log_prior = log_probability<MODE_PARSE, true>(logical_form);
+//debug2 = false;
 				fprintf(out, "%sParse log probability: %lf (prior: %lf)\n",
 						prefix, predicted_log_likelihood, predicted_log_prior);
 				if (true_log_likelihood != 1.0 && !std::isinf(predicted_log_likelihood)
 				 && true_log_likelihood + true_log_prior > predicted_log_likelihood + predicted_log_prior)
 					fprintf(out, "%sWARNING: The predicted derivation has lower probability than the true derivation.\n", prefix);
+				incorrect++;
 			}
 			free(logical_form); free(parsed_syntax);
 		} else {
@@ -321,7 +328,8 @@ bool parse(hash_map<string, unsigned int>& names,
 		const char* train_filepath, const char* extra_filepath,
 		const char* kb_filepath, const char* test_filepath,
 		const char* input_filepath, const char* ontology_filepath,
-		unsigned int time_limit, unsigned int thread_count)
+		unsigned int time_limit, unsigned int thread_count,
+		bool test_parseability)
 {
 	array<datalog_expression_root*> train_data(1024), extra_data(128), kb_data(128), test_data(512);
 	sequence* train_sentences;
@@ -394,11 +402,12 @@ debug_terminal_printer = &terminal_printer;
 debug_nonterminal_printer = &nonterminal_printer;
 
 	/* iterate over the train sentences and check that the logical forms can be parsed */
-	for (unsigned int i = 0; i < train_data.length; i++) {
+	for (unsigned int i = 0; test_parseability && i < train_data.length; i++) {
 		datalog_expression_root logical_form_set;
 		logical_form_set.index = NUMBER_ALL;
 		logical_form_set.concord = NUMBER_NONE;
 		logical_form_set.inf = INFLECTION_NONE;
+debug_flag = (i == 467);
 		if (!is_parseable(*syntax[i], *train_logical_forms[i], G,
 				logical_form_set, nonterminal_printer, terminal_printer, name_ids))
 		{
@@ -470,20 +479,24 @@ debug_nonterminal_printer = &nonterminal_printer;
 
 	/* create a thread pool and dispatch each thread to parse the test sentences */
 	std::atomic_uint counter(0);
+	std::atomic_uint incorrect(0);
 	std::atomic_uint unanswered(0);
 	std::thread* threads = new std::thread[thread_count];
 	auto dispatch = [&]() {
 		parse(G, test_sentences, test_data.length, test_logical_forms, known_tokens,
-				terminal_printer, nonterminal_printer, out, unanswered, counter, time_limit);
+				terminal_printer, nonterminal_printer, out, unanswered, incorrect, counter, time_limit);
 	};
 	timer stopwatch;
 	for (unsigned int i = 0; i < thread_count; i++)
 		threads[i] = std::thread(dispatch);
 	for (unsigned int i = 0; i < thread_count; i++)
 		threads[i].join();
-	unsigned int unanswered_value = unanswered;
+	unsigned int unanswered_count = unanswered;
+	unsigned int incorrect_count = incorrect;
 	fprintf(out, "Finished parsing. Time elapsed: %lfs\n", stopwatch.nanoseconds() * 1.0e-9);
-	fprintf(out, "Number of unanswered sentences: %u\n", unanswered_value);
+	fprintf(out, "Number of unanswered sentences: %u\n", unanswered_count);
+	fprintf(out, "Number of incorrect sentences: %u\n", incorrect_count);
+	fprintf(out, "Test sentence count: %zu\n", test_data.length);
 	delete[] threads;
 
 	/* run a shell to parse user-input sentences */
@@ -892,9 +905,10 @@ int main(int argc, const char** argv)
 	const char* grammar_filepath = "english.gram";
 	const char* iterations_arg = "10";
 	const char* thread_count_arg = "1";
-	const char* time_limit_arg = "40000";
+	const char* time_limit_arg = "-1";
 	const char* agid_filepath = "infl.txt";
 	const char* uncountable_filepath = "uncountable.txt";
+	bool test_parseability = false;
 	for (int i = 2; i < argc; i++) {
 		if (argv[i][0] != '-' || argv[i][1] != '-') {
 			fprintf(stderr, "Invalid command-line option: '%s'.\n", argv[i]);
@@ -912,6 +926,7 @@ int main(int argc, const char** argv)
 		if (parse_option(argv[i] + 2, "time-limit", time_limit_arg)) continue;
 		if (parse_option(argv[i] + 2, "threads", thread_count_arg)) continue;
 		if (parse_option(argv[i] + 2, "no-morphology")) { enable_morphology = false; continue; }
+		if (parse_option(argv[i] + 2, "test-parseable")) { test_parseability = true; continue; }
 		else {
 			fprintf(stderr, "Unrecognized command-line option: '%s'.\n", argv[i]);
 			return EXIT_FAILURE;
@@ -925,9 +940,13 @@ int main(int argc, const char** argv)
 	}
 	unsigned int time_limit = UINT_MAX;
 	if (time_limit_arg != NULL) {
-		time_limit = strtol(time_limit_arg, &endptr, 0);
-		if (*endptr != '\0') {
-			fprintf(stderr, "Unable to interpret time limit argument.\n"); return EXIT_FAILURE;
+		if (strcmp(time_limit_arg, "-1") == 0) {
+			time_limit = UINT_MAX;
+		} else {
+			time_limit = strtol(time_limit_arg, &endptr, 0);
+			if (*endptr != '\0') {
+				fprintf(stderr, "Unable to interpret time limit argument.\n"); return EXIT_FAILURE;
+			}
 		}
 	}
 	unsigned int thread_count = strtol(thread_count_arg, &endptr, 0);
@@ -958,7 +977,7 @@ int main(int argc, const char** argv)
 	/* run the commands */
 	switch (cmd) {
 	case COMMAND_PARSE:
-		parse(names, train_filepath, extra_filepath, kb_filepath, test_filepath, model_filepath, ontology_filepath, time_limit, thread_count); break;
+		parse(names, train_filepath, extra_filepath, kb_filepath, test_filepath, model_filepath, ontology_filepath, time_limit, thread_count, test_parseability); break;
 	case COMMAND_SAMPLE:
 		sample(names, train_filepath, extra_filepath, iteration_count, model_filepath, ontology_filepath, grammar_filepath); break;
 	case COMMAND_GENERATE:

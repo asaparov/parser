@@ -9,8 +9,8 @@
 #define DATALOG_H_
 
 #include <core/lex.h>
-#include <grammar/tree_semantics.h>
 #include <grammar/morphology.h>
+#include <limits.h>
 #include <type_traits>
 #include <atomic>
 
@@ -1819,7 +1819,8 @@ inline bool operator != (const datalog_expression_root& first, const datalog_exp
 
 /* forward declarations */
 
-bool canonicalize(const datalog_expression& src, datalog_expression& dst);
+bool canonicalize(const datalog_expression& src, datalog_expression& dst,
+		const array_map<const datalog_expression*, array<const datalog_expression*>>& maximal_scope);
 
 struct canonicalizer { };
 
@@ -1920,65 +1921,269 @@ inline bool less_than(
 	return less_than(*first, *second, sorter);
 }
 
-bool canonicalize(const datalog_tuple& src, datalog_expression& dst)
+struct datalog_scope {
+	const datalog_expression* exp;
+	array<unsigned int>* variables;
+};
+
+inline bool process_maximal_scope(const datalog_expression* child_expression,
+		const array_map<unsigned int, datalog_scope>& available_scopes,
+		array_map<const datalog_expression*, array<const datalog_expression*>>& maximal_scope,
+		array<const datalog_expression*>& root_scope, const array<unsigned int>& child_variables)
 {
-	if (src.elements.length == 1 && src.position == POSITION_EXACT)
-		return canonicalize(*src.elements[0], dst);
-
-	/* canonicalize the tuple elements */
-	if (!init_tuple(dst, src.position, src.elements.length))
-		return false;
-	for (unsigned int i = 0; i < src.elements.length; i++) {
-		if (!new_expression(dst.tuple.elements[i])) {
-			free(dst); return false;
-		} else if (!canonicalize(*src.elements[i], *dst.tuple.elements[i])) {
-			free(dst.tuple.elements[i]);
-			free(dst); return false;
+	datalog_scope* scope = NULL;
+	for (unsigned int i = available_scopes.size; i > 0; i--) {
+		if (child_variables.contains(available_scopes.keys[i - 1])) {
+			scope = &available_scopes.values[i - 1];
+			break;
 		}
-		dst.tuple.elements.length++;
 	}
 
-	/* sort the tuple elements */
-	if (dst.tuple.elements.length > 1)
-		sort(dst.tuple.elements, canonicalizer());
+	if (scope == NULL) {
+		return root_scope.add(child_expression);
+	} else {
+		array<unsigned int>& variables = *scope->variables;
+		if (!variables.ensure_capacity(variables.length + child_variables.length))
+			return false;
+		for (unsigned int child_variable : child_variables) {
+			if (variables.contains(child_variable)) continue;
+			variables[variables.length] = child_variable;
+			variables.length++;
+		}
+		return maximal_scope.get(scope->exp).add(child_expression);
+	}
+}
 
-	/* remove duplicate elements */
-	unsigned int dst_index = 0;
-	for (unsigned int i = 1; i < dst.tuple.elements.length; i++) {
-		if (dst.tuple.elements[dst_index] != dst.tuple.elements[i]) {
-			dst.tuple.elements[++dst_index] = dst.tuple.elements[i];
+bool compute_maximal_scope(const datalog_expression& src,
+		array_map<unsigned int, datalog_scope>& available_scopes,
+		array_map<const datalog_expression*, array<const datalog_expression*>>& maximal_scope,
+		array<const datalog_expression*>& root_scope, array<unsigned int>& variables)
+{
+	unsigned int old_maximal_scope_count;
+	unsigned int old_available_scope_count = available_scopes.size;
+	array<unsigned int> child_variables = array<unsigned int>(8);
+	array_map<unsigned int, datalog_scope> child_scopes = array_map<unsigned int, datalog_scope>(8);
+	array<const datalog_expression*> child_root_scope = array<const datalog_expression*>(8);
+
+	switch (src.type) {
+	case DATALOG_PREDICATE:
+		if (!maximal_scope.ensure_capacity(maximal_scope.size + array_length(src.pred.args)))
+			return false;
+		for (unsigned int i = 0; i < array_length(src.pred.args); i++) {
+			if (src.pred.args[i] == NULL) continue;
+
+			/* arguments of predicates can't be moved outside */
+			old_maximal_scope_count = maximal_scope.size;
+			maximal_scope.keys[old_maximal_scope_count] = src.pred.args[i];
+			if (!array_init(maximal_scope.values[old_maximal_scope_count], 4))
+				return false;
+			maximal_scope.size++;
+
+			/* recursively compute the variables of the child expression */
+			if (!compute_maximal_scope(*src.pred.args[i], child_scopes, maximal_scope, child_root_scope, child_variables)
+			 || !process_maximal_scope(src.pred.args[i], child_scopes, maximal_scope, child_root_scope, child_variables)
+			 || !maximal_scope.values[old_maximal_scope_count].append(child_root_scope.data, child_root_scope.length)
+			 || !variables.append(child_variables.data, child_variables.length))
+				return false;
+			child_scopes.clear(); child_root_scope.clear(); child_variables.clear();
+		}
+		return true;
+
+	case DATALOG_FUNCTION:
+		if (!maximal_scope.ensure_capacity(maximal_scope.size + 1)
+		 || !available_scopes.ensure_capacity(available_scopes.size + array_length(src.func.vars)))
+			return false;
+
+		for (unsigned int i = 0; i < array_length(src.func.vars); i++) {
+			if (src.func.vars[i] == 0) continue;
+			else if (!variables.add(src.func.vars[i]))
+				return false;
+			available_scopes.keys[available_scopes.size] = src.func.vars[i];
+			available_scopes.values[available_scopes.size] = {src.func.arg, &variables};
+			available_scopes.size++;
+		}
+
+		old_maximal_scope_count = maximal_scope.size;
+		maximal_scope.keys[old_maximal_scope_count] = src.func.arg;
+		if (!array_init(maximal_scope.values[old_maximal_scope_count], 4))
+			return false;
+		maximal_scope.size++;
+
+		if (src.func.function == PREDICATE_ANSWER || src.func.function == PREDICATE_NOT) {
+			/* negation and lambda terms blocks movement */
+			for (unsigned int i = 0; i < array_length(src.func.vars); i++) {
+				if (src.func.vars[i] == 0) continue;
+				child_scopes.keys[i] = src.func.vars[i];
+				child_scopes.values[i] = {src.func.arg, &variables};
+				child_scopes.size++;
+			}
+
+			/* recursively compute the variables of the child expression */
+			if (!compute_maximal_scope(*src.func.arg, child_scopes, maximal_scope, child_root_scope, child_variables)
+			 || !process_maximal_scope(src.func.arg, child_scopes, maximal_scope, child_root_scope, child_variables)
+			 || !maximal_scope.values[old_maximal_scope_count].append(child_root_scope.data, child_root_scope.length))
+				return false;
+
 		} else {
-			free(*dst.tuple.elements[i]);
-			free(dst.tuple.elements[i]);
+			/* recursively compute the variables of the child expression */
+			if (!compute_maximal_scope(*src.func.arg, available_scopes, maximal_scope, root_scope, child_variables)
+			 || !process_maximal_scope(src.func.arg, available_scopes, maximal_scope, root_scope, child_variables))
+				return false;
 		}
+		available_scopes.size = old_available_scope_count;
+		return true;
+
+	case DATALOG_TUPLE:
+		for (unsigned int i = 0; i < src.tuple.elements.length; i++) {
+			if (!compute_maximal_scope(*src.tuple.elements[i], available_scopes, maximal_scope, root_scope, child_variables)
+			 || !process_maximal_scope(src.tuple.elements[i], available_scopes, maximal_scope, root_scope, child_variables))
+				return false;
+			child_variables.clear();
+		}
+
+		/* since all elements of a tuple are "moved" to a higher scope,
+		   the tuple becomes vacuous, so don't mark it for movement */
+		return true;
+
+	case DATALOG_LIST:
+		if (maximal_scope.ensure_capacity(maximal_scope.size + src.tuple.elements.length))
+			return false;
+
+		/* lists block all movement */
+		for (unsigned int i = 0; i < src.tuple.elements.length; i++) {
+			old_maximal_scope_count = maximal_scope.size;
+			maximal_scope.keys[old_maximal_scope_count] = src.tuple.elements[i];
+			if (!array_init(maximal_scope.values[old_maximal_scope_count], 4))
+				return false;
+			maximal_scope.size++;
+
+			/* recursively compute the variables of the child expression */
+			if (!compute_maximal_scope(*src.tuple.elements[i], child_scopes, maximal_scope, child_root_scope, child_variables)
+			 || !process_maximal_scope(src.tuple.elements[i], child_scopes, maximal_scope, child_root_scope, child_variables)
+			 || !maximal_scope.values[old_maximal_scope_count].append(child_root_scope.data, child_root_scope.length))
+				return false;
+			child_scopes.clear(); child_root_scope.clear(); child_variables.clear();
+		}
+		return true;
+
+	case DATALOG_VARIABLE:
+		return variables.add(src.variable);
+
+	case DATALOG_CONSTANT:
+	case DATALOG_INTEGER:
+	case DATALOG_EMPTY:
+	case DATALOG_ANY:
+		return true;
 	}
-	dst.tuple.elements.length = dst_index + 1;
+	fprintf(stderr, "compute_maximal_scope ERROR: Unrecognized expression type.\n");
+	exit(EXIT_FAILURE);
+}
+
+inline bool compute_maximal_scope(const datalog_expression& src,
+		array_map<const datalog_expression*, array<const datalog_expression*>>& maximal_scope)
+{
+	array<unsigned int> variables = array<unsigned int>(8);
+	array_map<unsigned int, datalog_scope> available_scopes = array_map<unsigned int, datalog_scope>(8);
+	array<const datalog_expression*> root_scope = array<const datalog_expression*>(8);
+	return compute_maximal_scope(src, available_scopes, maximal_scope, root_scope, variables);
+}
+
+inline bool canonicalize_scope(const datalog_expression* src_scope, datalog_expression& dst,
+		const array_map<const datalog_expression*, array<const datalog_expression*>>& maximal_scope)
+{
+	const array<const datalog_expression*>& moved_expressions = maximal_scope.get(src_scope);
+
+	tuple_position position = (src_scope->type == DATALOG_TUPLE) ? src_scope->tuple.position : POSITION_EXACT;
+	if (position == POSITION_RIGHT) position = POSITION_LEFT;
+
+	if (moved_expressions.length == 1 && position == POSITION_EXACT) {
+		return canonicalize(*moved_expressions[0], dst, maximal_scope);
+	} else {
+		if (!init_tuple(dst, position, moved_expressions.length))
+			return false;
+		for (unsigned int i = 0; i < moved_expressions.length; i++) {
+			if (!new_expression(dst.tuple.elements[i])) {
+				free(dst); return false;
+			} else if (!canonicalize(*moved_expressions[i], *dst.tuple.elements[i], maximal_scope)) {
+				free(dst.tuple.elements[i]);
+				free(dst); return false;
+			}
+			dst.tuple.elements.length++;
+		}
+
+		/* remove any vacuous elements */
+		for (unsigned int i = 0; i < dst.tuple.elements.length; i++) {
+			if (dst.tuple.elements[i]->type == DATALOG_TUPLE && dst.tuple.elements[i]->tuple.elements.length == 0) {
+				if (dst.tuple.elements[i]->tuple.position != POSITION_EXACT)
+					dst.tuple.position = POSITION_LEFT;
+
+				free(*dst.tuple.elements[i]);
+				free(dst.tuple.elements[i]);
+				dst.tuple.elements.remove(i); i--;
+			}
+		}
+
+		if (dst.tuple.elements.length > 1) {
+			/* sort the tuple elements */
+			sort(dst.tuple.elements, canonicalizer());
+
+			/* remove duplicate elements */
+			unsigned int dst_index = 0;
+			for (unsigned int i = 1; i < dst.tuple.elements.length; i++) {
+				if (dst.tuple.elements[dst_index] != dst.tuple.elements[i]) {
+					dst.tuple.elements[++dst_index] = dst.tuple.elements[i];
+				} else {
+					free(*dst.tuple.elements[i]);
+					free(dst.tuple.elements[i]);
+				}
+			}
+			dst.tuple.elements.length = dst_index + 1;
+		}
+
+		/* if only one element remains, simplify the tuple */
+		if (dst.tuple.elements.length == 1 && dst.tuple.position == POSITION_EXACT) {
+			datalog_expression* singleton = dst.tuple.elements[0];
+			singleton->reference_count++;
+			free(dst); dst = *singleton; free(*singleton);
+			if (singleton->reference_count == 0)
+				free(singleton);
+		}
+		return true;
+	}
 	return true;
 }
 
-bool canonicalize(const datalog_expression& src, datalog_expression& dst) {
+bool canonicalize(const datalog_predicate& pred, datalog_expression& dst,
+		const array_map<const datalog_expression*, array<const datalog_expression*>>& maximal_scope)
+{
+	dst.pred.function = pred.function;
+	if (pred.excluded_count > 0 && !init_excluded(dst.pred.excluded, pred.excluded, pred.excluded_count))
+		return false;
+	dst.pred.excluded_count = pred.excluded_count;
+	for (unsigned int i = 0; i < array_length(pred.args); i++)
+		dst.pred.args[i] = NULL;
+	for (unsigned int i = 0; i < array_length(pred.args); i++) {
+		if (pred.args[i] == NULL) {
+			continue;
+		} else if (!new_expression(dst.pred.args[i])) {
+			free(dst.pred); return false;
+		} else if (!canonicalize_scope(pred.args[i], *dst.pred.args[i], maximal_scope)) {
+			free(dst.pred.args[i]);
+			dst.pred.args[i] = NULL;
+			free(dst.pred); return false;
+		}
+	}
+	dst.type = DATALOG_PREDICATE;
+	dst.reference_count = 1;
+	return true;
+}
+
+bool canonicalize(const datalog_expression& src, datalog_expression& dst,
+		const array_map<const datalog_expression*, array<const datalog_expression*>>& maximal_scope)
+{
 	switch (src.type) {
 	case DATALOG_PREDICATE:
-		dst.pred.function = src.pred.function;
-		if (src.pred.excluded_count > 0 && !init_excluded(dst.pred.excluded, src.pred.excluded, src.pred.excluded_count))
-			return false;
-		dst.pred.excluded_count = src.pred.excluded_count;
-		for (unsigned int i = 0; i < array_length(src.pred.args); i++)
-			dst.pred.args[i] = NULL;
-		for (unsigned int i = 0; i < array_length(src.pred.args); i++) {
-			if (src.pred.args[i] == NULL) {
-				continue;
-			} else if (!new_expression(dst.pred.args[i])) {
-				free(dst.pred); return false;
-			} else if (!canonicalize(*src.pred.args[i], *dst.pred.args[i])) {
-				free(dst.pred.args[i]);
-				dst.pred.args[i] = NULL;
-				free(dst.pred); return false;
-			}
-		}
-		dst.type = DATALOG_PREDICATE;
-		dst.reference_count = 1;
-		return true;
+		return canonicalize(src.pred, dst, maximal_scope);
 	case DATALOG_FUNCTION:
 		if (!new_expression(dst.func.arg)) return false;
 		dst.func.function = src.func.function;
@@ -1990,9 +2195,9 @@ bool canonicalize(const datalog_expression& src, datalog_expression& dst) {
 		dst.reference_count = 1;
 		for (unsigned int i = 0; i < array_length(src.func.vars); i++)
 			dst.func.vars[i] = src.func.vars[i];
-		return canonicalize(*src.func.arg, *dst.func.arg);
+		return canonicalize_scope(src.func.arg, *dst.func.arg, maximal_scope);
 	case DATALOG_TUPLE:
-		return canonicalize(src.tuple, dst);
+		return init_tuple(dst, src.tuple.position, 1);
 	case DATALOG_LIST:
 		if (!array_init(dst.list.elements, src.list.elements.length)) return false;
 		dst.type = DATALOG_LIST;
@@ -2000,7 +2205,7 @@ bool canonicalize(const datalog_expression& src, datalog_expression& dst) {
 		for (unsigned int i = 0; i < src.list.elements.length; i++) {
 			if (!new_expression(dst.list.elements[i])) {
 				free(dst); return false;
-			} else if (!canonicalize(*src.list.elements[i], *dst.list.elements[i])) {
+			} else if (!canonicalize_scope(src.list.elements[i], *dst.list.elements[i], maximal_scope)) {
 				free(dst.list.elements[i]);
 				free(dst); return false;
 			}
@@ -2032,15 +2237,35 @@ bool canonicalize(const datalog_expression& src, datalog_expression& dst) {
 	exit(EXIT_FAILURE);
 }
 
+template<typename K, typename V>
+void free_values(array_map<K, V>& map) {
+	for (auto entry : map)
+		free(entry.value);
+}
+
 bool equivalent(const datalog_expression& first, const datalog_expression& second)
 {
+	array_map<const datalog_expression*, array<const datalog_expression*>> first_maximal_scope(8), second_maximal_scope(8);
+	if (!compute_maximal_scope(first, first_maximal_scope)
+	 || !compute_maximal_scope(second, second_maximal_scope))
+	{
+		free_values(first_maximal_scope);
+		free_values(second_maximal_scope);
+		return false;
+	}
+
 	/* canonicalize the logical form structure (modulo variables) */
 	datalog_expression first_canonical;
 	datalog_expression second_canonical;
-	if (!canonicalize(first, first_canonical)
-	 || !canonicalize(second, second_canonical)) {
+	if (!canonicalize(first, first_canonical, first_maximal_scope)
+	 || !canonicalize(second, second_canonical, second_maximal_scope))
+	{
+		free_values(first_maximal_scope);
+		free_values(second_maximal_scope);
 		free(first_canonical); exit(EXIT_FAILURE);
 	}
+	free_values(first_maximal_scope);
+	free_values(second_maximal_scope);
 
 	/* relabel variables in prefix order */
 	datalog_expression first_relabeled;
@@ -3042,7 +3267,7 @@ bool print(const datalog_expression& exp, Stream& out, Printer& printer) {
 	case DATALOG_ANY:
 		return print('*', out);
 	}
-	fprintf(stderr, "printer ERROR: Unrecognized datalog_expression type.\n");
+	fprintf(stderr, "print ERROR: Unrecognized datalog_expression type.\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -3371,6 +3596,8 @@ bool datalog_interpret(
 /**
  * Below is code for parsing a variable-free variant of Datalog.
  */
+
+#include <grammar/tree_semantics.h>
 
 /* forward declarations */
 bool variable_free_interpret_expression(
@@ -5241,6 +5468,7 @@ inline bool has_function(
 	return true;
 }
 
+/* NOTE: this function assumes 'named_functions' is sorted */
 template<size_t N>
 inline bool has_function(
 		const datalog_expression& src, unsigned int& value,
@@ -5254,14 +5482,23 @@ inline bool has_function(
 			value = DATALOG_LABEL_WILDCARD;
 		else value = DATALOG_LABEL_EMPTY;
 	} else if (src.type == DATALOG_FUNCTION) {
-		for (unsigned int i = 0; i < N; i++) {
-			if (src.func.function == named_functions[i]) {
-				value = named_functions[i];
-				excluded_count = 0;
-				return true;
+		if (src.func.function == DATALOG_LABEL_WILDCARD) {
+			unsigned int intersection_size = 0;
+			auto count = [&](unsigned int i, unsigned int j) { intersection_size++; };
+			set_intersect(count, src.func.excluded, src.func.excluded_count, named_functions, N);
+			if (intersection_size == N)
+				value = DATALOG_TRUE;
+			else value = DATALOG_LABEL_WILDCARD;
+		} else {
+			for (unsigned int i = 0; i < N; i++) {
+				if (src.func.function == named_functions[i]) {
+					value = named_functions[i];
+					excluded_count = 0;
+					return true;
+				}
 			}
+			value = DATALOG_TRUE;
 		}
-		value = DATALOG_TRUE;
 	} else if (src.type == DATALOG_ANY) {
 		value = DATALOG_LABEL_WILDCARD;
 	} else {
@@ -5787,6 +6024,17 @@ bool set_has_function(
 	else if (exp.type != DATALOG_FUNCTION)
 		return false;
 
+	if (value == DATALOG_TRUE) {
+		/* the expression is a function, but not among the list of named functions */
+		if (exp.func.function != DATALOG_LABEL_WILDCARD) {
+			return index_of(exp.func.function, named_functions, N) == N;
+		} else if (exp.func.function == DATALOG_LABEL_WILDCARD
+				&& !exp.func.exclude(named_functions, N)) {
+			exit(EXIT_FAILURE);
+		}
+		return true;
+	}
+
 	for (unsigned int i = 0; i < N; i++)
 		if (value == named_functions[i])
 			return exp.func.function == value;
@@ -5841,6 +6089,8 @@ bool set_predicate(datalog_expression& exp, unsigned int predicate)
 			DATALOG_ANY_TREE.reference_count += Index;
 			if (!new_expression(exp.tuple.elements[Index]))
 				exit(EXIT_FAILURE);
+			exp.tuple.elements[Index]->reference_count = 1;
+			exp.tuple.elements[Index]->type = DATALOG_ANY;
 			exp.tuple.elements.length = Index + 1;
 			return set_predicate(*exp.tuple.elements[Index], predicate);
 		} else {
@@ -10284,6 +10534,9 @@ inline bool set_number(datalog_expression_root& exp, const datalog_expression_ro
 	exp.root.type = DATALOG_INTEGER;
 	exp.root.integer = value;
 	exp.root.reference_count = 1;
+	exp.concord = set.concord;
+	exp.index = set.index;
+	exp.inf = set.inf;
 	return true;
 }
 
