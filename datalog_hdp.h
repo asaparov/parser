@@ -246,7 +246,7 @@ struct datalog_term_distribution {
 	typedef double value_type;
 
 	static constexpr double ALPHA_MOST = 1000.0;
-	static constexpr double LOG_ALPHA_MOST = log(ALPHA_MOST);
+	static const double LOG_ALPHA_MOST;
 
 	unsigned int predicate_count; /* boolean-valued */
 	unsigned int function_count; /* object-valued */
@@ -278,6 +278,8 @@ struct datalog_term_distribution {
 	}
 };
 
+const double datalog_term_distribution::LOG_ALPHA_MOST = log(datalog_term_distribution::ALPHA_MOST);
+
 struct datalog_prior
 {
 	hdp<datalog_term_distribution, constant<datalog_term>, datalog_term, double> edge_hdp;
@@ -307,7 +309,7 @@ struct datalog_prior
 	datalog_prior(
 			unsigned int predicate_count, unsigned int function_count, unsigned int constant_count,
 			const double* edge_hdp_alpha, const double* constant_hdp_alpha) :
-		edge_hdp(std::array<unsigned int, EDGE_HDP_DEPTH>({predicate_count, function_count}), edge_hdp_alpha, EDGE_HDP_DEPTH + 1),
+		edge_hdp(std::array<unsigned int, EDGE_HDP_DEPTH>({{predicate_count, function_count}}), edge_hdp_alpha, EDGE_HDP_DEPTH + 1),
 		edge_sampler(edge_hdp), edge_cache(edge_sampler), edge_root_probabilities(256), unseen_edge_root_probabilities(NULL),
 		constant_hdp(constant_count, constant_hdp_alpha, CONSTANT_HDP_DEPTH + 1), constant_sampler(constant_hdp),
 		constant_cache(constant_sampler), constant_root_probabilities(256), unseen_constant_root_probabilities(NULL),

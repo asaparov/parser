@@ -100,7 +100,7 @@ unsigned int read_line(array<char>& line, Stream& input)
 			return 0;
 		}
 		switch (next) {
-		case -1:
+		case WEOF:
 			return bytes_read;
 
 		case '\n':

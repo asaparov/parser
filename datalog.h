@@ -2010,7 +2010,7 @@ bool compute_maximal_scope(const datalog_expression& src,
 		maximal_scope.size++;
 
 		if (src.func.function == PREDICATE_ANSWER || src.func.function == PREDICATE_NOT) {
-			/* negation and lambda terms blocks movement */
+			/* negation and lambda terms block movement */
 			for (unsigned int i = 0; i < array_length(src.func.vars); i++) {
 				if (src.func.vars[i] == 0) continue;
 				child_scopes.keys[i] = src.func.vars[i];
@@ -3767,7 +3767,7 @@ inline bool sentence_starts_with(
 {
 	unsigned int start = earliest_start;
 	for (unsigned int end = earliest_end; end < latest_end + 1; end++) {
-		rule<datalog_expression> r = rule<datalog_expression>({sentence.tokens + start, end - start});
+		rule<datalog_expression_root> r = rule<datalog_expression_root>({sentence.tokens + start, end - start});
 		if (rule_prior.probability(r) > 0.0) {
 			found = end;
 			return true;
@@ -3782,7 +3782,7 @@ inline bool sentence_ends_with(
 		unsigned int end, unsigned int earliest_start, unsigned int& found)
 {
 	for (unsigned int start = earliest_start; start < end; start++) {
-		rule<datalog_expression> r = rule<datalog_expression>({sentence.tokens + start, end - start});
+		rule<datalog_expression_root> r = rule<datalog_expression_root>({sentence.tokens + start, end - start});
 		if (rule_prior.probability(r) > 0.0) {
 			found = end;
 			return true;
