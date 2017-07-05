@@ -1,5 +1,5 @@
 
-This code implements the experiments as described in [this paper](http://asaparov.org/assets/conll_2017.pdf). It uses a generative model of semantic grammar, which is implemented as a separate modular repository [grammar](https://github.com/asaparov/grammar).
+This code implements the experiments as described in [this paper](http://asaparov.org/assets/conll_2017.pdf). It uses a generative model of semantic grammar, which is implemented as a separate modular repository [grammar](https://github.com/asaparov/grammar) (the parsing and MCMC sampling algorithm are implemented there).
 
 If you use this code in your research, please cite:
  > Abulhair Saparov, Vijay Saraswat, and Tom M. Mitchell. 2017. A Probabilistic Generative Grammar for Semantic Parsing. In *Proceedings of the Twenty-First Conference on Computational Natural Language Learning*.
@@ -22,8 +22,8 @@ There are two programs in this repository.
  - `datalog_to_lambda` converts logical forms in Datalog into lambda calculus. This program is defined in `datalog_to_lambda.cpp` and can be compiled by running `make datalog_to_lambda`.
  - `parser` is a driver program that can train, test, and generate sentences using a generative semantic grammar. The command line usage is `./parser MODE [OPTIONS]...` where `MODE` can be either `sample`, `parse`, or `generate`. `sample` will train a grammar using an input training dataset; `parse` will use a trained grammar to run the parsing algorithm on a collection of sentences; and `generate` will use a trained grammar to generate sentences/questions from a collection of logical forms. The available options are:
 
- | Command-line option  | Description                                                |
- | -------------------- | ---------------------------------------------------------- |
+ | Command-line option      | Description                                                |
+ | ------------------------ | ---------------------------------------------------------- |
  | `--train=<filepath>` | The path to the training data. (**required** in all modes) |
  | `--extra=<filepath>` | The path to an extra dataset. In `sample` mode, this is the lexicon. We provide a domain-general lexicon in `lexicon`, as well as lexicons in `geoquery/geoqueries880_lexicon` and `jobs/jobqueries640_lexicon`. In `parse` mode, this a set of additional logical forms that will be used to train the semantic prior (in addition to the logical forms from the training data). |
  | `--kb=<filepath>` | The path to a set of "beliefs" which are also used to train the semantic prior (in addition to the logical forms from the training data). We provide a set of beliefs for GeoQuery in `geoquery/geoqueries880_beliefs`. This option is only used in `parse` mode. |
