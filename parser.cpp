@@ -61,10 +61,11 @@ bool enable_morphology = true;
 std::mutex console_lock;
 
 thread_local bool debug_type_check = true;
+thread_local bool disable_prior = false;
 
 template<parse_mode Mode, bool Complete = false>
 inline double log_probability(const datalog_expression_root& exp) {
-	if (Mode == MODE_SAMPLE)
+	if (Mode == MODE_SAMPLE || disable_prior)
 		return 0.0;
 	if (!valid_variable_scope(exp.root) || (debug_type_check && !type_check<Complete>(ontology, exp)))
 		return -std::numeric_limits<double>::infinity();
@@ -80,12 +81,28 @@ inline const fixed_array<token>& morphology_parse(unsigned int word) {
 	return morph.parse(word);
 }
 
+inline const fixed_array<unsigned int>& morphology_inflect(const token& tok) {
+#if !defined(NDEBUG)
+	if (!enable_morphology)
+		fprintf(stderr, "morphology_inflect WARNING: Morphology model is disabled by command-line flag.\n");
+#endif
+	return morph.inflect(tok);
+}
+
 inline bool morphology_is_auxiliary_verb(unsigned int word) {
 #if !defined(NDEBUG)
 	if (!enable_morphology)
-		fprintf(stderr, "morphology_parse WARNING: Morphology model is disabled by command-line flag.\n");
+		fprintf(stderr, "morphology_is_auxiliary_verb WARNING: Morphology model is disabled by command-line flag.\n");
 #endif
 	return morph.is_auxiliary_verb(word);
+}
+
+inline bool morphology_is_auxiliary_root(unsigned int root) {
+#if !defined(NDEBUG)
+	if (!enable_morphology)
+		fprintf(stderr, "morphology_is_auxiliary_root WARNING: Morphology model is disabled by command-line flag.\n");
+#endif
+	return morph.is_auxiliary_root(root);
 }
 
 template<typename Stream>
@@ -331,6 +348,7 @@ bool parse(hash_map<string, unsigned int>& names,
 		unsigned int time_limit, unsigned int thread_count,
 		bool test_parseability)
 {
+	disable_prior = false;
 	array<datalog_expression_root*> train_data(1024), extra_data(128), kb_data(128), test_data(512);
 	sequence* train_sentences;
 	sequence* extra_sentences;
@@ -583,6 +601,7 @@ bool sample(hash_map<string, unsigned int>& names, const char* data_filepath,
 		const char* output_filepath = NULL, const char* ontology_filepath = NULL,
 		const char* grammar_filepath = "english.gram")
 {
+	disable_prior = true;
 	array<datalog_expression_root*> data(1024), lexicon_data(1024);
 	sequence* sentences; datalog_expression_root** logical_forms;
 	sequence* lexicon_phrases; datalog_expression_root** lexicon_logical_forms = NULL;
@@ -661,7 +680,9 @@ debug_nonterminal_printer = &nonterminal_printer;
 		auto sentence = tokenized_sentence<datalog_expression_root>(sentences[id]);
 		syntax[id] = (syntax_node<datalog_expression_root>*) malloc(sizeof(syntax_node<datalog_expression_root>));
 		if (syntax[id] == NULL
-		 || !sample(syntax[id], G, *logical_forms[id], sentence, name_ids) || syntax[id] == NULL) { /* sample can set syntax[id] to null */
+		 || !sample(syntax[id], G, *logical_forms[id], sentence, name_ids) || syntax[id] == NULL) /* sample can set syntax[id] to null */
+		// || !parse<false>(*syntax[id], *logical_forms[id], G, sentence, name_ids) || syntax[id] == NULL) /* sample can set syntax[id] to null */
+		{
 			fprintf(stderr, "sample ERROR: Unable to sample derivation for sentence %u.\n", id);
 			if (syntax[id] != NULL) { free(syntax[id]); syntax[id] = NULL; }
 			cleanup(data, sentences, logical_forms, NULL, data.length, syntax);
@@ -693,7 +714,7 @@ debug_nonterminal_printer = &nonterminal_printer;
 			auto sentence = tokenized_sentence<datalog_expression_root>(sentences[order[i]]);
 			resample(syntax[order[i]], G, *logical_forms[order[i]], sentence, name_ids);
 			//resample_locally(syntax[order[i]], G, logical_forms[order[i]], 2);
-			//reparse(syntax[order[i]], G, logical_forms[order[i]], sentence);
+			//reparse<false>(syntax[order[i]], G, *logical_forms[order[i]], sentence, name_ids);
 		}
 		sample_grammar(G);
 		fprintf(out, "Unnormalized log posterior probability: %lf\n",
@@ -706,6 +727,11 @@ debug_nonterminal_printer = &nonterminal_printer;
 			fflush(out);
 		}
 	}
+
+for (unsigned int i = 0; i < data.length; i++) {
+print(*logical_forms[i], out, terminal_printer); print('\n', out);
+print(*syntax[i], out, nonterminal_printer, terminal_printer); print("\n\n", out);
+}
 
 	if (output_filepath != NULL) {
 		FILE* out = fopen(output_filepath, "wb");
@@ -815,7 +841,7 @@ bool generate(
 
 			sequence sentence = sequence(NULL, 0);
 			//print(*sampled_tree, out, nonterminal_printer, terminal_printer); print('\n', out);
-			if (!yield(*sampled_tree, sentence) || !counts.check_size()) {
+			if (!yield(G, *sampled_tree, *test_logical_forms[i], sentence) || !counts.check_size()) {
 				cleanup(train_data, train_sentences, train_logical_forms, train_data.length, syntax);
 				cleanup(test_data, test_sentences, test_logical_forms, test_data.length);
 				for (auto entry : counts) { free(entry.key); } free(*sampled_tree); free(sampled_tree);
@@ -880,6 +906,7 @@ inline bool parse_option(const char* arg,
 
 int main(int argc, const char** argv)
 {
+set_seed(81793920);
 	command cmd;
 	if (argc < 2) {
 		fprintf(stderr, "Not enough arguments.\n");
@@ -927,6 +954,8 @@ int main(int argc, const char** argv)
 		if (parse_option(argv[i] + 2, "threads", thread_count_arg)) continue;
 		if (parse_option(argv[i] + 2, "no-morphology")) { enable_morphology = false; continue; }
 		if (parse_option(argv[i] + 2, "test-parseable")) { test_parseability = true; continue; }
+		if (parse_option(argv[i] + 2, "agid", agid_filepath)) continue;
+		if (parse_option(argv[i] + 2, "uncountable", uncountable_filepath)) continue;
 		else {
 			fprintf(stderr, "Unrecognized command-line option: '%s'.\n", argv[i]);
 			return EXIT_FAILURE;

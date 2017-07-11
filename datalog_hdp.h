@@ -140,7 +140,7 @@ struct datalog_term_printer {
 };
 
 template<typename Stream, typename Printer>
-bool print(unsigned int edge, Stream& out, datalog_term_printer<Printer>& printer, unsigned int level) {
+bool print(unsigned int edge, Stream& out, unsigned int level, datalog_term_printer<Printer>& printer) {
 	if (level == 0) {
 		return print(edge, out, printer.printer);
 	} else if (level == 1) {

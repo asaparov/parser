@@ -13,6 +13,7 @@
 #include <limits.h>
 #include <type_traits>
 #include <atomic>
+#include <cctype>
 
 using namespace core;
 
@@ -62,6 +63,18 @@ constexpr unsigned int PREDICATE_OBJECT = 32;
 
 constexpr unsigned int NUMBER_OFFSET = 33;
 constexpr unsigned int INFLECTION_OFFSET = 33 + grammatical_number_count - 1;
+
+struct datalog_token_scribe { };
+
+template<typename Stream>
+inline bool print(const string& str, Stream& out, const datalog_token_scribe& printer) {
+	for (unsigned int i = 0; i < str.length; i++) {
+		if (std::isspace(str[i]) || str[i] == '.') {
+			return print('\'', out) && print(str, out) && print('\'', out);
+		}
+	}
+	return print(str, out);
+}
 
 /**
  * Code for tokenizing/lexing Datalog data.
@@ -3175,18 +3188,18 @@ inline bool print_variable(unsigned int variable, Stream& out) {
 	else return print((char) ('A' + variable - 1), out);
 }
 
-template<typename Stream, typename Printer>
-bool print(const datalog_function& func, Stream& out, Printer& printer) {
+template<typename Stream, typename... Printer>
+bool print(const datalog_function& func, Stream& out, Printer&&... printer) {
 	if (func.function == DATALOG_LABEL_WILDCARD) {
-		return print("*(", out) && print(*func.arg, out, printer) && print(')', out);
+		return print("*(", out) && print(*func.arg, out, std::forward<Printer>(printer)...) && print(')', out);
 	}
-	if (func.function != PREDICATE_NOT && (!print(func.function, out, printer) || !print('(', out)))
+	if (func.function != PREDICATE_NOT && (!print(func.function, out, std::forward<Printer>(printer)...) || !print('(', out)))
 		return false;
 	switch (func.function) {
 	case PREDICATE_COUNT:
 	case PREDICATE_SUM:
 		if (!print_variable(func.vars[0], out)) return false;
-		if (!print(',', out) || !print(*func.arg, out, printer) || !print(',', out))
+		if (!print(',', out) || !print(*func.arg, out, std::forward<Printer>(printer)...) || !print(',', out))
 			return false;
 		return print_variable(func.vars[1], out) && print(')', out);
 
@@ -3198,16 +3211,16 @@ bool print(const datalog_function& func, Stream& out, Printer& printer) {
 	case PREDICATE_LARGEST:
 	case PREDICATE_SMALLEST:
 		if (!print_variable(func.vars[0], out)) return false;
-		return print(',', out) && print(*func.arg, out, printer) && print(')', out);
+		return print(',', out) && print(*func.arg, out, std::forward<Printer>(printer)...) && print(')', out);
 
 	case PREDICATE_MOST:
 	case PREDICATE_FEWEST:
 		if (!print_variable(func.vars[0], out) || !print(',', out) || !print_variable(func.vars[1], out))
 			return false;
-		return print(',', out) && print(*func.arg, out, printer) && print(')', out);
+		return print(',', out) && print(*func.arg, out, std::forward<Printer>(printer)...) && print(')', out);
 
 	case PREDICATE_NOT:
-		return print("\\+", out) && print(*func.arg, out, printer);
+		return print("\\+", out) && print(*func.arg, out, std::forward<Printer>(printer)...);
 
 	default:
 		fprintf(stderr, "print ERROR: Unrecognized datalog_function predicate.\n");
@@ -3215,51 +3228,51 @@ bool print(const datalog_function& func, Stream& out, Printer& printer) {
 	}
 }
 
-template<typename Stream, typename Printer>
-bool print(const datalog_tuple& tuple, Stream& out, Printer& printer) {
+template<typename Stream, typename... Printer>
+bool print(const datalog_tuple& tuple, Stream& out, Printer&&... printer) {
 	if (tuple.elements.length == 0) {
 		if (tuple.position == POSITION_EXACT) return print("()", out);
 		else return print("(...)", out);
 	}
 	if (!print('(', out)) return false;
 	if (tuple.position == POSITION_RIGHT && !print("...,", out)) return false;
-	if (!print(*tuple.elements[0], out, printer)) return false;
+	if (!print(*tuple.elements[0], out, std::forward<Printer>(printer)...)) return false;
 	for (unsigned int i = 1; i < tuple.elements.length; i++) {
 		if (!print(',', out)
-		 || !print(*tuple.elements[i], out, printer)) return false;
+		 || !print(*tuple.elements[i], out, std::forward<Printer>(printer)...)) return false;
 	}
 	if (tuple.position == POSITION_LEFT && !print(",...", out)) return false;
 	return print(')', out);
 }
 
-template<typename Stream, typename Printer>
-bool print(const datalog_expression& exp, Stream& out, Printer& printer) {
+template<typename Stream, typename... Printer>
+bool print(const datalog_expression& exp, Stream& out, Printer&&... printer) {
 	switch (exp.type) {
 	case DATALOG_PREDICATE:
-		if (!print(exp.pred.function, out, printer) || !print('(', out))
+		if (!print(exp.pred.function, out, std::forward<Printer>(printer)...) || !print('(', out))
 			return false;
 		for (unsigned int i = 0; i < array_length(exp.pred.args); i++) {
 			if (exp.pred.args[i] == NULL) break;
 			if (i > 0 && !print(',', out)) return false;
-			if (!print(*exp.pred.args[i], out, printer))
+			if (!print(*exp.pred.args[i], out, std::forward<Printer>(printer)...))
 				return false;
 		}
 		return print(')', out);
 	case DATALOG_FUNCTION:
-		return print(exp.func, out, printer);
+		return print(exp.func, out, std::forward<Printer>(printer)...);
 	case DATALOG_TUPLE:
-		return print(exp.tuple, out, printer);
+		return print(exp.tuple, out, std::forward<Printer>(printer)...);
 	case DATALOG_LIST:
 		if (!print('[', out)) return false;
 		for (unsigned int i = 0; i < exp.tuple.elements.length; i++) {
 			if (i > 0 && !print(',', out)) return false;
-			if (!print(*exp.tuple.elements[i], out, printer)) return false;
+			if (!print(*exp.tuple.elements[i], out, std::forward<Printer>(printer)...)) return false;
 		}
 		return print(']', out);
 	case DATALOG_VARIABLE:
 		return print_variable(exp.variable, out);
 	case DATALOG_CONSTANT:
-		return print(exp.constant.label, out, printer);
+		return print(exp.constant.label, out, std::forward<Printer>(printer)...);
 	case DATALOG_INTEGER:
 		return print(exp.integer, out);
 	case DATALOG_EMPTY:
@@ -3271,9 +3284,9 @@ bool print(const datalog_expression& exp, Stream& out, Printer& printer) {
 	exit(EXIT_FAILURE);
 }
 
-template<typename Stream, typename Printer>
-bool print(const datalog_expression_root& exp, Stream& out, Printer& printer) {
-	if (!print(exp.root, out, printer)) return false;
+template<typename Stream, typename... Printer>
+bool print(const datalog_expression_root& exp, Stream& out, Printer&&... printer) {
+	if (!print(exp.root, out, std::forward<Printer>(printer)...)) return false;
 
 	unsigned int index = 0;
 	if (exp.index != NUMBER_ALL) {
@@ -3294,9 +3307,9 @@ bool print(const datalog_expression_root& exp, Stream& out, Printer& printer) {
 	return (index == 0 || print(']', out));
 }
 
-template<typename Stream, typename Printer>
-inline bool print(const datalog_expression_root::invert_iterator& inverter, Stream& out, Printer& printer) {
-	return print(*inverter.inverse, out, printer);
+template<typename Stream, typename... Printer>
+inline bool print(const datalog_expression_root::invert_iterator& inverter, Stream& out, Printer&&... printer) {
+	return print(*inverter.inverse, out, std::forward<Printer>(printer)...);
 }
 
 bool datalog_interpret_args(
@@ -10528,6 +10541,18 @@ bool invert(
 	return true;
 }
 
+inline bool any_number(const datalog_expression_root& src) {
+	return src.root.type == DATALOG_ANY;
+}
+
+/* NOTE: this function assumes src is not DATALOG_ANY */
+inline bool get_number(const datalog_expression_root& src, int& value) {
+	if (src.root.type != DATALOG_INTEGER)
+		return false;
+	value = src.root.integer;
+	return true;
+}
+
 inline bool set_number(datalog_expression_root& exp, const datalog_expression_root& set, int value) {
 	if (set.root.type != DATALOG_ANY && (set.root.type != DATALOG_INTEGER || set.root.integer != value))
 		return false;
@@ -11621,7 +11646,124 @@ bool ontology_interpret(
  */
 
 const fixed_array<token>& morphology_parse(unsigned int word);
+const fixed_array<unsigned int>& morphology_inflect(const token& tok);
 bool morphology_is_auxiliary_verb(unsigned int word);
+bool morphology_is_auxiliary_root(unsigned int root);
+
+inline bool intersect_concord_index(grammatical_number& intersection,
+		grammatical_number concord, grammatical_number index)
+{
+	if (concord == NUMBER_SINGULAR) {
+		if (index != NUMBER_SINGULAR && index != NUMBER_NON_PLURAL
+		 && index != NUMBER_ALL && index != NUMBER_ANY)
+			return false;
+		intersection = NUMBER_SINGULAR;
+	} else if (concord == NUMBER_PLURAL) {
+		if (index != NUMBER_PLURAL && index != NUMBER_NON_SINGULAR
+		 && index != NUMBER_ALL && index != NUMBER_ANY)
+			return false;
+		intersection = NUMBER_PLURAL;
+	} else if (concord == NUMBER_UNCOUNTABLE) {
+		if (index != NUMBER_UNCOUNTABLE && index != NUMBER_SINGULAR
+		 && index != NUMBER_NON_SINGULAR && index != NUMBER_NON_PLURAL
+		 && index != NUMBER_ALL && index != NUMBER_ANY)
+			return false;
+		intersection = NUMBER_UNCOUNTABLE;
+	} else if (concord == NUMBER_NON_SINGULAR) {
+		if (index == NUMBER_PLURAL) {
+			intersection = NUMBER_PLURAL;
+		} else if (index == NUMBER_UNCOUNTABLE || index == NUMBER_NON_PLURAL || index == NUMBER_SINGULAR) {
+			intersection = NUMBER_UNCOUNTABLE;
+		} else if (index == NUMBER_NON_SINGULAR || index == NUMBER_ALL || index == NUMBER_ANY) {
+			intersection = NUMBER_NON_SINGULAR;
+		} else {
+			return false;
+		}
+	} else if (concord == NUMBER_NON_PLURAL) {
+		if (index == NUMBER_SINGULAR) {
+			intersection = NUMBER_SINGULAR;
+		} else if (index == NUMBER_UNCOUNTABLE || index == NUMBER_NON_SINGULAR) {
+			intersection = NUMBER_UNCOUNTABLE;
+		} else if (index == NUMBER_NON_PLURAL || index == NUMBER_ALL || index == NUMBER_ANY) {
+			intersection = NUMBER_NON_PLURAL;
+		} else {
+			return false;
+		}
+	} else if (concord == NUMBER_ALL || concord == NUMBER_ANY) {
+		if (index == NUMBER_NONE) return false;
+		intersection = index;
+	} else {
+		/* concord is NUMBER_NONE */
+		return false;
+	}
+	return true;
+}
+
+bool morphology_is_valid(
+		const sequence& terminal, part_of_speech pos,
+		const datalog_expression_root& logical_form)
+{
+	if (pos == POS_OTHER) {
+		return true;
+	} else if (pos == POS_ADJECTIVE) {
+		/* we don't model adjective morphology, for now */
+		/* adjective compounds are head-final (TODO: need a database of exceptions) */
+		unsigned int head_index = terminal.length - 1;
+		return morphology_inflect({terminal[head_index], NUMBER_ANY, INFLECTION_ADJECTIVE}).length > 0;
+	}
+
+	unsigned int head_index;
+	if (pos == POS_NOUN) {
+		/* noun compounds are head-final (TODO: need a database of exceptions) */
+		head_index = terminal.length - 1;
+	} else if (pos == POS_VERB) {
+		/* verb compounds (phrasal verbs) are head-final (TODO: need a database of exceptions) */
+		head_index = 0;
+	} else {
+		fprintf(stderr, "morphology_is_valid ERROR: Unrecognized part of speech.\n");
+		return false;
+	}
+
+	/* check if concord and index have a non-empty intersection (treating the numbers as set-valued) */
+	grammatical_number intersection = NUMBER_NONE;
+	if (pos == POS_NOUN) {
+		if (!intersect_concord_index(intersection, logical_form.concord, logical_form.index))
+			return false;
+	} else if (pos == POS_VERB) {
+		/* if the verb has multiple words, ensure none are auxiliary */
+		if (terminal.length > 1) {
+			for (unsigned int i = 0; i + 1 < terminal.length; i++)
+				if (morphology_is_auxiliary_root(terminal[i])) return false;
+		}
+	}
+
+	if (pos == POS_VERB) {
+		inflection inf = logical_form.inf;
+		if (inf == INFLECTION_NONE)
+			inf = INFLECTION_OTHER_VERB;
+		if (morphology_inflect({terminal[head_index], NUMBER_ANY, inf}).length > 0)
+			return true;
+		if (has_intersection(logical_form.index, NUMBER_SINGULAR)) {
+			if (morphology_inflect({terminal[head_index], NUMBER_SINGULAR, inf}).length > 0)
+				return true;
+		} if (has_intersection(logical_form.index, NUMBER_PLURAL)) {
+			if (morphology_inflect({terminal[head_index], NUMBER_PLURAL, inf}).length > 0)
+				return true;
+		}
+	} else if (pos == POS_NOUN) {
+		if (has_intersection(intersection, NUMBER_SINGULAR)) {
+			if (morphology_inflect({terminal[head_index], NUMBER_SINGULAR, INFLECTION_NOUN}).length > 0)
+				return true;
+		} if (has_intersection(intersection, NUMBER_PLURAL)) {
+			if (morphology_inflect({terminal[head_index], NUMBER_PLURAL, INFLECTION_NOUN}).length > 0)
+				return true;
+		} if (has_intersection(intersection, NUMBER_UNCOUNTABLE)) {
+			if (morphology_inflect({terminal[head_index], NUMBER_UNCOUNTABLE, INFLECTION_NOUN}).length > 0)
+				return true;
+		}
+	}
+	return false;
+}
 
 template<typename EmitRootFunction>
 bool morphology_parse(const sequence& words, part_of_speech pos,
@@ -11656,49 +11798,8 @@ bool morphology_parse(const sequence& words, part_of_speech pos,
 	/* check if concord and index have a non-empty intersection (treating the numbers as set-valued) */
 	grammatical_number intersection = NUMBER_NONE;
 	if (pos == POS_NOUN) {
-		if (logical_form.concord == NUMBER_SINGULAR) {
-			if (logical_form.index != NUMBER_SINGULAR && logical_form.index != NUMBER_NON_PLURAL
-			 && logical_form.index != NUMBER_ALL && logical_form.index != NUMBER_ANY)
-				return true;
-			intersection = NUMBER_SINGULAR;
-		} else if (logical_form.concord == NUMBER_PLURAL) {
-			if (logical_form.index != NUMBER_PLURAL && logical_form.index != NUMBER_NON_SINGULAR
-			 && logical_form.index != NUMBER_ALL && logical_form.index != NUMBER_ANY)
-				return true;
-			intersection = NUMBER_PLURAL;
-		} else if (logical_form.concord == NUMBER_UNCOUNTABLE) {
-			if (logical_form.index != NUMBER_UNCOUNTABLE && logical_form.index != NUMBER_SINGULAR
-			 && logical_form.index != NUMBER_NON_SINGULAR && logical_form.index != NUMBER_NON_PLURAL
-			 && logical_form.index != NUMBER_ALL && logical_form.index != NUMBER_ANY)
-				return true;
-			intersection = NUMBER_UNCOUNTABLE;
-		} else if (logical_form.concord == NUMBER_NON_SINGULAR) {
-			if (logical_form.index == NUMBER_PLURAL) {
-				intersection = NUMBER_PLURAL;
-			} else if (logical_form.index == NUMBER_UNCOUNTABLE || logical_form.index == NUMBER_NON_PLURAL || logical_form.index == NUMBER_SINGULAR) {
-				intersection = NUMBER_UNCOUNTABLE;
-			} else if (logical_form.index == NUMBER_NON_SINGULAR || logical_form.index == NUMBER_ALL || logical_form.index == NUMBER_ANY) {
-				intersection = NUMBER_NON_SINGULAR;
-			} else {
-				return true;
-			}
-		} else if (logical_form.concord == NUMBER_NON_PLURAL) {
-			if (logical_form.index == NUMBER_SINGULAR) {
-				intersection = NUMBER_SINGULAR;
-			} else if (logical_form.index == NUMBER_UNCOUNTABLE || logical_form.index == NUMBER_NON_SINGULAR) {
-				intersection = NUMBER_UNCOUNTABLE;
-			} else if (logical_form.index == NUMBER_NON_PLURAL || logical_form.index == NUMBER_ALL || logical_form.index == NUMBER_ANY) {
-				intersection = NUMBER_NON_PLURAL;
-			} else {
-				return true;
-			}
-		} else if (logical_form.concord == NUMBER_ALL || logical_form.concord == NUMBER_ANY) {
-			if (logical_form.index == NUMBER_NONE) return true;
-			intersection = logical_form.index;
-		} else {
-			/* concord is NUMBER_NONE */
+		if (!intersect_concord_index(intersection, logical_form.concord, logical_form.index))
 			return true;
-		}
 	} else if (pos == POS_VERB) {
 		/* if the verb has multiple words, ensure none are auxiliary */
 		if (words.length > 1) {
@@ -11752,6 +11853,124 @@ bool morphology_parse(const sequence& words, part_of_speech pos,
 
 	free(marked_logical_form);
 	free(root); return true;
+}
+
+//inline bool morphology_inflect(sequence& terminal, part_of_speech pos,
+//		const datalog_expression_root& logical_form)
+//{
+//	if (pos == POS_OTHER) {
+//		return true;
+//	} else if (pos == POS_ADJECTIVE) {
+//		/* we don't model adjective morphology, for now */
+//		/* adjective compounds are head-final (TODO: need a database of exceptions) */
+//		unsigned int head_index = terminal.length - 1;
+//		const fixed_array<unsigned int>& result = morphology_inflect(
+//				{terminal[head_index], NUMBER_ANY, INFLECTION_ADJECTIVE});
+//		if (result.length == 0)
+//			return false;
+//		terminal[head_index] = result.elements[0];
+//		return true;
+//	}
+//
+//	unsigned int head_index;
+//	if (pos == POS_NOUN) {
+//		/* noun compounds are head-final (TODO: need a database of exceptions) */
+//		head_index = terminal.length - 1;
+//	} else if (pos == POS_VERB) {
+//		/* verb compounds (phrasal verbs) are head-final (TODO: need a database of exceptions) */
+//		head_index = 0;
+//	} else {
+//		fprintf(stderr, "morphology_inflect ERROR: Unrecognized part of speech.\n");
+//		return false;
+//	}
+//
+//	/* check if concord and index have a non-empty intersection (treating the numbers as set-valued) */
+//	grammatical_number intersection = NUMBER_NONE;
+//	if (pos == POS_NOUN) {
+//		if (!intersect_concord_index(intersection, logical_form.concord, logical_form.index))
+//			return false;
+//	} else if (pos == POS_VERB) {
+//		/* if the verb has multiple words, ensure none are auxiliary */
+//		if (terminal.length > 1) {
+//			for (unsigned int i = 0; i + 1 < terminal.length; i++)
+//				if (morphology_is_auxiliary_root(terminal[i])) return false;
+//		}
+//	}
+//
+//	array<unsigned int> inflected = array<unsigned int>(16);
+//	if (pos == POS_VERB) {
+//		inflection inf = logical_form.inf;
+//		if (inf == INFLECTION_NONE)
+//			inf = INFLECTION_OTHER_VERB;
+//		const fixed_array<unsigned int>& result = morphology_inflect({terminal[head_index], NUMBER_ANY, inf});
+//		if (!inflected.append(result.elements, min(1u, result.length))) return false;
+//		if (has_intersection(logical_form.index, NUMBER_SINGULAR)) {
+//			const fixed_array<unsigned int>& result = morphology_inflect({terminal[head_index], NUMBER_SINGULAR, inf});
+//			if (!inflected.append(result.elements, min(1u, result.length))) return false;
+//		} if (has_intersection(logical_form.index, NUMBER_PLURAL)) {
+//			const fixed_array<unsigned int>& result = morphology_inflect({terminal[head_index], NUMBER_PLURAL, inf});
+//			if (!inflected.append(result.elements, min(1u, result.length))) return false;
+//		}
+//	} else if (pos == POS_NOUN) {
+//		if (has_intersection(intersection, NUMBER_SINGULAR)) {
+//			const fixed_array<unsigned int>& result = morphology_inflect({terminal[head_index], NUMBER_SINGULAR, INFLECTION_NOUN});
+//			if (!inflected.append(result.elements, min(1u, result.length))) return false;
+//		} if (has_intersection(intersection, NUMBER_PLURAL)) {
+//			const fixed_array<unsigned int>& result = morphology_inflect({terminal[head_index], NUMBER_PLURAL, INFLECTION_NOUN});
+//			if (!inflected.append(result.elements, min(1u, result.length))) return false;
+//		} if (has_intersection(intersection, NUMBER_UNCOUNTABLE)) {
+//			const fixed_array<unsigned int>& result = morphology_inflect({terminal[head_index], NUMBER_UNCOUNTABLE, INFLECTION_NOUN});
+//			if (!inflected.append(result.elements, min(1u, result.length))) return false;
+//		}
+//	}
+//
+//	if (inflected.length == 0)
+//		return false;
+//	insertion_sort(inflected);
+//	unique(inflected);
+//	terminal[head_index] = sample_uniform(inflected);
+//	return true;
+//}
+
+template<typename Distribution>
+inline bool yield(const rule<datalog_expression_root>& terminal,
+		const Distribution& rule_distribution, const datalog_expression_root& logical_form,
+		token*& sentence, unsigned int& length, unsigned int& capacity)
+{
+	part_of_speech pos = rule_distribution.get_part_of_speech();
+	if (!ensure_capacity(sentence, capacity, length + terminal.length))
+		return false;
+	for (unsigned int i = 0; i < terminal.length; i++) {
+		sentence[length + i].id = terminal.nonterminals[i];
+		sentence[length + i].number = NUMBER_NONE;
+		sentence[length + i].inf = INFLECTION_NONE;
+	}
+
+	if (pos == POS_NOUN) {
+		unsigned int head_index = terminal.length - 1;
+		if (!intersect_concord_index(
+				sentence[length + head_index].number,
+				logical_form.concord, logical_form.index))
+		{
+			fprintf(stderr, "yield ERROR: Invalid grammatical number for noun.\n");
+			return false;
+		}
+	} else if (pos == POS_VERB) {
+		unsigned int head_index = 0;
+		if (logical_form.inf == INFLECTION_NONE)
+			sentence[length + head_index].inf = INFLECTION_OTHER_VERB;
+		else sentence[length + head_index].inf = logical_form.inf;
+		sentence[length + head_index].number = logical_form.index;
+	} else if (pos == POS_ADJECTIVE) {
+		unsigned int head_index = terminal.length - 1;
+		sentence[length + head_index].inf = INFLECTION_ADJECTIVE;
+	} else if (pos != POS_OTHER) {
+		fprintf(stderr, "yield ERROR: Unrecognized part of speech.\n");
+		return false;
+	}
+
+	length += terminal.length;
+	return true;
 }
 
 
