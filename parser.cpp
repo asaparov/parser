@@ -7,6 +7,7 @@
 
 #include "datalog.h"
 #include "datalog_hdp.h"
+#include "inmind_prior.h"
 #include "parser_data.h"
 
 #include <atomic>
@@ -52,25 +53,64 @@ inline bool print_special_string(unsigned int item, Stream& out) {
 	else return print("<new token>", out);
 }
 
-double edge_hdp_alpha[] = { 1000.0, 1.0, 10.0 };
-double constant_hdp_alpha[] = { 0.01, 0.1 };
-datalog_prior prior(32, 5, 128, edge_hdp_alpha, constant_hdp_alpha);
+enum class format {
+	DATALOG,
+	INMIND
+};
+
+enum class prior_type {
+	NONE,
+	DATALOG,
+	INMIND
+};
+
 datalog_ontology ontology;
 morphology morph;
 bool enable_morphology = true;
 std::mutex console_lock;
+prior_type prior_option;
+unsigned int UNKNOWN_COMMAND;
+
+double edge_hdp_alpha[] = { 1000.0, 1.0, 10.0 };
+double constant_hdp_alpha[] = { 0.01, 0.1 };
+datalog_prior prior(32, 5, 128, edge_hdp_alpha, constant_hdp_alpha);
+
+double arg_hdp_alpha[] = { 1000.0, 0.0001 };
+double string_hdp_alpha[] = { 1000.0, 0.0001 };
+inmind_prior prior_inmind(2048, 2048, arg_hdp_alpha, string_hdp_alpha, 0.000001, 0.01, 1.0, 1.0, 10.0);
 
 thread_local bool debug_type_check = true;
-thread_local bool disable_prior = false;
 
-template<parse_mode Mode, bool Complete = false>
+inline bool read_data(
+		format data_format, array<datalog_expression_root*>& data,
+		hash_map<string, unsigned int>& names, sequence*& sentences,
+		datalog_expression_root**& logical_forms, const char* filepath)
+{
+	switch (data_format) {
+	case format::DATALOG:
+		return read_data(data, names, sentences, logical_forms, filepath);
+	case format::INMIND:
+		return read_inmind_data(data, names, sentences, logical_forms, filepath);
+	}
+	fprintf(stderr, "read_data ERROR: Unrecognized data format.\n");
+	return false;
+}
+
+template<bool Complete>
 inline double log_probability(const datalog_expression_root& exp) {
-	if (Mode == MODE_SAMPLE || disable_prior)
-		return 0.0;
 	if (!valid_variable_scope(exp.root) || (debug_type_check && !type_check<Complete>(ontology, exp)))
 		return -std::numeric_limits<double>::infinity();
-	//if (!Complete) return 0.0;
-	return prior.log_probability<Complete>(exp);
+
+	switch (prior_option) {
+	case prior_type::DATALOG:
+		return prior.log_probability<Complete>(exp);
+	case prior_type::INMIND:
+		return prior_inmind.log_probability<Complete>(exp);
+	case prior_type::NONE:
+		return 0.0;
+	}
+	fprintf(stderr, "log_probability ERROR: Unrecognized prior_type.\n");
+	exit(EXIT_FAILURE);
 }
 
 inline const fixed_array<token>& morphology_parse(unsigned int word) {
@@ -140,8 +180,10 @@ unsigned int read_line(array<char>& line, Stream& input)
 }
 
 template<typename Stream>
-void print_nonterminal_hdps(hdp_grammar_type& G, Stream& out, string_map_scribe& terminal_printer, string_map_scribe& nonterminal_printer) {
-	auto printers = make_pair<string_map_scribe&, string_map_scribe&>(terminal_printer, nonterminal_printer);
+void print_nonterminal_hdps(hdp_grammar_type& G, Stream& out,
+		const string_map_scribe& terminal_printer, const string_map_scribe& nonterminal_printer)
+{
+	auto printers = make_pair<const string_map_scribe&, const string_map_scribe&>(terminal_printer, nonterminal_printer);
 	for (unsigned int i = 0; i < G.nonterminals.length; i++) {
 		if (G.nonterminals[i].rule_distribution.observations.sum == 0) continue;
 		print(G.nonterminals[i].rule_distribution.type, out); print(' ', out);
@@ -237,11 +279,32 @@ double bleu(const sequence& reference, const sequence& hypothesis) {
 	return penalty * exp(score);
 }
 
+inline bool is_unknown(const datalog_expression_root& logical_form) {
+	return (logical_form.root.type == DATALOG_PREDICATE
+		 && logical_form.root.pred.function == UNKNOWN_COMMAND);
+}
+
+void remove_unknown(array<datalog_expression_root*>& data,
+		datalog_expression_root** logical_forms, sequence* sentences)
+{
+	for (unsigned int i = 0; i < data.length; i++) {
+		if (is_unknown(*logical_forms[i])) {
+			free(sentences[i]); free(*logical_forms[i]); free(*data[i]); free(data[i]);
+			if (logical_forms[i]->root.reference_count == 0)
+				free(logical_forms[i]);
+			logical_forms[i] = logical_forms[data.length - 1];
+			data[i] = data[data.length - 1];
+			move(sentences[data.length - 1], sentences[i]);
+			data.length--; i--;
+		}
+	}
+}
+
 void parse(const hdp_grammar_type& G_src,
 		const sequence* sentences,
 		unsigned int sentence_count,
 		const datalog_expression_root* const* logical_forms,
-		const hash_set<unsigned int>& known_tokens,
+		const hash_set<unsigned int>* known_tokens,
 		const string_map_scribe& terminal_printer,
 		const string_map_scribe& nonterminal_printer, FILE* out,
 		std::atomic_uint& unanswered,
@@ -257,17 +320,15 @@ void parse(const hdp_grammar_type& G_src,
 		unsigned int id = counter++;
 		if (id >= sentence_count)
 			break;
-//id = 83;
-//if (counter > 1) break;
 
 		bool skip = false;
 		console_lock.lock();
 		snprintf(prefix, array_length(prefix), "(%u) ", id);
 		fprintf(out, "%sParsing sentence %u...\n", prefix, id); fflush(out);
-		for (unsigned int j = 0; j < sentences[id].length; j++) {
+		for (unsigned int j = 0; known_tokens != NULL && j < sentences[id].length; j++) {
 			int value;
 			unsigned int token = sentences[id].tokens[j];
-			if (!known_tokens.contains(token) && !parse_int(*terminal_printer.map[token], value)) {
+			if (!known_tokens->contains(token) && !parse_int(*terminal_printer.map[token], value)) {
 				fprintf(out, "%sThe token '", prefix); print(*terminal_printer.map[token], out); print("' is unrecognized.\n", out);
 				skip = true;
 			}
@@ -291,11 +352,15 @@ void parse(const hdp_grammar_type& G_src,
 		double true_log_likelihood = 1.0, true_log_prior = 1.0;
 		datalog_expression_root true_logical_form = *logical_forms[id];
 minimum_priority = 0.0;
-		if (parse<false>(parsed_syntax, true_logical_form, G, sentence, terminal_printer.map, time_limit)) {
+if (is_unknown(true_logical_form)) continue;
+//debug_flag = true;
+		if (!is_unknown(true_logical_form)
+		 && parse<false>(parsed_syntax, true_logical_form, G, sentence, terminal_printer.map, time_limit)) {
 //debug2 = true;
+//			print(true_logical_form, out, terminal_printer); print("\n", out);
 //			print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
-			true_log_likelihood = log_probability(G, parsed_syntax, true_logical_form);
-			true_log_prior = log_probability<MODE_PARSE, true>(true_logical_form);
+			true_log_likelihood = log_probability(G, parsed_syntax, true_logical_form, terminal_printer.map);
+			true_log_prior = log_probability<true>(true_logical_form);
 //debug2 = false;
 			datalog_expression_root logical_form_set;
 			logical_form_set.index = NUMBER_ALL;
@@ -317,9 +382,9 @@ minimum_priority = 0.0;
 				fprintf(out, "%sTrue logical form:      ", prefix); print(*logical_forms[id], out, terminal_printer); print('\n', out);
 				fprintf(out, "%sPredicted logical form: ", prefix); print(logical_form, out, terminal_printer); print('\n', out);
 //debug2 = true;
-				print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
-				double predicted_log_likelihood = log_probability(G, parsed_syntax, logical_form);
-				double predicted_log_prior = log_probability<MODE_PARSE, true>(logical_form);
+//				print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
+				double predicted_log_likelihood = log_probability(G, parsed_syntax, logical_form, terminal_printer.map);
+				double predicted_log_prior = log_probability<true>(logical_form);
 //debug2 = false;
 				fprintf(out, "%sParse log probability: %lf (prior: %lf)\n",
 						prefix, predicted_log_likelihood, predicted_log_prior);
@@ -341,14 +406,14 @@ minimum_priority = 0.0;
 	return;
 }
 
-bool parse(hash_map<string, unsigned int>& names,
+bool parse(
+		hash_map<string, unsigned int>& names, format data_format,
 		const char* train_filepath, const char* extra_filepath,
 		const char* kb_filepath, const char* test_filepath,
 		const char* input_filepath, const char* ontology_filepath,
 		unsigned int time_limit, unsigned int thread_count,
 		bool test_parseability)
 {
-	disable_prior = false;
 	array<datalog_expression_root*> train_data(1024), extra_data(128), kb_data(128), test_data(512);
 	sequence* train_sentences;
 	sequence* extra_sentences;
@@ -357,20 +422,22 @@ bool parse(hash_map<string, unsigned int>& names,
 	datalog_expression_root** extra_logical_forms;
 	datalog_expression_root** kb_logical_forms;
 	datalog_expression_root** test_logical_forms;
-	if (!read_data(train_data, names, train_sentences, train_logical_forms, train_filepath)) {
+	if (!read_data(data_format, train_data, names, train_sentences, train_logical_forms, train_filepath)) {
 		return false;
 	} else if (extra_filepath != NULL
-			&& !read_data(extra_data, names, extra_sentences, extra_logical_forms, extra_filepath)) {
+			&& !read_data(data_format, extra_data, names, extra_sentences, extra_logical_forms, extra_filepath)) {
 		cleanup(train_data, train_sentences, train_logical_forms, train_data.length); return false;
 	} else if (kb_filepath != NULL
 			&& !read_beliefs(kb_data, names, kb_logical_forms, kb_filepath)) {
 		if (extra_filepath != NULL) cleanup(extra_data, extra_sentences, extra_logical_forms, extra_data.length);
 		cleanup(train_data, train_sentences, train_logical_forms, train_data.length); return false;
-	} else if (!read_data(test_data, names, test_sentences, test_logical_forms, test_filepath)) {
+	} else if (!read_data(data_format, test_data, names, test_sentences, test_logical_forms, test_filepath)) {
 		if (extra_filepath != NULL) cleanup(extra_data, extra_sentences, extra_logical_forms, extra_data.length);
 		if (kb_filepath != NULL) cleanup(kb_data, NULL, kb_logical_forms, kb_data.length);
 		cleanup(train_data, train_sentences, train_logical_forms, train_data.length); return false;
 	}
+
+	remove_unknown(train_data, train_logical_forms, train_sentences);
 
 	syntax_node<datalog_expression_root>** syntax = (syntax_node<datalog_expression_root>**)
 		calloc(train_data.length, sizeof(syntax_node<datalog_expression_root>*));
@@ -419,13 +486,56 @@ bool parse(hash_map<string, unsigned int>& names,
 debug_terminal_printer = &terminal_printer;
 debug_nonterminal_printer = &nonterminal_printer;
 
+	/* train the semantic prior */
+	if (prior_option != prior_type::NONE) {
+		unsigned int old_train_count = train_data.length;
+		train_logical_forms = (datalog_expression_root**) realloc(train_logical_forms,
+				sizeof(datalog_expression_root*) * (train_data.length + extra_data.length));
+		for (unsigned int i = 0; i < extra_data.length; i++) {
+			train_logical_forms[train_data.length] = extra_logical_forms[i];
+			train_data.add(extra_data[i]);
+		}
+		datalog_term_printer<string_map_scribe> prior_printer(terminal_printer);
+		switch (prior_option) {
+		case prior_type::DATALOG:
+			prior.train(train_logical_forms, train_data.length, kb_logical_forms, kb_data.length, 4, 10, 2);
+			print(prior.edge_sampler, out, prior_printer, terminal_printer); print('\n', out);
+			print(prior.edge_hdp.alpha, datalog_prior::EDGE_HDP_DEPTH + 1, out); print('\n', out);
+			print(prior.constant_sampler, out, prior_printer, terminal_printer); print('\n', out);
+			print(prior.constant_hdp.alpha, datalog_prior::CONSTANT_HDP_DEPTH + 1, out); print('\n', out);
+			break;
+		case prior_type::INMIND:
+			prior_inmind.add_field_source(names.get("setFieldFromFieldVal"), 0);
+			prior_inmind.add_field_source(names.get("setFieldFromString"), 0);
+			prior_inmind.add_field_source(names.get("addFieldFromString"), 0);
+			prior_inmind.add_field_source(names.get("evalField"), 0);
+			prior_inmind.add_field_source(names.get("addFieldToConcept"), 1);
+			prior_inmind.add_instance_source(names.get("getFieldByInstanceNameAndFieldName"), 1);
+			prior_inmind.add_instance_source(names.get("getInstanceByName"), 0);
+			prior_inmind.add_concept_source(names.get("createInstanceByConceptName"), 0);
+			prior_inmind.add_concept_source(names.get("addFieldToConcept"), 0);
+			prior_inmind.add_concept_source(names.get("defineConcept"), 0);
+			prior_inmind.train(train_logical_forms, train_data.length, kb_logical_forms, kb_data.length, 4, 10, 2);
+			for (unsigned int i = 0; i < inmind_prior::ARG_COUNT; i++) {
+				print(prior_inmind.arg_sampler[i], out, terminal_printer, terminal_printer); print('\n', out);
+				print(prior_inmind.arg_hdp[i].alpha, 2, out); print('\n', out);
+			}
+			break;
+		case prior_type::NONE:
+			break; /* unreachable */
+		}
+		train_data.length = old_train_count;
+	}
+	print_nonterminal_hdps(G, out, terminal_printer, nonterminal_printer);
+	if (kb_filepath != NULL)
+		cleanup(kb_data, NULL, kb_logical_forms, kb_data.length);
+
 	/* iterate over the train sentences and check that the logical forms can be parsed */
 	for (unsigned int i = 0; test_parseability && i < train_data.length; i++) {
 		datalog_expression_root logical_form_set;
 		logical_form_set.index = NUMBER_ALL;
 		logical_form_set.concord = NUMBER_NONE;
 		logical_form_set.inf = INFLECTION_NONE;
-debug_flag = (i == 467);
 		if (!is_parseable(*syntax[i], *train_logical_forms[i], G,
 				logical_form_set, nonterminal_printer, terminal_printer, name_ids))
 		{
@@ -434,25 +544,6 @@ debug_flag = (i == 467);
 			print(*syntax[i], out, nonterminal_printer, terminal_printer); print("\n\n", out);
 		}
 	}
-
-	/* train the semantic prior */
-	unsigned int old_train_count = train_data.length;
-	train_logical_forms = (datalog_expression_root**) realloc(train_logical_forms,
-			sizeof(datalog_expression_root*) * (train_data.length + extra_data.length));
-	for (unsigned int i = 0; i < extra_data.length; i++) {
-		train_logical_forms[train_data.length] = extra_logical_forms[i];
-		train_data.add(extra_data[i]);
-	}
-	prior.train(train_logical_forms, train_data.length, kb_logical_forms, kb_data.length, 4, 10, 2);
-	datalog_term_printer<string_map_scribe> prior_printer(terminal_printer);
-	print_nonterminal_hdps(G, out, terminal_printer, nonterminal_printer);
-	print(prior.edge_sampler, out, prior_printer, terminal_printer); print('\n', out);
-	print(prior.edge_hdp.alpha, datalog_prior::EDGE_HDP_DEPTH + 1, out); print('\n', out);
-	print(prior.constant_sampler, out, prior_printer, terminal_printer); print('\n', out);
-	print(prior.constant_hdp.alpha, datalog_prior::CONSTANT_HDP_DEPTH + 1, out); print('\n', out);
-	train_data.length = old_train_count;
-	if (kb_filepath != NULL)
-		cleanup(kb_data, NULL, kb_logical_forms, kb_data.length);
 
 	/* type-check the logical forms */
 	for (unsigned int i = 0; i < train_data.length; i++) {
@@ -468,9 +559,14 @@ debug_flag = (i == 467);
 	}
 
 	/* build a set of recognized tokens */
+	bool has_string_nonterminal = false;
 	hash_set<unsigned int> known_tokens = hash_set<unsigned int>(1024);
 	for (const auto& N : G.nonterminals) {
-		if (N.rule_distribution.type != PRETERMINAL) continue;
+		if (N.rule_distribution.type == PRETERMINAL_STRING) {
+			has_string_nonterminal = true;
+			continue;
+		} else if (N.rule_distribution.type != PRETERMINAL) continue;
+
 		for (const auto& entry : N.rule_distribution.h.pi.rules) {
 			const rule<datalog_expression_root>& r = entry.key;
 			for (unsigned int i = 0; i < r.length; i++) {
@@ -501,7 +597,7 @@ debug_flag = (i == 467);
 	std::atomic_uint unanswered(0);
 	std::thread* threads = new std::thread[thread_count];
 	auto dispatch = [&]() {
-		parse(G, test_sentences, test_data.length, test_logical_forms, known_tokens,
+		parse(G, test_sentences, test_data.length, test_logical_forms, has_string_nonterminal ? NULL : &known_tokens,
 				terminal_printer, nonterminal_printer, out, unanswered, incorrect, counter, time_limit);
 	};
 	timer stopwatch;
@@ -547,8 +643,8 @@ while (false) {
 				print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
 
 				printf("Parse log probability: %lf (prior: %lf)\n",
-						log_probability(G, parsed_syntax, logical_form),
-						log_probability<MODE_PARSE, true>(logical_form));
+						log_probability(G, parsed_syntax, logical_form, name_ids),
+						log_probability<true>(logical_form));
 				print('\n', out);
 				free(logical_form); free(parsed_syntax);
 			}
@@ -588,30 +684,34 @@ bool get_predicates(const datalog_expression& exp, hash_set<unsigned int>& predi
 	case DATALOG_VARIABLE:
 	case DATALOG_CONSTANT:
 	case DATALOG_INTEGER:
+	case DATALOG_STRING:
 	case DATALOG_EMPTY:
 	case DATALOG_ANY:
+	case DATALOG_NON_EMPTY:
 		return true;
 	}
 	fprintf(stderr, "get_predicates ERROR: Unrecognized datalog_expression type.\n");
 	return false;
 }
 
-bool sample(hash_map<string, unsigned int>& names, const char* data_filepath,
+bool sample(hash_map<string, unsigned int>& names,
+		format data_format, const char* data_filepath,
 		const char* lexicon_filepath, unsigned int iteration_count = 10,
 		const char* output_filepath = NULL, const char* ontology_filepath = NULL,
 		const char* grammar_filepath = "english.gram")
 {
-	disable_prior = true;
 	array<datalog_expression_root*> data(1024), lexicon_data(1024);
 	sequence* sentences; datalog_expression_root** logical_forms;
 	sequence* lexicon_phrases; datalog_expression_root** lexicon_logical_forms = NULL;
 	unsigned int* lexicon_nonterminals = NULL;
-	if (!read_data(data, names, sentences, logical_forms, data_filepath)) {
+	if (!read_data(data_format, data, names, sentences, logical_forms, data_filepath)) {
 		return false;
 	} else if (lexicon_filepath != NULL
 			&& !read_lexicon(lexicon_data, names, lexicon_phrases, lexicon_logical_forms, lexicon_filepath, lexicon_nonterminals)) {
 		cleanup(data, sentences, logical_forms, data.length); return false;
 	}
+
+	remove_unknown(data, logical_forms, sentences);
 
 	hdp_grammar_type G;
 	if (!read_grammar(G, names, grammar_filepath)) {
@@ -683,7 +783,9 @@ debug_nonterminal_printer = &nonterminal_printer;
 		 || !sample(syntax[id], G, *logical_forms[id], sentence, name_ids) || syntax[id] == NULL) /* sample can set syntax[id] to null */
 		// || !parse<false>(*syntax[id], *logical_forms[id], G, sentence, name_ids) || syntax[id] == NULL) /* sample can set syntax[id] to null */
 		{
-			fprintf(stderr, "sample ERROR: Unable to sample derivation for sentence %u.\n", id);
+			fprintf(stderr, "sample ERROR: Unable to sample derivation for sentence %u: '", id);
+			print(sentences[id], stderr, terminal_printer); print("'\n", stderr);
+			print(*logical_forms[id], stderr, terminal_printer); print("\n", stderr);
 			if (syntax[id] != NULL) { free(syntax[id]); syntax[id] = NULL; }
 			cleanup(data, sentences, logical_forms, NULL, data.length, syntax);
 			free(name_ids); free(nonterminal_name_ids); free(order); return false;
@@ -718,7 +820,7 @@ debug_nonterminal_printer = &nonterminal_printer;
 		}
 		sample_grammar(G);
 		fprintf(out, "Unnormalized log posterior probability: %lf\n",
-				log_probability(G, syntax, logical_forms, data.length));
+				log_probability(G, syntax, logical_forms, data.length, name_ids));
 
 		if (t % 1 == 0) {
 			fprintf(out, "[iteration %u]\n", t);
@@ -752,8 +854,8 @@ print(*syntax[i], out, nonterminal_printer, terminal_printer); print("\n\n", out
 	return true;
 }
 
-bool generate(
-		hash_map<string, unsigned int>& names, const char* train_filepath,
+bool generate(hash_map<string, unsigned int>& names,
+		format data_format, const char* train_filepath,
 		const char* test_filepath, const char* input_filepath,
 		const char* ontology_filepath, unsigned int sentence_count = 20)
 {
@@ -762,11 +864,13 @@ bool generate(
 	sequence* test_sentences;
 	datalog_expression_root** train_logical_forms;
 	datalog_expression_root** test_logical_forms;
-	if (!read_data(train_data, names, train_sentences, train_logical_forms, train_filepath)) {
+	if (!read_data(data_format, train_data, names, train_sentences, train_logical_forms, train_filepath)) {
 		return false;
-	} else if (!read_data(test_data, names, test_sentences, test_logical_forms, test_filepath)) {
+	} else if (!read_data(data_format, test_data, names, test_sentences, test_logical_forms, test_filepath)) {
 		cleanup(train_data, train_sentences, train_logical_forms, train_data.length); return false;
 	}
+
+	remove_unknown(train_data, train_logical_forms, train_sentences);
 
 	syntax_node<datalog_expression_root>** syntax = (syntax_node<datalog_expression_root>**)
 		calloc(train_data.length, sizeof(syntax_node<datalog_expression_root>*));
@@ -804,7 +908,7 @@ bool generate(
 	const string** name_ids = invert(names);
 	const string** nonterminal_name_ids = invert(G.nonterminal_names);
 	string_map_scribe terminal_printer = { name_ids, names.table.size + 1 };
-	string_map_scribe nonterminal_printer = { nonterminal_name_ids, names.table.size + 1 };
+	//string_map_scribe nonterminal_printer = { nonterminal_name_ids, names.table.size + 1 };
 
 	/* type-check the logical forms */
 	for (unsigned int i = 0; i < train_data.length; i++) {
@@ -883,10 +987,10 @@ bool generate(
 	return true;
 }
 
-enum command {
-	COMMAND_SAMPLE,
-	COMMAND_PARSE,
-	COMMAND_GENERATE
+enum class command {
+	SAMPLE,
+	PARSE,
+	GENERATE
 };
 
 inline bool parse_option(const char* arg, const char* to_match) {
@@ -906,17 +1010,16 @@ inline bool parse_option(const char* arg,
 
 int main(int argc, const char** argv)
 {
-set_seed(81793920);
 	command cmd;
 	if (argc < 2) {
 		fprintf(stderr, "Not enough arguments.\n");
 		return EXIT_FAILURE;
 	} else if (strcmp(argv[1], "sample") == 0) {
-		cmd = COMMAND_SAMPLE;
+		cmd = command::SAMPLE;
 	} else if (strcmp(argv[1], "parse") == 0) {
-		cmd = COMMAND_PARSE;
+		cmd = command::PARSE;
 	} else if (strcmp(argv[1], "generate") == 0) {
-		cmd = COMMAND_GENERATE;
+		cmd = command::GENERATE;
 	} else {
 		fprintf(stderr, "Unrecognized command '%s'.\n", argv[1]);
 		return EXIT_FAILURE;
@@ -935,6 +1038,9 @@ set_seed(81793920);
 	const char* time_limit_arg = "-1";
 	const char* agid_filepath = "infl.txt";
 	const char* uncountable_filepath = "uncountable.txt";
+	const char* format_arg = "datalog";
+	const char* prior_arg = "datalog";
+	const char* seed_arg = NULL;
 	bool test_parseability = false;
 	for (int i = 2; i < argc; i++) {
 		if (argv[i][0] != '-' || argv[i][1] != '-') {
@@ -942,20 +1048,24 @@ set_seed(81793920);
 			return EXIT_FAILURE;
 		}
 
-		if (parse_option(argv[i] + 2, "train", train_filepath)) continue;
-		if (parse_option(argv[i] + 2, "extra", extra_filepath)) continue;
-		if (parse_option(argv[i] + 2, "kb", kb_filepath)) continue;
-		if (parse_option(argv[i] + 2, "test", test_filepath)) continue;
-		if (parse_option(argv[i] + 2, "model", model_filepath)) continue;
-		if (parse_option(argv[i] + 2, "ontology", ontology_filepath)) continue;
-		if (parse_option(argv[i] + 2, "grammar", grammar_filepath)) continue;
-		if (parse_option(argv[i] + 2, "iterations", iterations_arg)) continue;
-		if (parse_option(argv[i] + 2, "time-limit", time_limit_arg)) continue;
-		if (parse_option(argv[i] + 2, "threads", thread_count_arg)) continue;
-		if (parse_option(argv[i] + 2, "no-morphology")) { enable_morphology = false; continue; }
-		if (parse_option(argv[i] + 2, "test-parseable")) { test_parseability = true; continue; }
-		if (parse_option(argv[i] + 2, "agid", agid_filepath)) continue;
-		if (parse_option(argv[i] + 2, "uncountable", uncountable_filepath)) continue;
+		const char* arg = argv[i] + 2;
+		if (parse_option(arg, "train", train_filepath)) continue;
+		if (parse_option(arg, "extra", extra_filepath)) continue;
+		if (parse_option(arg, "kb", kb_filepath)) continue;
+		if (parse_option(arg, "test", test_filepath)) continue;
+		if (parse_option(arg, "model", model_filepath)) continue;
+		if (parse_option(arg, "ontology", ontology_filepath)) continue;
+		if (parse_option(arg, "grammar", grammar_filepath)) continue;
+		if (parse_option(arg, "iterations", iterations_arg)) continue;
+		if (parse_option(arg, "time-limit", time_limit_arg)) continue;
+		if (parse_option(arg, "threads", thread_count_arg)) continue;
+		if (parse_option(arg, "no-morphology")) { enable_morphology = false; continue; }
+		if (parse_option(arg, "test-parseable")) { test_parseability = true; continue; }
+		if (parse_option(arg, "agid", agid_filepath)) continue;
+		if (parse_option(arg, "uncountable", uncountable_filepath)) continue;
+		if (parse_option(arg, "seed", seed_arg)) continue;
+		if (parse_option(arg, "format", format_arg)) continue;
+		if (parse_option(arg, "prior", prior_arg)) continue;
 		else {
 			fprintf(stderr, "Unrecognized command-line option: '%s'.\n", argv[i]);
 			return EXIT_FAILURE;
@@ -984,15 +1094,45 @@ set_seed(81793920);
 	}
 	if (train_filepath == NULL) {
 		fprintf(stderr, "Train filepath unspecified.\n"); return EXIT_FAILURE;
-	} if (test_filepath == NULL && cmd == COMMAND_PARSE) {
+	} if (test_filepath == NULL && cmd == command::PARSE) {
 		fprintf(stderr, "Test filepath unspecified.\n"); return EXIT_FAILURE;
 	} if (model_filepath == NULL) {
 		fprintf(stderr, "Trained model filepath unspecified.\n"); return EXIT_FAILURE;
 	}
 
+	if (seed_arg != NULL) {
+		unsigned int seed = strtol(seed_arg, &endptr, 0);
+		if (*endptr != '\0') {
+			fprintf(stderr, "Unable to interpret pseudorandom seed argument.\n"); return EXIT_FAILURE;
+		}
+		set_seed(seed);
+	}
+
+	format data_format;
+	if (strcmp(format_arg, "datalog") == 0) {
+		data_format = format::DATALOG;
+	} else if (strcmp(format_arg, "inmind") == 0) {
+		data_format = format::INMIND;
+	} else {
+		fprintf(stderr, "ERROR: Unrecognized format option.\n");
+		return EXIT_FAILURE;
+	}
+
+	if (strcmp(prior_arg, "datalog") == 0) {
+		prior_option = prior_type::DATALOG;
+	} else if (strcmp(prior_arg, "inmind") == 0) {
+		prior_option = prior_type::INMIND;
+	} else if (strcmp(prior_arg, "none") == 0) {
+		prior_option = prior_type::NONE;
+	} else {
+		fprintf(stderr, "ERROR: Unrecognized prior option.\n");
+		return EXIT_FAILURE;
+	}
+
 	/* initialize the token map and morphology model */
 	hash_map<string, unsigned int> names(1024);
-	if (!populate_name_map(names) || !morph.initialize(names)) {
+	if (!populate_name_map(names) || !morph.initialize(names)
+	 || !get_token("unknownCommand", UNKNOWN_COMMAND, names)) {
 		for (auto entry : names) { free(entry.key); }
 		return EXIT_FAILURE;
 	}
@@ -1005,12 +1145,12 @@ set_seed(81793920);
 
 	/* run the commands */
 	switch (cmd) {
-	case COMMAND_PARSE:
-		parse(names, train_filepath, extra_filepath, kb_filepath, test_filepath, model_filepath, ontology_filepath, time_limit, thread_count, test_parseability); break;
-	case COMMAND_SAMPLE:
-		sample(names, train_filepath, extra_filepath, iteration_count, model_filepath, ontology_filepath, grammar_filepath); break;
-	case COMMAND_GENERATE:
-		generate(names, train_filepath, test_filepath, model_filepath, ontology_filepath); break;
+	case command::PARSE:
+		parse(names, data_format, train_filepath, extra_filepath, kb_filepath, test_filepath, model_filepath, ontology_filepath, time_limit, thread_count, test_parseability); break;
+	case command::SAMPLE:
+		sample(names, data_format, train_filepath, extra_filepath, iteration_count, model_filepath, ontology_filepath, grammar_filepath); break;
+	case command::GENERATE:
+		generate(names, data_format, train_filepath, test_filepath, model_filepath, ontology_filepath); break;
 	default:
 		fprintf(stderr, "main ERROR: Unrecognized command.\n"); break;
 	}

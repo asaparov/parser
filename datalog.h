@@ -44,25 +44,40 @@ constexpr unsigned int DIRECTION_BACKWARD = 17;
 constexpr unsigned int DIRECTION_BOTH = 18;
 constexpr unsigned int DIRECTION_SELF = 19;
 constexpr unsigned int DIRECTION_NONE = 20;
-constexpr unsigned int DIRECTION_EDGE = 21;
+constexpr unsigned int DIRECTION_PREDICATE = 21;
+constexpr unsigned int DIRECTION_CONSTANT = 22;
 
-constexpr unsigned int ARITY_ZERO = 22;
-constexpr unsigned int ARITY_ONE = 23;
-constexpr unsigned int ARITY_TWO = 24;
-constexpr unsigned int ARITY_THREE = 25;
-constexpr unsigned int ARITY_NULL = 26;
+constexpr unsigned int ARITY_ZERO = 23;
+constexpr unsigned int ARITY_ONE = 24;
+constexpr unsigned int ARITY_TWO = 25;
+constexpr unsigned int ARITY_THREE = 26;
+constexpr unsigned int ARITY_NULL = 27;
 
-constexpr unsigned int ARG_OTHER = 27;
+constexpr unsigned int ARG_OTHER = 28;
 
-constexpr unsigned int DATALOG_TRUE = 28;
+constexpr unsigned int DATALOG_TRUE = 29;
 
-constexpr unsigned int PREDICATE_LOC = 29;
-constexpr unsigned int PREDICATE_CONST = 30;
-constexpr unsigned int PREDICATE_ATTR = 31;
-constexpr unsigned int PREDICATE_OBJECT = 32;
+constexpr unsigned int PREDICATE_LOC = 30;
+constexpr unsigned int PREDICATE_CONST = 31;
+constexpr unsigned int PREDICATE_ATTR = 32;
+constexpr unsigned int PREDICATE_OBJECT = 33;
 
-constexpr unsigned int NUMBER_OFFSET = 33;
-constexpr unsigned int INFLECTION_OFFSET = 33 + grammatical_number_count - 1;
+constexpr unsigned int NUMBER_OFFSET = 34;
+constexpr unsigned int INFLECTION_OFFSET = 34 + grammatical_number_count - 1;
+
+enum datalog_expression_type {
+	DATALOG_PREDICATE	= INFLECTION_OFFSET + 1,
+	DATALOG_FUNCTION	= INFLECTION_OFFSET + 2,
+	DATALOG_TUPLE		= INFLECTION_OFFSET + 3,
+	DATALOG_LIST		= INFLECTION_OFFSET + 4,
+	DATALOG_VARIABLE	= INFLECTION_OFFSET + 5,
+	DATALOG_CONSTANT	= INFLECTION_OFFSET + 6,
+	DATALOG_INTEGER		= INFLECTION_OFFSET + 7,
+	DATALOG_STRING		= INFLECTION_OFFSET + 8,
+	DATALOG_EMPTY		= INFLECTION_OFFSET + 9,
+	DATALOG_ANY			= INFLECTION_OFFSET + 10,
+	DATALOG_NON_EMPTY	= INFLECTION_OFFSET + 11
+};
 
 struct datalog_token_scribe { };
 
@@ -102,7 +117,8 @@ bool populate_name_map(hash_map<string, unsigned int>& names) {
 	success &= names.put("direction_both", DIRECTION_BOTH);
 	success &= names.put("direction_self", DIRECTION_SELF);
 	success &= names.put("direction_none", DIRECTION_NONE);
-	success &= names.put("direction_edge", DIRECTION_EDGE);
+	success &= names.put("direction_predicate", DIRECTION_PREDICATE);
+	success &= names.put("direction_constant", DIRECTION_CONSTANT);
 	success &= names.put("arity_zero", ARITY_ZERO);
 	success &= names.put("arity_unary", ARITY_ONE);
 	success &= names.put("arity_binary", ARITY_TWO);
@@ -129,7 +145,18 @@ bool populate_name_map(hash_map<string, unsigned int>& names) {
 	success &= names.put("adjective",		INFLECTION_OFFSET + INFLECTION_ADJECTIVE - 1);
 	success &= names.put("comparative",		INFLECTION_OFFSET + INFLECTION_COMPARATIVE - 1);
 	success &= names.put("superlative",		INFLECTION_OFFSET + INFLECTION_SUPERLATIVE - 1);
-	success &= names.put("no_inflection", 	INFLECTION_OFFSET + INFLECTION_NONE - 1);
+	success &= names.put("no_inflection",	INFLECTION_OFFSET + INFLECTION_NONE - 1);
+	success &= names.put("type_predicate",	DATALOG_PREDICATE);
+	success &= names.put("type_function",	DATALOG_FUNCTION);
+	success &= names.put("type_tuple",		DATALOG_TUPLE);
+	success &= names.put("type_list",		DATALOG_LIST);
+	success &= names.put("type_variable",	DATALOG_VARIABLE);
+	success &= names.put("type_constant",	DATALOG_CONSTANT);
+	success &= names.put("type_integer",	DATALOG_INTEGER);
+	success &= names.put("type_string", 	DATALOG_STRING);
+	success &= names.put("type_empty",		DATALOG_EMPTY);
+	success &= names.put("type_any",		DATALOG_ANY);
+	success &= names.put("type_non_empty",	DATALOG_NON_EMPTY);
 	return success;
 }
 
@@ -336,18 +363,6 @@ bool datalog_interpret_expression(
 	hash_map<string, unsigned int>& names,
 	hash_map<string, unsigned int>& variables);
 
-enum datalog_expression_type {
-	DATALOG_PREDICATE,
-	DATALOG_FUNCTION,
-	DATALOG_TUPLE,
-	DATALOG_LIST,
-	DATALOG_VARIABLE,
-	DATALOG_CONSTANT,
-	DATALOG_INTEGER,
-	DATALOG_EMPTY,
-	DATALOG_ANY
-};
-
 inline bool exclude(unsigned int*& excluded, unsigned int& excluded_count,
 		const unsigned int* to_exclude, unsigned int to_exclude_count)
 {
@@ -512,9 +527,12 @@ struct datalog_expression {
 		datalog_literal constant;
 		unsigned int variable;
 		int integer;
+		sequence str;
 	};
 
 	datalog_expression() : type(DATALOG_ANY), reference_count(1) { }
+
+	datalog_expression(datalog_expression_type type) : type(type), reference_count(1) { }
 
 	datalog_expression(const datalog_expression& src) : reference_count(1) {
 		if (!initialize(src))
@@ -566,8 +584,12 @@ struct datalog_expression {
 		case DATALOG_INTEGER:
 			dst.integer = src.integer;
 			return;
+		case DATALOG_STRING:
+			sequence::move(src.str, dst.str);
+			return;
 		case DATALOG_EMPTY:
 		case DATALOG_ANY:
+		case DATALOG_NON_EMPTY:
 			return;
 		}
 		fprintf(stderr, "datalog_expression.move ERROR: Unrecognized expression type.\n");
@@ -624,10 +646,14 @@ struct datalog_expression {
 			return 5 + 11 * datalog_literal::hash(key.constant);
 		case DATALOG_INTEGER:
 			return 6 + 11 * default_hash(key.integer);
+		case DATALOG_STRING:
+			return 7 + 11 * sequence::hash(key.str);
 		case DATALOG_EMPTY:
-			return 7;
-		case DATALOG_ANY:
 			return 8;
+		case DATALOG_ANY:
+			return 9;
+		case DATALOG_NON_EMPTY:
+			return 10;
 		}
 		fprintf(stderr, "datalog_expression.hash ERROR: Unrecognized expression type.\n");
 		exit(EXIT_FAILURE);
@@ -664,8 +690,12 @@ private:
 			case DATALOG_INTEGER:
 				core::free(integer);
 				break;
+			case DATALOG_STRING:
+				core::free(str);
+				break;
 			case DATALOG_EMPTY:
 			case DATALOG_ANY:
+			case DATALOG_NON_EMPTY:
 				break;
 			}
 		}
@@ -750,8 +780,10 @@ struct datalog_expression_root {
 		FEATURE_ARG1_ONLY				= 21,
 		FEATURE_ARG2_ONLY				= 22,
 		FEATURE_ARG3_ONLY				= 23,
-		FEATURE_NUMBER					= 24,
-		FEATURE_INFLECTION				= 25
+		FEATURE_ARG1_STRING				= 24,
+		FEATURE_ARG2_ARITY				= 25,
+		FEATURE_NUMBER					= 26,
+		FEATURE_INFLECTION				= 27
 	};
 
 	enum function_type {
@@ -894,12 +926,25 @@ struct datalog_expression_root {
 		FUNCTION_DELETE_ANSWER_HAS_LOC						= 133,
 
 		FUNCTION_SELECT_ARG1								= 134,
-		FUNCTION_SELECT_ARG1_SINGULAR						= 135,
+		FUNCTION_SELECT_ARG1_SINGULAR							= 235,
+		FUNCTION_SELECT_ARG1_PLURAL								= 236,
+		FUNCTION_SELECT_ARG1_ONLY								= 234,
+		FUNCTION_SELECT_ARG1_DELETE_FEATURES					= 237,
+		FUNCTION_SELECT_ARG1_ONLY_DELETE_FEATURES				= 243,
 		FUNCTION_SELECT_ARG2								= 136,
+		FUNCTION_SELECT_ARG2_ONLY								= 244,
+		FUNCTION_SELECT_ARG2_DELETE_FEATURES					= 238,
+		FUNCTION_SELECT_ARG2_ONLY_DELETE_FEATURES				= 245,
 		FUNCTION_SELECT_ARG3								= 137,
+		FUNCTION_SELECT_ARG3_ONLY								= 246,
 		FUNCTION_SELECT_ARG3_DELETE_FEATURES				= 138,
+		FUNCTION_SELECT_ARG3_ONLY_DELETE_FEATURES				= 247,
 		FUNCTION_DELETE_ARG1								= 139,
+		FUNCTION_DELETE_ARG1_SINGULAR							= 239,
+		FUNCTION_DELETE_ARG1_PLURAL								= 240,
+		FUNCTION_DELETE_ARG1_FEATURES							= 241,
 		FUNCTION_DELETE_ARG2								= 140,
+		FUNCTION_DELETE_ARG2_FEATURES							= 242,
 		FUNCTION_DELETE_ARG3								= 141,
 		FUNCTION_DELETE_ARGS								= 142,
 		FUNCTION_DELETE_ARGS_CONCORD_SINGULAR				= 143,
@@ -909,7 +954,10 @@ struct datalog_expression_root {
 		FUNCTION_EMPTY_TUPLE								= 147,
 		FUNCTION_EMPTY_TUPLE_ONLY							= 148,
 		FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR				= 149,
+		FUNCTION_KEEP_NULL										= 249,
 		FUNCTION_EMPTY_ARG2									= 150,
+		FUNCTION_EMPTY_ARGS										= 248,
+		FUNCTION_ARG2_ZERO_ARITY								= 250,
 		FUNCTION_LOC										= 151,
 		FUNCTION_TWO_PREDICATES								= 152,
 
@@ -996,6 +1044,7 @@ bool operator == (const datalog_expression&, const datalog_expression&);
 bool operator != (const datalog_expression&, const datalog_expression&);
 
 thread_local datalog_expression DATALOG_ANY_TREE;
+thread_local datalog_expression DATALOG_NON_EMPTY_TREE(DATALOG_NON_EMPTY);
 
 inline bool new_expression(datalog_expression*& expression) {
 	expression = (datalog_expression*) malloc(sizeof(datalog_expression));
@@ -1318,8 +1367,12 @@ inline bool datalog_expression::initialize(const datalog_expression& src, Args&&
 	case DATALOG_INTEGER:
 		integer = src.integer;
 		break;
+	case DATALOG_STRING:
+		if (!init(str, src.str)) return false;
+		break;
 	case DATALOG_EMPTY:
 	case DATALOG_ANY:
+	case DATALOG_NON_EMPTY:
 		break;
 	}
 	type = src.type;
@@ -1446,8 +1499,10 @@ bool build_variable_map(const datalog_expression& exp, Args&&... args)
 		return build_variable_map<Offset>(exp.variable, std::forward<Args>(args)...);
 	case DATALOG_CONSTANT:
 	case DATALOG_INTEGER:
+	case DATALOG_STRING:
 	case DATALOG_EMPTY:
 	case DATALOG_ANY:
+	case DATALOG_NON_EMPTY:
 		return true;
 	}
 	fprintf(stderr, "build_variable_map ERROR: Unrecognized expression type.\n");
@@ -1488,8 +1543,10 @@ void apply_variable_map(datalog_expression& exp, const Args&... variable_map)
 		return;
 	case DATALOG_CONSTANT:
 	case DATALOG_INTEGER:
+	case DATALOG_STRING:
 	case DATALOG_EMPTY:
 	case DATALOG_ANY:
+	case DATALOG_NON_EMPTY:
 		return;
 	}
 	fprintf(stderr, "apply_variable_map ERROR: Unrecognized expression type.\n");
@@ -1529,6 +1586,8 @@ unsigned int map_variables(const datalog_expression& exp, Function func)
 		}
 		return func(count, map_variables<EmptyVariable, AnyVariable>(*exp.func.arg, func));
 	case DATALOG_TUPLE:
+		if (exp.tuple.position != POSITION_EXACT)
+			count = func(count, AnyVariable);
 		for (datalog_expression* arg : exp.tuple.elements)
 			count = func(count, map_variables<EmptyVariable, AnyVariable>(*arg, func));
 		return count;
@@ -1540,10 +1599,12 @@ unsigned int map_variables(const datalog_expression& exp, Function func)
 		return func(count, exp.variable);
 	case DATALOG_CONSTANT:
 	case DATALOG_INTEGER:
+	case DATALOG_STRING:
 	case DATALOG_EMPTY:
-		return EmptyVariable;
+		return func(count, EmptyVariable);
 	case DATALOG_ANY:
-		return AnyVariable;
+	case DATALOG_NON_EMPTY:
+		return func(count, AnyVariable);
 	}
 	fprintf(stderr, "map_variables ERROR: Unrecognized expression type.\n");
 	return false;
@@ -1606,9 +1667,11 @@ bool is_ambiguous(const datalog_expression& exp)
 		return (exp.constant.label == DATALOG_LABEL_WILDCARD);
 	case DATALOG_VARIABLE:
 	case DATALOG_INTEGER:
+	case DATALOG_STRING:
 	case DATALOG_EMPTY:
 		return false;
 	case DATALOG_ANY:
+	case DATALOG_NON_EMPTY:
 		return true;
 	}
 	fprintf(stderr, "is_ambiguous ERROR: Unrecognized expression type.\n");
@@ -1669,8 +1732,10 @@ bool valid_variable_scope(const datalog_expression& exp, array<unsigned int>& va
 		return true;
 	case DATALOG_CONSTANT:
 	case DATALOG_INTEGER:
+	case DATALOG_STRING:
 	case DATALOG_EMPTY:
 	case DATALOG_ANY:
+	case DATALOG_NON_EMPTY:
 		return true;
 	}
 	fprintf(stderr, "valid_variable_scope ERROR: Unrecognized expression type.\n");
@@ -1710,9 +1775,11 @@ bool has_predicate(const datalog_expression& exp) {
 	case DATALOG_VARIABLE:
 	case DATALOG_CONSTANT:
 	case DATALOG_INTEGER:
+	case DATALOG_STRING:
 	case DATALOG_EMPTY:
 		return false;
 	case DATALOG_ANY:
+	case DATALOG_NON_EMPTY:
 		return true;
 	}
 	fprintf(stderr, "has_predicate ERROR: Unrecognized expression type.\n");
@@ -1808,8 +1875,11 @@ bool operator == (const datalog_expression& first, const datalog_expression& sec
 		return first.constant == second.constant;
 	case DATALOG_INTEGER:
 		return first.integer == second.integer;
+	case DATALOG_STRING:
+		return first.str == second.str;
 	case DATALOG_EMPTY:
 	case DATALOG_ANY:
+	case DATALOG_NON_EMPTY:
 		return true;
 	}
 	fprintf(stderr, "datalog_expression operator == ERROR: Unrecognized expression type.\n");
@@ -1917,9 +1987,12 @@ inline bool less_than(
 		return first.constant < second.constant;
 	case DATALOG_INTEGER:
 		return first.integer < second.integer;
+	case DATALOG_STRING:
+		return first.str < second.str;
 	case DATALOG_VARIABLE:
 	case DATALOG_EMPTY:
 	case DATALOG_ANY:
+	case DATALOG_NON_EMPTY:
 		return true;
 	}
 	fprintf(stderr, "less_than ERROR: Unrecognized expression type during canonicalization.\n");
@@ -1980,12 +2053,12 @@ bool compute_maximal_scope(const datalog_expression& src,
 
 	switch (src.type) {
 	case DATALOG_PREDICATE:
-		if (!maximal_scope.ensure_capacity(maximal_scope.size + array_length(src.pred.args)))
-			return false;
 		for (unsigned int i = 0; i < array_length(src.pred.args); i++) {
 			if (src.pred.args[i] == NULL) continue;
 
 			/* arguments of predicates can't be moved outside */
+			if (!maximal_scope.ensure_capacity(maximal_scope.size + 1))
+				return false;
 			old_maximal_scope_count = maximal_scope.size;
 			maximal_scope.keys[old_maximal_scope_count] = src.pred.args[i];
 			if (!array_init(maximal_scope.values[old_maximal_scope_count], 4))
@@ -2059,11 +2132,10 @@ bool compute_maximal_scope(const datalog_expression& src,
 		return true;
 
 	case DATALOG_LIST:
-		if (maximal_scope.ensure_capacity(maximal_scope.size + src.tuple.elements.length))
-			return false;
-
 		/* lists block all movement */
 		for (unsigned int i = 0; i < src.tuple.elements.length; i++) {
+			if (maximal_scope.ensure_capacity(maximal_scope.size + 1))
+				return false;
 			old_maximal_scope_count = maximal_scope.size;
 			maximal_scope.keys[old_maximal_scope_count] = src.tuple.elements[i];
 			if (!array_init(maximal_scope.values[old_maximal_scope_count], 4))
@@ -2084,8 +2156,10 @@ bool compute_maximal_scope(const datalog_expression& src,
 
 	case DATALOG_CONSTANT:
 	case DATALOG_INTEGER:
+	case DATALOG_STRING:
 	case DATALOG_EMPTY:
 	case DATALOG_ANY:
+	case DATALOG_NON_EMPTY:
 		return true;
 	}
 	fprintf(stderr, "compute_maximal_scope ERROR: Unrecognized expression type.\n");
@@ -2235,6 +2309,11 @@ bool canonicalize(const datalog_expression& src, datalog_expression& dst,
 		dst.type = DATALOG_INTEGER;
 		dst.reference_count = 1;
 		return true;
+	case DATALOG_STRING:
+		dst.str = src.str;
+		dst.type = DATALOG_STRING;
+		dst.reference_count = 1;
+		return true;
 	case DATALOG_VARIABLE:
 		dst.variable = src.variable;
 		dst.type = DATALOG_VARIABLE;
@@ -2242,6 +2321,7 @@ bool canonicalize(const datalog_expression& src, datalog_expression& dst,
 		return true;
 	case DATALOG_EMPTY:
 	case DATALOG_ANY:
+	case DATALOG_NON_EMPTY:
 		dst.type = src.type;
 		dst.reference_count = 1;
 		return true;
@@ -2365,6 +2445,10 @@ bool parse(datalog_expression_root::feature& f, const string& name) {
 		f = datalog_expression_root::FEATURE_ARG2_ONLY;
 	} else if (name == "arg3_only") {
 		f = datalog_expression_root::FEATURE_ARG3_ONLY;
+	} else if (name == "arg1_string") {
+		f = datalog_expression_root::FEATURE_ARG1_STRING;
+	} else if (name == "arg2_arity") {
+		f = datalog_expression_root::FEATURE_ARG2_ARITY;
 	} else if (name == "number") {
 		f = datalog_expression_root::FEATURE_NUMBER;
 	} else if (name == "inflection") {
@@ -2428,6 +2512,10 @@ bool print(const datalog_expression_root::feature& f, Stream& out) {
 		return print("arg2_only", out);
 	case datalog_expression_root::FEATURE_ARG3_ONLY:
 		return print("arg3_only", out);
+	case datalog_expression_root::FEATURE_ARG1_STRING:
+		return print("arg1_string", out);
+	case datalog_expression_root::FEATURE_ARG2_ARITY:
+		return print("arg2_arity", out);
 	case datalog_expression_root::FEATURE_NUMBER:
 		return print("number", out);
 	case datalog_expression_root::FEATURE_INFLECTION:
@@ -2725,16 +2813,42 @@ bool parse(datalog_expression_root::function& f, const string& name) {
 		f.type = datalog_expression_root::FUNCTION_SELECT_ARG1;
 	} else if (name == "select_arg1_singular") {
 		f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR;
+	} else if (name == "select_arg1_plural") {
+		f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_PLURAL;
+	} else if (name == "select_arg1_only") {
+		f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY;
+	} else if (name == "select_arg1_delete_features") {
+		f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_DELETE_FEATURES;
+	} else if (name == "select_arg1_only_delete_features") {
+		f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY_DELETE_FEATURES;
 	} else if (name == "select_arg2") {
 		f.type = datalog_expression_root::FUNCTION_SELECT_ARG2;
+	} else if (name == "select_arg2_only") {
+		f.type = datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY;
+	} else if (name == "select_arg2_delete_features") {
+		f.type = datalog_expression_root::FUNCTION_SELECT_ARG2_DELETE_FEATURES;
+	} else if (name == "select_arg2_only_delete_features") {
+		f.type = datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY_DELETE_FEATURES;
 	} else if (name == "select_arg3") {
 		f.type = datalog_expression_root::FUNCTION_SELECT_ARG3;
+	} else if (name == "select_arg3_only") {
+		f.type = datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY;
 	} else if (name == "select_arg3_delete_features") {
 		f.type = datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES;
+	} else if (name == "select_arg3_only_delete_features") {
+		f.type = datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY_DELETE_FEATURES;
 	} else if (name == "delete_arg1") {
 		f.type = datalog_expression_root::FUNCTION_DELETE_ARG1;
+	} else if (name == "delete_arg1_singular") {
+		f.type = datalog_expression_root::FUNCTION_DELETE_ARG1_SINGULAR;
+	} else if (name == "delete_arg1_plural") {
+		f.type = datalog_expression_root::FUNCTION_DELETE_ARG1_PLURAL;
+	} else if (name == "delete_arg1_features") {
+		f.type = datalog_expression_root::FUNCTION_DELETE_ARG1_FEATURES;
 	} else if (name == "delete_arg2") {
 		f.type = datalog_expression_root::FUNCTION_DELETE_ARG2;
+	} else if (name == "delete_arg2_features") {
+		f.type = datalog_expression_root::FUNCTION_DELETE_ARG2_FEATURES;
 	} else if (name == "delete_arg3") {
 		f.type = datalog_expression_root::FUNCTION_DELETE_ARG3;
 	} else if (name == "delete_args") {
@@ -2753,8 +2867,14 @@ bool parse(datalog_expression_root::function& f, const string& name) {
 		f.type = datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY;
 	} else if (name == "empty_tuple_only_keep_singular") {
 		f.type = datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR;
+	} else if (name == "keep_null") {
+		f.type = datalog_expression_root::FUNCTION_KEEP_NULL;
 	} else if (name == "empty_arg2") {
 		f.type = datalog_expression_root::FUNCTION_EMPTY_ARG2;
+	} else if (name == "empty_args") {
+		f.type = datalog_expression_root::FUNCTION_EMPTY_ARGS;
+	} else if (name == "arg2_zero_arity") {
+		f.type = datalog_expression_root::FUNCTION_ARG2_ZERO_ARITY;
 	} else if (name == "loc") {
 		f.type = datalog_expression_root::FUNCTION_LOC;
 	} else if (name == "two_predicates") {
@@ -3093,16 +3213,42 @@ bool print(const datalog_expression_root::function& f, Stream& out) {
 		return print("select_arg1", out);
 	case datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR:
 		return print("select_arg1_singular", out);
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_PLURAL:
+		return print("select_arg1_plural", out);
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY:
+		return print("select_arg1_only", out);
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_DELETE_FEATURES:
+		return print("select_arg1_delete_features", out);
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY_DELETE_FEATURES:
+		return print("select_arg1_only_delete_features", out);
 	case datalog_expression_root::FUNCTION_SELECT_ARG2:
 		return print("select_arg2", out);
+	case datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY:
+		return print("select_arg2_only", out);
+	case datalog_expression_root::FUNCTION_SELECT_ARG2_DELETE_FEATURES:
+		return print("select_arg2_delete_features", out);
+	case datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY_DELETE_FEATURES:
+		return print("select_arg2_only_delete_features", out);
 	case datalog_expression_root::FUNCTION_SELECT_ARG3:
 		return print("select_arg3", out);
+	case datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY:
+		return print("select_arg3_only", out);
 	case datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES:
 		return print("select_arg3_delete_features", out);
+	case datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY_DELETE_FEATURES:
+		return print("select_arg3_only_delete_features", out);
 	case datalog_expression_root::FUNCTION_DELETE_ARG1:
 		return print("delete_arg1", out);
+	case datalog_expression_root::FUNCTION_DELETE_ARG1_SINGULAR:
+		return print("delete_arg1_singular", out);
+	case datalog_expression_root::FUNCTION_DELETE_ARG1_PLURAL:
+		return print("delete_arg1_plural", out);
+	case datalog_expression_root::FUNCTION_DELETE_ARG1_FEATURES:
+		return print("delete_arg1_features", out);
 	case datalog_expression_root::FUNCTION_DELETE_ARG2:
 		return print("delete_arg2", out);
+	case datalog_expression_root::FUNCTION_DELETE_ARG2_FEATURES:
+		return print("delete_arg2_features", out);
 	case datalog_expression_root::FUNCTION_DELETE_ARG3:
 		return print("delete_arg3", out);
 	case datalog_expression_root::FUNCTION_DELETE_ARGS:
@@ -3121,8 +3267,14 @@ bool print(const datalog_expression_root::function& f, Stream& out) {
 		return print("empty_tuple_only", out);
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR:
 		return print("empty_tuple_only_keep_singular", out);
+	case datalog_expression_root::FUNCTION_KEEP_NULL:
+		return print("keep_null", out);
 	case datalog_expression_root::FUNCTION_EMPTY_ARG2:
 		return print("empty_arg2", out);
+	case datalog_expression_root::FUNCTION_EMPTY_ARGS:
+		return print("empty_args", out);
+	case datalog_expression_root::FUNCTION_ARG2_ZERO_ARITY:
+		return print("arg2_zero_arity", out);
 	case datalog_expression_root::FUNCTION_LOC:
 		return print("loc", out);
 	case datalog_expression_root::FUNCTION_TWO_PREDICATES:
@@ -3275,9 +3427,12 @@ bool print(const datalog_expression& exp, Stream& out, Printer&&... printer) {
 		return print(exp.constant.label, out, std::forward<Printer>(printer)...);
 	case DATALOG_INTEGER:
 		return print(exp.integer, out);
+	case DATALOG_STRING:
+		return print('"', out) && print(exp.str, out, std::forward<Printer>(printer)...) && print('"', out);
 	case DATALOG_EMPTY:
 		return print("<empty>", out);
 	case DATALOG_ANY:
+	case DATALOG_NON_EMPTY:
 		return print('*', out);
 	}
 	fprintf(stderr, "print ERROR: Unrecognized datalog_expression type.\n");
@@ -3944,12 +4099,18 @@ bool initialize_tree(
 }
 
 inline bool can_be_empty(const datalog_expression& exp) {
-	if (exp.type == DATALOG_ANY || exp.type == DATALOG_EMPTY) {
+	if (exp.type == DATALOG_NON_EMPTY) {
+		return false;
+	} if (exp.type == DATALOG_ANY || exp.type == DATALOG_EMPTY) {
 		return true;
 	} else if (exp.type == DATALOG_CONSTANT) {
 		if (exp.constant.label == DATALOG_LABEL_EMPTY) return true;
 		else if (exp.constant.label != DATALOG_LABEL_WILDCARD) return false;
 		return !exp.constant.is_excluded(DATALOG_LABEL_EMPTY);
+	} else if (exp.type == DATALOG_PREDICATE) {
+		if (exp.pred.function == DATALOG_LABEL_EMPTY) return true;
+		else if (exp.pred.function != DATALOG_LABEL_WILDCARD) return false;
+		return !exp.pred.is_excluded(DATALOG_LABEL_EMPTY);
 	}
 	return false;
 }
@@ -3984,7 +4145,8 @@ inline bool delete_any(datalog_expression& dst) {
 template<unsigned int FieldCount, bool KeepHead>
 inline bool select_left(const datalog_expression& src, datalog_expression& dst,
 		array<unsigned int>& src_variable_map, array<unsigned int>& dst_variable_map,
-		unsigned int parent_head = DATALOG_LABEL_EMPTY, unsigned int child_head = DATALOG_LABEL_EMPTY) {
+		unsigned int parent_head = DATALOG_LABEL_EMPTY, unsigned int child_head = DATALOG_LABEL_EMPTY)
+{
 	if (src.type == DATALOG_PREDICATE && FieldCount == 1) {
 		unsigned int head = get_head(src);
 		parent_head = choose_head(parent_head, head);
@@ -3992,7 +4154,7 @@ inline bool select_left(const datalog_expression& src, datalog_expression& dst,
 		if (KeepHead && parent_head != DATALOG_LABEL_WILDCARD && child_head != DATALOG_LABEL_WILDCARD && parent_head != child_head) return false;
 		if (!KeepHead && parent_head != DATALOG_LABEL_WILDCARD && child_head != DATALOG_LABEL_WILDCARD && parent_head == child_head) return false;
 		return init(dst, src, KeepHead ? 0 : -1);
-	} else if (src.type == DATALOG_ANY) {
+	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return select_any<FieldCount>(dst);
 	} else if (src.type != DATALOG_TUPLE || (src.tuple.position != POSITION_LEFT && src.tuple.elements.length < FieldCount)) {
 		return false;
@@ -4071,7 +4233,7 @@ inline bool delete_left(const datalog_expression& src, datalog_expression& dst,
 
 		if (!init(dst.tuple, POSITION_EXACT, 1)) return false;
 		dst.type = DATALOG_TUPLE;
-	} else if (src.type == DATALOG_ANY) {
+	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return delete_any<FieldCount>(dst);
 	} else if (src.type != DATALOG_TUPLE || (src.tuple.position != POSITION_LEFT && src.tuple.elements.length < FieldCount)) {
 		return false;
@@ -4143,7 +4305,7 @@ inline bool select_right(const datalog_expression& src, datalog_expression& dst,
 		unsigned int parent_head = DATALOG_LABEL_EMPTY, unsigned int child_head = DATALOG_LABEL_EMPTY) {
 	if (src.type == DATALOG_PREDICATE && FieldCount == 1) {
 		return init(dst, src);
-	} else if (src.type == DATALOG_ANY) {
+	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return select_any<FieldCount>(dst);
 	} else if (src.type != DATALOG_TUPLE || (src.tuple.position != POSITION_RIGHT && src.tuple.elements.length < FieldCount)) {
 		return false;
@@ -4227,7 +4389,7 @@ inline bool delete_right(const datalog_expression& src, datalog_expression& dst,
 
 		if (!init(dst.tuple, POSITION_EXACT, 1)) return false;
 		dst.type = DATALOG_TUPLE;
-	} else if (src.type == DATALOG_ANY) {
+	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return delete_any<FieldCount>(dst);
 	} else if (src.type != DATALOG_TUPLE || (src.tuple.position != POSITION_RIGHT && src.tuple.elements.length < FieldCount)) {
 		return false;
@@ -4296,10 +4458,10 @@ inline bool select_left_keep_function(const datalog_expression& src, datalog_exp
 	if (src.type == DATALOG_FUNCTION) {
 		if (Predicate != DATALOG_LABEL_WILDCARD && src.func.function != DATALOG_LABEL_WILDCARD && src.func.function != Predicate)
 			return false;
-	} else if (src.type != DATALOG_ANY) return false;
+	} else if (src.type != DATALOG_ANY && src.type != DATALOG_NON_EMPTY) return false;
 	if (!init(dst.func)) return false;
 	dst.func.arg = (datalog_expression*) malloc(sizeof(datalog_expression));
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		if (dst.func.arg == NULL || !select_any<FieldCount>(*dst.func.arg)) {
 			if (dst.func.arg != NULL)
 				free(dst.func.arg);
@@ -4356,11 +4518,13 @@ inline bool delete_left_keep_function(const datalog_expression& src, datalog_exp
 	if (src.type == DATALOG_FUNCTION) {
 		if (Predicate != DATALOG_LABEL_WILDCARD && src.func.function != DATALOG_LABEL_WILDCARD && src.func.function != Predicate)
 			return false;
-	} else if (src.type != DATALOG_ANY && !(src.type == DATALOG_TUPLE && src.tuple.elements.length == 0 && src.tuple.position != POSITION_EXACT))
+	} else if (src.type != DATALOG_ANY && src.type != DATALOG_NON_EMPTY
+			&& !(src.type == DATALOG_TUPLE && src.tuple.elements.length == 0 && src.tuple.position != POSITION_EXACT))
 		return false;
 	if (!init(dst.func)) return false;
 	dst.func.arg = (datalog_expression*) malloc(sizeof(datalog_expression));
-	if (src.type == DATALOG_ANY || (src.type == DATALOG_TUPLE && src.tuple.elements.length == 0 && src.tuple.position != POSITION_EXACT)) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY
+	 || (src.type == DATALOG_TUPLE && src.tuple.elements.length == 0 && src.tuple.position != POSITION_EXACT)) {
 		if (dst.func.arg == NULL || !delete_any<FieldCount>(*dst.func.arg)) {
 			if (dst.func.arg != NULL)
 				free(dst.func.arg);
@@ -4416,10 +4580,10 @@ inline bool delete_right_keep_function(const datalog_expression& src, datalog_ex
 	if (src.type == DATALOG_FUNCTION) {
 		if (Predicate != DATALOG_LABEL_WILDCARD && src.func.function != DATALOG_LABEL_WILDCARD && src.func.function != Predicate)
 			return false;
-	} else if (src.type != DATALOG_ANY) return false;
+	} else if (src.type != DATALOG_ANY && src.type != DATALOG_NON_EMPTY) return false;
 	if (!init(dst.func)) return false;
 	dst.func.arg = (datalog_expression*) malloc(sizeof(datalog_expression));
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		if (dst.func.arg == NULL || !delete_any<FieldCount>(*dst.func.arg)) {
 			if (dst.func.arg != NULL)
 				free(dst.func.arg);
@@ -4473,7 +4637,7 @@ inline bool delete_right_keep_function(const datalog_expression& src, datalog_ex
 template<unsigned int FieldCount, unsigned int Predicate, bool KeepHead>
 inline bool delete_left_answer_keep_function(const datalog_expression& src, datalog_expression& dst)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return delete_left_keep_function<FieldCount, Predicate, KeepHead>(DATALOG_ANY_TREE, dst);
 	} else if (src.type != DATALOG_FUNCTION || src.func.function != PREDICATE_ANSWER)
 		return false;
@@ -4483,7 +4647,7 @@ inline bool delete_left_answer_keep_function(const datalog_expression& src, data
 template<unsigned int FieldCount, unsigned int Predicate, bool KeepHead>
 inline bool select_left_delete_function(const datalog_expression& src, datalog_expression& dst)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return select_any<FieldCount>(dst);
 	} else if (src.type == DATALOG_TUPLE && src.tuple.elements.length == 0 && src.tuple.position != POSITION_EXACT) {
 		dst.type = DATALOG_ANY;
@@ -4501,7 +4665,7 @@ inline bool select_left_delete_function(const datalog_expression& src, datalog_e
 template<unsigned int FieldCount, unsigned int Predicate, bool KeepHead>
 inline bool select_right_delete_function(const datalog_expression& src, datalog_expression& dst)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return select_any<FieldCount>(dst);
 	} else if (src.type != DATALOG_FUNCTION
 	 || (Predicate != DATALOG_LABEL_WILDCARD && src.func.function != DATALOG_LABEL_WILDCARD && src.func.function != Predicate))
@@ -4515,7 +4679,7 @@ inline bool select_right_delete_function(const datalog_expression& src, datalog_
 template<unsigned int FieldCount, unsigned int Predicate, bool KeepHead>
 inline bool delete_left_function(const datalog_expression& src, datalog_expression& dst)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return delete_any<FieldCount>(dst);
 	} else if (src.type != DATALOG_FUNCTION
 	 || (Predicate != DATALOG_LABEL_WILDCARD && src.func.function != DATALOG_LABEL_WILDCARD && src.func.function != Predicate))
@@ -4529,7 +4693,7 @@ inline bool delete_left_function(const datalog_expression& src, datalog_expressi
 template<unsigned int FieldCount, unsigned int Predicate, bool KeepHead>
 bool select_left_delete_function_answer(const datalog_expression& src, datalog_expression& dst)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return select_left_delete_function<FieldCount, Predicate, KeepHead>(DATALOG_ANY_TREE, dst);
 	} else if (src.type != DATALOG_FUNCTION || src.func.function != PREDICATE_ANSWER)
 		return false;
@@ -4539,7 +4703,7 @@ bool select_left_delete_function_answer(const datalog_expression& src, datalog_e
 template<unsigned int FieldCount, unsigned int Predicate, bool KeepHead>
 bool delete_left_function_answer(const datalog_expression& src, datalog_expression& dst)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return delete_left_function<FieldCount, Predicate, KeepHead>(DATALOG_ANY_TREE, dst);
 	} else if (src.type != DATALOG_FUNCTION || src.func.function != PREDICATE_ANSWER)
 		return false;
@@ -4549,7 +4713,7 @@ bool delete_left_function_answer(const datalog_expression& src, datalog_expressi
 template<unsigned int FieldCount, bool KeepHead>
 bool select_left_delete_answer(const datalog_expression& src, datalog_expression& dst)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return select_any<FieldCount>(dst);
 	} else if (src.type != DATALOG_FUNCTION || src.func.function != PREDICATE_ANSWER)
 		return false;
@@ -4559,7 +4723,7 @@ bool select_left_delete_answer(const datalog_expression& src, datalog_expression
 template<unsigned int FieldCount, bool KeepHead>
 bool select_right_delete_answer(const datalog_expression& src, datalog_expression& dst)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return select_any<FieldCount>(dst);
 	} else if (src.type != DATALOG_FUNCTION || src.func.function != PREDICATE_ANSWER)
 		return false;
@@ -4569,7 +4733,7 @@ bool select_right_delete_answer(const datalog_expression& src, datalog_expressio
 template<unsigned int FieldCount, bool KeepHead>
 bool delete_left_answer(const datalog_expression& src, datalog_expression& dst)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return delete_any<FieldCount>(dst);
 	} else if (src.type != DATALOG_FUNCTION || src.func.function != PREDICATE_ANSWER)
 		return false;
@@ -4579,7 +4743,7 @@ bool delete_left_answer(const datalog_expression& src, datalog_expression& dst)
 template<unsigned int FieldCount, bool KeepHead>
 bool delete_right_answer(const datalog_expression& src, datalog_expression& dst)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return delete_any<FieldCount>(dst);
 	} else if (src.type != DATALOG_FUNCTION || src.func.function != PREDICATE_ANSWER)
 		return false;
@@ -4587,7 +4751,7 @@ bool delete_right_answer(const datalog_expression& src, datalog_expression& dst)
 }
 
 inline bool delete_answer(const datalog_expression& src, datalog_expression& dst) {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		initialize_any(dst); return true;
 	} else if (src.type != DATALOG_FUNCTION || src.func.function != PREDICATE_ANSWER)
 		return false;
@@ -4600,7 +4764,7 @@ inline bool select_function(const datalog_expression& src, datalog_expression& d
 	if (src.type == DATALOG_FUNCTION) {
 		if (Predicate != DATALOG_LABEL_WILDCARD && src.func.function != DATALOG_LABEL_WILDCARD && src.func.function != Predicate)
 			return false;
-	} else if (src.type != DATALOG_ANY) return false;
+	} else if (src.type != DATALOG_ANY && src.type == DATALOG_NON_EMPTY) return false;
 	if (!init(dst.func)) return false;
 	dst.func.arg = (datalog_expression*) malloc(sizeof(datalog_expression));
 	if (dst.func.arg == NULL || !init(dst.func.arg->tuple, POSITION_EXACT, 1)) {
@@ -4610,7 +4774,7 @@ inline bool select_function(const datalog_expression& src, datalog_expression& d
 	}
 	dst.func.arg->type = DATALOG_TUPLE;
 	dst.func.arg->reference_count = 1;
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		for (unsigned int i = 0; i < array_length(dst.func.vars); i++)
 			dst.func.vars[i] = 0;
 		dst.func.function = DATALOG_LABEL_WILDCARD;
@@ -4647,7 +4811,7 @@ inline bool select_function(const datalog_expression& src, datalog_expression& d
 template<unsigned int Predicate, bool KeepHead>
 inline bool delete_function(const datalog_expression& src, datalog_expression& dst)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		initialize_any(dst);
 		return true;
 	} else if (src.type == DATALOG_TUPLE && src.tuple.elements.length == 0 && src.tuple.position != POSITION_EXACT) {
@@ -4677,21 +4841,28 @@ inline bool delete_function(const datalog_expression& src, datalog_expression& d
 template<unsigned int Predicate, bool KeepHead>
 bool delete_function_answer(const datalog_expression& src, datalog_expression& dst)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return delete_function<Predicate, KeepHead>(DATALOG_ANY_TREE, dst);
 	} else if (src.type != DATALOG_FUNCTION || src.func.function != PREDICATE_ANSWER)
 		return false;
 	return delete_function<Predicate, KeepHead>(*src.func.arg, dst);
 }
 
-template<unsigned int FieldIndex>
+template<unsigned int FieldIndex, bool OtherArgsEmpty>
 inline bool select_arg(const datalog_expression& src, datalog_expression& dst) {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		initialize_any(dst); return true;
 	} else if (src.type == DATALOG_TUPLE && src.tuple.elements.length == 0 && src.tuple.position != POSITION_EXACT) {
 		initialize_any(dst); return true;
 	} else if (src.type != DATALOG_PREDICATE || FieldIndex >= array_length(src.pred.args))
 		return false;
+	if (OtherArgsEmpty) {
+		for (unsigned int i = 0; i < array_length(src.pred.args); i++) {
+			if (i == FieldIndex) continue;
+			if (src.pred.args[i] != NULL && !can_be_empty(*src.pred.args[i]))
+				return false;
+		}
+	}
 	if (src.pred.args[FieldIndex] == NULL) {
 		dst.type = DATALOG_EMPTY;
 		return true;
@@ -4701,7 +4872,8 @@ inline bool select_arg(const datalog_expression& src, datalog_expression& dst) {
 
 template<unsigned int FieldIndex>
 inline bool delete_arg(const datalog_expression& src, datalog_expression& dst) {
-	if (src.type == DATALOG_ANY || (src.type == DATALOG_TUPLE && src.tuple.elements.length == 0 && src.tuple.position != POSITION_EXACT)) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY
+	 || (src.type == DATALOG_TUPLE && src.tuple.elements.length == 0 && src.tuple.position != POSITION_EXACT)) {
 		dst.type = DATALOG_PREDICATE;
 		dst.reference_count = 1;
 		dst.pred.function = DATALOG_LABEL_WILDCARD;
@@ -4713,7 +4885,7 @@ inline bool delete_arg(const datalog_expression& src, datalog_expression& dst) {
 	} else if (src.type != DATALOG_PREDICATE) {
 		return false;
 	} else {
-		if (FieldIndex >= array_length(src.pred.args))
+		if (FieldIndex >= array_length(src.pred.args) || src.pred.args[FieldIndex] == NULL)
 			return false;
 		dst.type = DATALOG_PREDICATE;
 		dst.reference_count = 1;
@@ -4734,7 +4906,7 @@ inline bool delete_arg(const datalog_expression& src, datalog_expression& dst) {
 }
 
 inline bool delete_args(const datalog_expression& src, datalog_expression& dst) {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		dst.type = DATALOG_PREDICATE;
 		dst.reference_count = 1;
 		dst.pred.function = DATALOG_LABEL_WILDCARD;
@@ -4763,7 +4935,7 @@ inline bool delete_args(const datalog_expression& src, datalog_expression& dst) 
 
 template<unsigned int HeadIndex, unsigned int SelectIndex, bool OtherArgsEmpty>
 inline bool head_arg_select_arg(const datalog_expression& src, datalog_expression& dst) {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		initialize_any(dst); return true;
 	} else if (src.type == DATALOG_TUPLE) {
 		if (src.tuple.elements.length == 0) {
@@ -4777,7 +4949,7 @@ inline bool head_arg_select_arg(const datalog_expression& src, datalog_expressio
 	} else if (src.type != DATALOG_PREDICATE || HeadIndex >= array_length(src.pred.args))
 		return false;
 	if (src.pred.args[HeadIndex] == NULL) return false;
-	if (src.pred.args[HeadIndex]->type != DATALOG_ANY
+	if (src.pred.args[HeadIndex]->type != DATALOG_ANY && src.pred.args[HeadIndex]->type != DATALOG_NON_EMPTY
 	 && (src.pred.args[HeadIndex]->type != DATALOG_VARIABLE || src.pred.args[HeadIndex]->variable != 1))
 		return false;
 	for (unsigned int i = 0; OtherArgsEmpty && i < array_length(src.pred.args); i++) {
@@ -4785,12 +4957,12 @@ inline bool head_arg_select_arg(const datalog_expression& src, datalog_expressio
 		if (src.pred.args[i] != NULL && !can_be_empty(*src.pred.args[i]))
 			return false;
 	}
-	return select_arg<SelectIndex>(src, dst);
+	return select_arg<SelectIndex, false>(src, dst);
 }
 
 template<unsigned int Predicate>
 inline bool check_predicate(const datalog_expression& src) {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return true;
 	} else if (src.type == DATALOG_PREDICATE) {
 		if (src.pred.function == DATALOG_LABEL_WILDCARD) {
@@ -4799,9 +4971,11 @@ inline bool check_predicate(const datalog_expression& src) {
 		if (src.pred.args[0] == NULL || src.pred.args[1] == NULL)
 			return false;
 
-		if (src.pred.args[0]->type != DATALOG_ANY && (src.pred.args[0]->type != DATALOG_VARIABLE || src.pred.args[0]->variable != 2))
+		if (src.pred.args[0]->type != DATALOG_ANY && src.pred.args[0]->type != DATALOG_NON_EMPTY
+		 && (src.pred.args[0]->type != DATALOG_VARIABLE || src.pred.args[0]->variable != 2))
 			return false;
-		if (src.pred.args[1]->type != DATALOG_ANY && (src.pred.args[1]->type != DATALOG_VARIABLE || src.pred.args[1]->variable != 1))
+		if (src.pred.args[1]->type != DATALOG_ANY && src.pred.args[1]->type != DATALOG_NON_EMPTY
+		 && (src.pred.args[1]->type != DATALOG_VARIABLE || src.pred.args[1]->variable != 1))
 			return false;
 	} else if (src.type == DATALOG_TUPLE) {
 		if (src.tuple.position == POSITION_RIGHT) return false;
@@ -4816,7 +4990,7 @@ inline bool check_predicate(const datalog_expression& src) {
 
 template<unsigned int Predicate>
 inline bool check_predicate_answer(const datalog_expression& src) {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		return true;
 	} else if (src.type == DATALOG_FUNCTION) {
 		if (src.func.function == DATALOG_LABEL_WILDCARD) {
@@ -4831,7 +5005,7 @@ inline bool check_predicate_answer(const datalog_expression& src) {
 
 template<unsigned int Length>
 inline bool tuple_length(const datalog_expression& src, datalog_expression& dst) {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		if (!init(dst.tuple, POSITION_EXACT, Length)) return false;
 		for (unsigned int i = 0; i < Length; i++)
 			dst.tuple.elements[i] = &DATALOG_ANY_TREE;
@@ -4879,8 +5053,8 @@ inline bool tuple_length(const datalog_expression& src, datalog_expression& dst)
 
 inline bool flip_predicate(datalog_predicate& pred) {
 	if (pred.args[0] == NULL || pred.args[1] == NULL
-	 || (pred.args[0]->type != DATALOG_ANY && pred.args[0]->type != DATALOG_VARIABLE)
-	 || (pred.args[1]->type != DATALOG_ANY && pred.args[1]->type != DATALOG_VARIABLE))
+	 || (pred.args[0]->type != DATALOG_ANY && pred.args[0]->type != DATALOG_NON_EMPTY && pred.args[0]->type != DATALOG_VARIABLE)
+	 || (pred.args[1]->type != DATALOG_ANY && pred.args[1]->type != DATALOG_NON_EMPTY && pred.args[1]->type != DATALOG_VARIABLE))
 		return false;
 	for (unsigned int i = 2; i < array_length(pred.args); i++) {
 		if (pred.args[i] == NULL) continue;
@@ -4895,15 +5069,21 @@ inline bool flip_predicate(datalog_predicate& pred) {
 	return true;
 }
 
+template<bool InsideTuple = false>
 inline bool flip_predicate(datalog_expression& exp) {
-	if (exp.type == DATALOG_ANY) {
-		if (!init_tuple(exp, POSITION_LEFT, 1)
-		 || !new_expression(exp.tuple.elements[0])) return false;
-		exp.tuple.elements[0]->type = DATALOG_PREDICATE;
-		exp.tuple.elements[0]->reference_count = 1;
-		exp.tuple.elements.length = 1;
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
+		if (InsideTuple) {
+			exp.type = DATALOG_PREDICATE;
+			exp.reference_count = 1;
+		} else {
+			if (!init_tuple(exp, POSITION_LEFT, 1)
+			 || !new_expression(exp.tuple.elements[0])) return false;
+			exp.tuple.elements[0]->type = DATALOG_PREDICATE;
+			exp.tuple.elements[0]->reference_count = 1;
+			exp.tuple.elements.length = 1;
+		}
 
-		datalog_predicate& pred = exp.tuple.elements[0]->pred;
+		datalog_predicate& pred = InsideTuple ? exp.pred : exp.tuple.elements[0]->pred;
 		pred.function = DATALOG_LABEL_WILDCARD;
 		pred.excluded_count = 0;
 		pred.args[0] = &DATALOG_ANY_TREE;
@@ -4941,7 +5121,7 @@ inline bool flip_predicate(datalog_expression& exp) {
 				free(*exp.tuple.elements[0]);
 				exp.tuple.elements[0] = arg;
 			}
-			return flip_predicate(*arg);
+			return flip_predicate<true>(*arg);
 		}
 	} else if (exp.type == DATALOG_PREDICATE) {
 		return flip_predicate(exp.pred);
@@ -4972,17 +5152,27 @@ bool apply(datalog_expression_root::function function, const datalog_expression_
 	 || function.type == datalog_expression_root::FUNCTION_DELETE_LEFT_NOT_HEAD_FEATURES
 	 || function.type == datalog_expression_root::FUNCTION_DELETE_FUNCTION_FEATURES
 	 || function.type == datalog_expression_root::FUNCTION_DELETE_NOT_FEATURES
-	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES) {
+	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG1_DELETE_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG2_DELETE_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY_DELETE_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY_DELETE_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY_DELETE_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_DELETE_ARG1_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_DELETE_ARG2_FEATURES) {
 		dst.index = NUMBER_ALL;
 		dst.concord = NUMBER_NONE;
 		dst.inf = INFLECTION_NONE;
 	} else if (function.type == datalog_expression_root::FUNCTION_SINGULAR
 			|| function.type == datalog_expression_root::FUNCTION_SELECT_RIGHT2_SINGULAR
-			|| function.type == datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR) {
+			|| function.type == datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR
+			|| function.type == datalog_expression_root::FUNCTION_DELETE_ARG1_SINGULAR) {
 		dst.index = NUMBER_SINGULAR;
 		dst.concord = src.concord;
 		dst.inf = src.inf;
-	} else if (function.type == datalog_expression_root::FUNCTION_PLURAL) {
+	} else if (function.type == datalog_expression_root::FUNCTION_PLURAL
+			|| function.type == datalog_expression_root::FUNCTION_SELECT_ARG1_PLURAL
+			|| function.type == datalog_expression_root::FUNCTION_DELETE_ARG1_PLURAL) {
 		dst.index = NUMBER_PLURAL;
 		dst.concord = src.concord;
 		dst.inf = src.inf;
@@ -5344,15 +5534,31 @@ bool apply(datalog_expression_root::function function, const datalog_expression_
 
 	case datalog_expression_root::FUNCTION_SELECT_ARG1:
 	case datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR:
-		return select_arg<0>(src.root, dst.root);
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_PLURAL:
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_DELETE_FEATURES:
+		return select_arg<0, false>(src.root, dst.root);
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY:
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY_DELETE_FEATURES:
+		return select_arg<0, true>(src.root, dst.root);
 	case datalog_expression_root::FUNCTION_SELECT_ARG2:
-		return select_arg<1>(src.root, dst.root);
+	case datalog_expression_root::FUNCTION_SELECT_ARG2_DELETE_FEATURES:
+		return select_arg<1, false>(src.root, dst.root);
+	case datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY:
+	case datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY_DELETE_FEATURES:
+		return select_arg<1, true>(src.root, dst.root);
 	case datalog_expression_root::FUNCTION_SELECT_ARG3:
 	case datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES:
-		return select_arg<2>(src.root, dst.root);
+		return select_arg<2, false>(src.root, dst.root);
+	case datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY:
+	case datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY_DELETE_FEATURES:
+		return select_arg<2, true>(src.root, dst.root);
 	case datalog_expression_root::FUNCTION_DELETE_ARG1:
+	case datalog_expression_root::FUNCTION_DELETE_ARG1_SINGULAR:
+	case datalog_expression_root::FUNCTION_DELETE_ARG1_PLURAL:
+	case datalog_expression_root::FUNCTION_DELETE_ARG1_FEATURES:
 		return delete_arg<0>(src.root, dst.root);
 	case datalog_expression_root::FUNCTION_DELETE_ARG2:
+	case datalog_expression_root::FUNCTION_DELETE_ARG2_FEATURES:
 		return delete_arg<1>(src.root, dst.root);
 	case datalog_expression_root::FUNCTION_DELETE_ARG3:
 		return delete_arg<2>(src.root, dst.root);
@@ -5365,7 +5571,7 @@ bool apply(datalog_expression_root::function function, const datalog_expression_
 	case datalog_expression_root::FUNCTION_HEAD_ARG1_SELECT_ARG2_ONLY:
 		return head_arg_select_arg<0, 1, true>(src.root, dst.root);
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE:
-		if (src.root.type == DATALOG_ANY || src.root.type == DATALOG_TUPLE
+		if (src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY || src.root.type == DATALOG_TUPLE
 		 || src.root.type == DATALOG_PREDICATE || src.root.type == DATALOG_FUNCTION) {
 			if (!init(dst.root.tuple, POSITION_EXACT, 1)) return false;
 			dst.root.type = DATALOG_TUPLE;
@@ -5374,20 +5580,27 @@ bool apply(datalog_expression_root::function function, const datalog_expression_
 		return true;
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY:
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR:
-		if (src.root.type == DATALOG_ANY || src.root.type == DATALOG_EMPTY
+		if (src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY || src.root.type == DATALOG_EMPTY
 		 || (src.root.type == DATALOG_TUPLE && src.root.tuple.elements.length == 0)) {
 			if (!init(dst.root.tuple, POSITION_EXACT, 1)) return false;
 			dst.root.type = DATALOG_TUPLE;
 			dst.root.reference_count = 1;
 		} else return false;
 		return true;
+	case datalog_expression_root::FUNCTION_KEEP_NULL:
+		if (src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY || src.root.type == DATALOG_EMPTY) {
+			dst.root.type = DATALOG_EMPTY;
+			dst.root.reference_count = 1;
+		} else return false;
+		return true;
 	case datalog_expression_root::FUNCTION_EMPTY_ARG2:
-		if (src.root.type == DATALOG_ANY) {
+		if (src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY) {
 			dst.root.pred.function = DATALOG_LABEL_WILDCARD;
 			dst.root.pred.excluded_count = 0;
-			dst.root.pred.args[0] = &DATALOG_ANY_TREE;
+			for (unsigned int i = 0; i < array_length(dst.root.pred.args); i++)
+				if (i != 1) dst.root.pred.args[i] = &DATALOG_ANY_TREE;
 			dst.root.pred.args[1] = NULL;
-			DATALOG_ANY_TREE.reference_count++;
+			DATALOG_ANY_TREE.reference_count += array_length(dst.root.pred.args) - 1;
 		} else if (src.root.type == DATALOG_PREDICATE) {
 			if (src.root.pred.args[1] != NULL && !can_be_empty(*src.root.pred.args[1]))
 				return false;
@@ -5402,6 +5615,112 @@ bool apply(datalog_expression_root::function function, const datalog_expression_
 		dst.root.type = DATALOG_PREDICATE;
 		dst.root.reference_count = 1;
 		return true;
+	case datalog_expression_root::FUNCTION_EMPTY_ARGS:
+		if (src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY) {
+			dst.root.pred.function = DATALOG_LABEL_WILDCARD;
+			dst.root.pred.excluded_count = 0;
+		} else if (src.root.type == DATALOG_PREDICATE) {
+			for (unsigned int i = 0; i < array_length(src.root.pred.args); i++) {
+				if (src.root.pred.args[i] != NULL && !can_be_empty(*src.root.pred.args[i]))
+					return false;
+			}
+			dst.root.pred.function = src.root.pred.function;
+			if (src.root.pred.excluded_count > 0
+			 && !init_excluded(dst.root.pred.excluded, src.root.pred.excluded, src.root.pred.excluded_count))
+				return false;
+			dst.root.pred.excluded_count = src.root.pred.excluded_count;
+		} else return false;
+		for (unsigned int i = 0; i < array_length(dst.root.pred.args); i++)
+			dst.root.pred.args[i] = NULL;
+		dst.root.type = DATALOG_PREDICATE;
+		dst.root.reference_count = 1;
+		return dst.root.pred.function != DATALOG_LABEL_WILDCARD
+			|| dst.root.pred.exclude(&DATALOG_LABEL_EMPTY, 1);
+	case datalog_expression_root::FUNCTION_ARG2_ZERO_ARITY:
+		if (src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY) {
+			dst.root.pred.function = DATALOG_LABEL_WILDCARD;
+			dst.root.pred.excluded_count = 0;
+			if (!new_expression(dst.root.pred.args[1])) return false;
+			datalog_expression& arg = *dst.root.pred.args[1];
+			arg.type = DATALOG_PREDICATE;
+			arg.reference_count = 1;
+			arg.pred.function = DATALOG_LABEL_WILDCARD;
+			arg.pred.excluded_count = 0;
+			for (unsigned int i = 0; i < array_length(arg.pred.args); i++)
+				arg.pred.args[i] = NULL;
+			for (unsigned int i = 0; i < array_length(dst.root.pred.args); i++)
+				if (i != 1) dst.root.pred.args[i] = &DATALOG_ANY_TREE;
+			DATALOG_ANY_TREE.reference_count += array_length(dst.root.pred.args) - 1;
+		} else if (src.root.type == DATALOG_PREDICATE) {
+			if (src.root.pred.args[1] == NULL) {
+				dst.root.pred.args[1] = NULL;
+			} else if (src.root.pred.args[1]->type == DATALOG_ANY) {
+				if (!new_expression(dst.root.pred.args[1])) return false;
+				datalog_expression& arg = *dst.root.pred.args[1];
+				arg.type = DATALOG_PREDICATE;
+				arg.reference_count = 1;
+				arg.pred.function = DATALOG_LABEL_WILDCARD;
+				arg.pred.excluded_count = 0;
+				for (unsigned int i = 0; i < array_length(arg.pred.args); i++)
+					arg.pred.args[i] = NULL;
+			} else if (src.root.pred.args[1]->type == DATALOG_NON_EMPTY) {
+				if (!new_expression(dst.root.pred.args[1])) return false;
+				datalog_expression& arg = *dst.root.pred.args[1];
+				arg.type = DATALOG_PREDICATE;
+				arg.reference_count = 1;
+				arg.pred.function = DATALOG_LABEL_WILDCARD;
+				arg.pred.excluded_count = 0;
+				for (unsigned int i = 0; i < array_length(arg.pred.args); i++)
+					arg.pred.args[i] = NULL;
+				if (!init_excluded(arg.pred.excluded, &DATALOG_LABEL_EMPTY, 1)) return false;
+				arg.pred.excluded_count = 1;
+			} else if (src.root.pred.args[1]->type == DATALOG_PREDICATE) {
+				datalog_expression& src_arg = *src.root.pred.args[1];
+				for (unsigned int i = 0; i < array_length(src_arg.pred.args); i++) {
+					if (src_arg.pred.args[i] != NULL && !can_be_empty(*src_arg.pred.args[i]))
+						return false;
+				}
+
+				if (!new_expression(dst.root.pred.args[1])) return false;
+				datalog_expression& dst_arg = *dst.root.pred.args[1];
+				dst_arg.type = DATALOG_PREDICATE;
+				dst_arg.reference_count = 1;
+				dst_arg.pred.function = src_arg.pred.function;
+				if (src_arg.pred.excluded_count > 0
+				 && !init_excluded(dst_arg.pred.excluded, src_arg.pred.excluded, src_arg.pred.excluded_count)) {
+					free(dst.root.pred.args[1]); return false;
+				}
+				dst_arg.pred.excluded_count = src_arg.pred.excluded_count;
+				for (unsigned int i = 0; i < array_length(dst_arg.pred.args); i++)
+					dst_arg.pred.args[i] = NULL;
+			} else {
+				return false;
+			}
+
+			/* initialize the root predicate */
+			dst.root.pred.function = src.root.pred.function;
+			if (src.root.pred.excluded_count > 0
+			 && !init_excluded(dst.root.pred.excluded, src.root.pred.excluded, src.root.pred.excluded_count)) {
+				if (dst.root.pred.args[1] != NULL) {
+					free(*dst.root.pred.args[1]);
+					free(dst.root.pred.args[1]);
+				}
+				return false;
+			}
+			dst.root.pred.excluded_count = src.root.pred.excluded_count;
+			for (unsigned int i = 0; i < array_length(src.root.pred.args); i++) {
+				if (i == 1) continue;
+				dst.root.pred.args[i] = src.root.pred.args[i];
+				if (dst.root.pred.args[i] != NULL) dst.root.pred.args[i]->reference_count++;
+			}
+		} else {
+			return false;
+		}
+		dst.root.type = DATALOG_PREDICATE;
+		dst.root.reference_count = 1;
+		return dst.root.pred.function != DATALOG_LABEL_WILDCARD
+			|| dst.root.pred.exclude(&DATALOG_LABEL_EMPTY, 1);
+
 	case datalog_expression_root::FUNCTION_LOC:
 		if (!check_predicate_answer<PREDICATE_LOC>(src.root))
 			return false;
@@ -5451,7 +5770,7 @@ inline bool get_function(const datalog_expression& src,
 		value = src.func.function;
 		excluded = src.func.excluded;
 		excluded_count = src.func.excluded_count;
-	} else if (src.type == DATALOG_ANY) {
+	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
 		excluded_count = 0;
 	} else {
@@ -5472,7 +5791,7 @@ inline bool has_function(
 		else value = DATALOG_LABEL_EMPTY;
 	} else if (src.type == DATALOG_FUNCTION) {
 		value = DATALOG_TRUE;
-	} else if (src.type == DATALOG_ANY) {
+	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
 	} else {
 		return false;
@@ -5512,7 +5831,7 @@ inline bool has_function(
 			}
 			value = DATALOG_TRUE;
 		}
-	} else if (src.type == DATALOG_ANY) {
+	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
 	} else {
 		return false;
@@ -5533,7 +5852,7 @@ inline bool get_predicate(
 		excluded = term.func.excluded;
 		excluded_count = term.func.excluded_count;
 		value = term.func.function;
-	} else if (term.type == DATALOG_ANY) {
+	} else if (term.type == DATALOG_ANY || term.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
 		excluded_count = 0;
 	} else {
@@ -5580,7 +5899,7 @@ bool get_predicate(
 	} else if (src.type == DATALOG_FUNCTION) {
 		if (!AllowFunction) return false;
 		return get_predicate<Index, Preterminal, true>(*src.func.arg, value, excluded, excluded_count);
-	} else if (src.type == DATALOG_ANY) {
+	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
 		excluded_count = 0;
 	} else if (src.type == DATALOG_EMPTY) {
@@ -5616,7 +5935,7 @@ bool get_right_predicate(
 		value = src.pred.function;
 	} else if (src.type == DATALOG_FUNCTION) {
 		return get_right_predicate<Index>(*src.func.arg, value, excluded, excluded_count);
-	} else if (src.type == DATALOG_ANY) {
+	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
 		excluded_count = 0;
 	} else if (src.type == DATALOG_EMPTY) {
@@ -5636,10 +5955,10 @@ bool get_direction(const datalog_expression& src, unsigned int& value) {
 		} else if (src.pred.args[0] == NULL) {
 			value = DIRECTION_NONE;
 			return true;
-		} else if (src.pred.args[0]->type == DATALOG_ANY) {
+		} else if (src.pred.args[0]->type == DATALOG_ANY || src.pred.args[0]->type == DATALOG_NON_EMPTY) {
 			if (src.pred.args[1] == NULL) {
 				value = DIRECTION_SELF;
-			} else if (src.pred.args[1]->type == DATALOG_ANY) {
+			} else if (src.pred.args[1]->type == DATALOG_ANY || src.pred.args[1]->type == DATALOG_NON_EMPTY) {
 				value = DATALOG_LABEL_WILDCARD;
 			} else {
 				return false; /* prune search paths where the excluded directions is supposed to be non-empty */
@@ -5650,10 +5969,13 @@ bool get_direction(const datalog_expression& src, unsigned int& value) {
 		} else if (src.pred.args[1] == NULL) {
 			value = DIRECTION_SELF; /* this predicate is unary */
 			return true;
-		} else if (src.pred.args[1]->type == DATALOG_ANY) {
+		} else if (src.pred.args[1]->type == DATALOG_ANY || src.pred.args[1]->type == DATALOG_NON_EMPTY) {
 			return false; /* prune search paths where the excluded directions is supposed to be non-empty */
 		} else if (!Preterminal && src.pred.args[1]->type == DATALOG_PREDICATE) {
-			value = DIRECTION_EDGE;
+			value = DIRECTION_PREDICATE;
+			return true;
+		} else if (!Preterminal && src.pred.args[1]->type == DATALOG_CONSTANT) {
+			value = DIRECTION_CONSTANT;
 			return true;
 		} else if (src.pred.args[1]->type != DATALOG_VARIABLE) {
 			return false;
@@ -5664,7 +5986,7 @@ bool get_direction(const datalog_expression& src, unsigned int& value) {
 		if (first_head < second_head) value = DIRECTION_FORWARD;
 		else if (first_head > second_head) value = DIRECTION_BACKWARD;
 		else value = DIRECTION_BOTH;
-	} else if (src.type == DATALOG_ANY) {
+	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
 	} else if (src.type == DATALOG_EMPTY) {
 		value = DATALOG_LABEL_EMPTY;
@@ -5697,8 +6019,17 @@ inline bool get_constant(
 		const datalog_expression& src, unsigned int& value,
 		unsigned int*& excluded, unsigned int& excluded_count)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
+		excluded_count = 0;
+	} else if (src.type == DATALOG_PREDICATE) {
+		if (ConstantOnly) return false;
+		value = src.pred.function;
+		excluded_count = src.pred.excluded_count;
+		excluded = src.pred.excluded;
+	} else if (src.type == DATALOG_STRING && src.str.length > 0) {
+		if (ConstantOnly) return false;
+		value = src.str[0];
 		excluded_count = 0;
 	} else if (src.type != DATALOG_CONSTANT) {
 		if (ConstantOnly) return false;
@@ -5737,14 +6068,14 @@ inline bool get_predicate_arity(
 	} else if (src.type == DATALOG_PREDICATE) {
 		unsigned int min_arity = array_length(src.pred.args);
 		unsigned int max_arity = array_length(src.pred.args);
-		for (unsigned int i = 0; i < array_length(src.pred.args); i++) {
-			if (src.pred.args[i] == NULL || can_be_empty(*src.pred.args[i])) {
-				min_arity = i; break;
-			}
-		} for (unsigned int i = 0; i < array_length(src.pred.args); i++) {
-			if (src.pred.args[i] == NULL) {
-				max_arity = i; break;
-			}
+		while (min_arity > 0) {
+			if (src.pred.args[min_arity - 1] != NULL
+			 && !can_be_empty(*src.pred.args[min_arity - 1]))
+				break;
+			min_arity--;
+		} while (max_arity > min_arity) {
+			if (src.pred.args[max_arity - 1] != NULL) break;
+			max_arity--;
 		}
 
 		if (min_arity > 3 || max_arity > 3) {
@@ -5783,7 +6114,7 @@ inline bool get_predicate_arity(
 		} else if (min_arity == 3) {
 			if (max_arity == 3) value = ARITY_THREE;
 		}
-	} else if (src.type == DATALOG_ANY) {
+	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
 	} else if (src.type == DATALOG_EMPTY) {
 		value = DATALOG_LABEL_EMPTY;
@@ -5798,7 +6129,7 @@ inline bool get_arg_constant(
 		const datalog_expression& src, unsigned int& value,
 		unsigned int*& excluded, unsigned int& excluded_count)
 {
-	if (src.type == DATALOG_ANY) {
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
 		excluded_count = 0;
 	} else if (!ConstantOnly && src.type == DATALOG_TUPLE) {
@@ -5825,6 +6156,72 @@ inline bool get_arg_constant(
 	return true;
 }
 
+inline bool get_string(
+		const datalog_expression& src, unsigned int& value,
+		unsigned int*& excluded, unsigned int& excluded_count)
+{
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
+		value = DATALOG_LABEL_WILDCARD;
+	} else if (src.type == DATALOG_STRING) {
+		if (src.str.length != 1) return false;
+		value = src.str.tokens[0];
+	} else {
+		return false;
+	}
+	excluded_count = 0;
+	return true;
+}
+
+template<unsigned int Index>
+inline bool get_arg_string(
+		const datalog_expression& src, unsigned int& value,
+		unsigned int*& excluded, unsigned int& excluded_count)
+{
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
+		value = DATALOG_LABEL_WILDCARD;
+		excluded_count = 0;
+	} else if (src.type != DATALOG_PREDICATE) {
+		return false;
+	} else if (src.pred.args[Index] == NULL || src.pred.args[Index]->type == DATALOG_EMPTY) {
+		value = DATALOG_LABEL_EMPTY;
+		excluded_count = 0;
+	} else {
+		return get_string(*src.pred.args[Index], value, excluded, excluded_count);
+	}
+	return true;
+}
+
+template<unsigned int Index>
+inline bool get_arg_arity(
+		const datalog_expression& src, unsigned int& value,
+		unsigned int*& excluded, unsigned int& excluded_count)
+{
+	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
+		value = DATALOG_LABEL_WILDCARD;
+		excluded_count = 0;
+	} else if (src.type == DATALOG_TUPLE) {
+		if (src.tuple.position == POSITION_RIGHT) {
+			return false; /* prune this region of the search */
+		} else if (src.tuple.elements.length == 0) {
+			if (src.tuple.position == POSITION_EXACT)
+				value = ARG_OTHER;
+			else value = DATALOG_LABEL_WILDCARD;
+		} else {
+			return get_arg_arity<Index>(*src.tuple.elements[0], value, excluded, excluded_count);
+		}
+		excluded_count = 0;
+	} else if (src.type != DATALOG_PREDICATE) {
+		value = ARG_OTHER;
+		excluded_count = 0;
+	} else if (src.pred.args[Index] == NULL || src.pred.args[Index]->type == DATALOG_EMPTY) {
+		value = DATALOG_LABEL_EMPTY;
+		excluded_count = 0;
+	} else {
+		return get_predicate_arity(*src.pred.args[Index], value, excluded, excluded_count);
+	}
+	return true;
+}
+
 bool get_feature(
 		datalog_expression_root::feature feature, const datalog_expression_root& src,
 		unsigned int& value, unsigned int*& excluded, unsigned int& excluded_count)
@@ -5840,7 +6237,7 @@ bool get_feature(
 	case datalog_expression_root::FEATURE_FUNCTION_ONLY:
 		return get_function<true>(src.root, value, excluded, excluded_count);
 	case datalog_expression_root::FEATURE_FUNCTION_ANSWER:
-		if (src.root.type == DATALOG_ANY) {
+		if (src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY) {
 			value = DATALOG_LABEL_WILDCARD;
 			excluded_count = 0;
 			return true;
@@ -5858,7 +6255,7 @@ bool get_feature(
 	case datalog_expression_root::FEATURE_HAS_FUNCTION_COUNT_NOT:
 		return has_function(src.root, value, excluded, excluded_count, PREDICATES_COUNT_NOT);
 	case datalog_expression_root::FEATURE_HAS_FUNCTION_ANSWER:
-		if (src.root.type == DATALOG_ANY) {
+		if (src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY) {
 			value = DATALOG_LABEL_WILDCARD;
 			excluded_count = 0;
 			return true;
@@ -5903,6 +6300,10 @@ bool get_feature(
 		return get_arg_constant<1, true>(src.root, value, excluded, excluded_count);
 	case datalog_expression_root::FEATURE_ARG3_ONLY:
 		return get_arg_constant<2, true>(src.root, value, excluded, excluded_count);
+	case datalog_expression_root::FEATURE_ARG1_STRING:
+		return get_arg_string<0>(src.root, value, excluded, excluded_count);
+	case datalog_expression_root::FEATURE_ARG2_ARITY:
+		return get_arg_arity<1>(src.root, value, excluded, excluded_count);
 
 	case datalog_expression_root::FEATURE_NUMBER:
 		if (src.concord == NUMBER_ANY) {
@@ -6086,8 +6487,9 @@ bool set_predicate(datalog_expression& exp, unsigned int predicate)
 {
 	static_assert(Index == 0 || !Preterminal, "If Preterminal is true, Index must be zero");
 
-	if (exp.type == DATALOG_ANY) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
 		if (predicate == DATALOG_LABEL_EMPTY) {
+			if (Index == 0 && exp.type == DATALOG_NON_EMPTY) return false;
 			if (Index == 0) exp.type = DATALOG_EMPTY;
 			return true;
 		}
@@ -6113,6 +6515,13 @@ bool set_predicate(datalog_expression& exp, unsigned int predicate)
 		if (Index != 0) {
 			if (predicate == DATALOG_LABEL_EMPTY) return true;
 			if (predicate <= NUM_PREDICATES) return false;
+		} else if (predicate == DATALOG_LABEL_EMPTY) {
+			if (exp.pred.is_excluded(DATALOG_LABEL_EMPTY))
+				return false;
+			free(exp);
+			exp.type = DATALOG_EMPTY;
+			exp.reference_count = 1;
+			return true;
 		}
 		if (exp.pred.function == DATALOG_LABEL_WILDCARD) {
 			if (exp.pred.is_excluded(predicate))
@@ -6169,7 +6578,7 @@ bool set_predicate(datalog_expression& exp, unsigned int predicate)
 			free(*exp.tuple.elements[Index]);
 			exp.tuple.elements[Index] = element;
 		}
-		if (element->type == DATALOG_ANY) {
+		if (element->type == DATALOG_ANY || element->type == DATALOG_NON_EMPTY) {
 			return set_predicate(*element, predicate);
 		} else if (element->type == DATALOG_PREDICATE) {
 			if (predicate <= NUM_PREDICATES) return false;
@@ -6203,7 +6612,7 @@ bool set_predicate(datalog_expression& exp, unsigned int predicate)
 
 template<unsigned int Index>
 bool set_right_predicate(datalog_expression& exp, unsigned int predicate) {
-	if (exp.type == DATALOG_ANY) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
 		return false; /* preterminals don't use this feature, so we can prune away this part of the search */
 	} else if (exp.type == DATALOG_PREDICATE) {
 		if (Index != 0) {
@@ -6255,7 +6664,7 @@ bool set_right_predicate(datalog_expression& exp, unsigned int predicate) {
 			free(*exp.tuple.elements[exp.tuple.elements.length - Index - 1]);
 			exp.tuple.elements[exp.tuple.elements.length - Index - 1] = element;
 		}
-		if (element->type == DATALOG_ANY) {
+		if (element->type == DATALOG_ANY || element->type == DATALOG_NON_EMPTY) {
 			return set_predicate(*element, predicate);
 		} else if (element->type == DATALOG_PREDICATE) {
 			if (predicate <= NUM_PREDICATES) return false;
@@ -6290,9 +6699,9 @@ bool set_right_predicate(datalog_expression& exp, unsigned int predicate) {
 template<bool Preterminal>
 inline bool set_direction(datalog_expression& exp, unsigned int direction)
 {
-	if (Preterminal && direction == DIRECTION_EDGE)
+	if (Preterminal && (direction == DIRECTION_PREDICATE || direction == DIRECTION_CONSTANT))
 		return false;
-	if (exp.type == DATALOG_ANY) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
 		if (direction == DATALOG_LABEL_EMPTY) {
 			/* this is an empty expression or empty tuple */
 			return true;
@@ -6348,7 +6757,8 @@ inline bool set_direction(datalog_expression& exp, unsigned int direction)
 			for (unsigned int i = 2; i < array_length(exp.pred.args); i++)
 				exp.pred.args[i] = NULL;
 			break;
-		case DIRECTION_EDGE:
+		case DIRECTION_PREDICATE:
+		case DIRECTION_CONSTANT:
 			/* we prune this part of the search since this direction should
 			   already be determined in the logical form by this point */
 			return false;
@@ -6365,23 +6775,23 @@ inline bool set_direction(datalog_expression& exp, unsigned int direction)
 			boundary = 0;
 		} else if (exp.pred.args[0] == NULL) {
 			return false;
-		} else if (exp.pred.args[0]->type == DATALOG_ANY) {
+		} else if (exp.pred.args[0]->type == DATALOG_ANY || exp.pred.args[0]->type == DATALOG_NON_EMPTY) {
 			if (exp.pred.args[0]->reference_count > 1) {
 				free(*exp.pred.args[0]);
 				if (!new_expression(exp.pred.args[0])) exit(EXIT_FAILURE);
 			}
 			exp.pred.args[0]->type = DATALOG_VARIABLE;
 			exp.pred.args[0]->reference_count = 1;
+			exp.pred.args[0]->variable = 1;
 			if (exp.pred.args[1] == NULL) {
 				if (direction != DIRECTION_SELF) return false;
-				exp.pred.args[0]->variable = 1;
 				boundary = 1;
-			} else if (exp.pred.args[1]->type == DATALOG_ANY) {
+			} else if (exp.pred.args[1]->type == DATALOG_ANY || exp.pred.args[1]->type == DATALOG_NON_EMPTY) {
 				if (exp.pred.args[1]->reference_count > 1) {
 					free(*exp.pred.args[1]);
 					if (!new_expression(exp.pred.args[1])) exit(EXIT_FAILURE);
 				}
-				if (direction == DIRECTION_EDGE) {
+				if (direction == DIRECTION_PREDICATE) {
 					exp.pred.args[1]->type = DATALOG_PREDICATE;
 					exp.pred.args[1]->reference_count = 1;
 					exp.pred.args[1]->pred.function = DATALOG_LABEL_WILDCARD;
@@ -6389,6 +6799,12 @@ inline bool set_direction(datalog_expression& exp, unsigned int direction)
 					for (unsigned int i = 0; i < array_length(exp.pred.args[1]->pred.args); i++)
 						exp.pred.args[1]->pred.args[i] = &DATALOG_ANY_TREE;
 					DATALOG_ANY_TREE.reference_count += array_length(exp.pred.args[1]->pred.args);
+					boundary = 2;
+				} else if (direction == DIRECTION_CONSTANT) {
+					exp.pred.args[1]->type = DATALOG_CONSTANT;
+					exp.pred.args[1]->reference_count = 1;
+					exp.pred.args[1]->constant.label = DATALOG_LABEL_WILDCARD;
+					exp.pred.args[1]->constant.excluded_count = 0;
 					boundary = 2;
 				} else {
 					exp.pred.args[1]->type = DATALOG_VARIABLE;
@@ -6413,7 +6829,8 @@ inline bool set_direction(datalog_expression& exp, unsigned int direction)
 						exp.pred.args[0]->variable = 1;
 						exp.pred.args[1]->variable = 1;
 						break;
-					case DIRECTION_EDGE:
+					case DIRECTION_PREDICATE:
+					case DIRECTION_CONSTANT:
 						/* we prune this part of the search since this direction should
 						   already be determined in the logical form by this point */
 						return false;
@@ -6443,7 +6860,8 @@ inline bool set_direction(datalog_expression& exp, unsigned int direction)
 					if (Preterminal && exp.pred.args[1]->variable != 1) return false;
 					exp.pred.args[0]->variable = 1;
 					break;
-				case DIRECTION_EDGE:
+				case DIRECTION_PREDICATE:
+				case DIRECTION_CONSTANT:
 					/* we prune this part of the search since this direction should
 					   already be determined in the logical form by this point */
 					return false;
@@ -6461,7 +6879,8 @@ inline bool set_direction(datalog_expression& exp, unsigned int direction)
 			}
 			boundary = 2;
 			if (exp.pred.args[1] != NULL && exp.pred.args[1]->type != DATALOG_VARIABLE) {
-				if (direction != DIRECTION_EDGE || exp.pred.args[1]->type != DATALOG_PREDICATE)
+				if ((direction != DIRECTION_PREDICATE || exp.pred.args[1]->type != DATALOG_PREDICATE)
+				 && (direction != DIRECTION_CONSTANT || exp.pred.args[1]->type != DATALOG_CONSTANT))
 					return false;
 			} else {
 				switch (direction) {
@@ -6540,7 +6959,7 @@ inline bool set_direction(datalog_expression& exp, unsigned int direction)
 
 template<bool ConstantOnly>
 inline bool set_constant(datalog_expression& exp, unsigned int value) {
-	if (exp.type == DATALOG_ANY) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
 		exp.type = DATALOG_CONSTANT;
 		exp.constant.label = value;
 		exp.constant.excluded_count = 0;
@@ -6552,6 +6971,18 @@ inline bool set_constant(datalog_expression& exp, unsigned int value) {
 			exp.constant.excluded_count = 0;
 			exp.constant.label = value;
 		} else return exp.constant.label == value;
+	} else if (exp.type == DATALOG_PREDICATE) {
+		if (ConstantOnly) return false;
+		if (exp.pred.function == DATALOG_LABEL_WILDCARD) {
+			if (exp.pred.is_excluded(value)) return false;
+			if (exp.pred.excluded_count > 0)
+				free(exp.pred.excluded_count);
+			exp.pred.excluded_count = 0;
+			exp.pred.function = value;
+		} else return exp.pred.function == value;
+	} else if (exp.type == DATALOG_STRING && exp.str.length > 0) {
+		if (ConstantOnly) return false;
+		return value == exp.str[0];
 	} else {
 		if (ConstantOnly) return false;
 		return value == DATALOG_LABEL_EMPTY;
@@ -6561,8 +6992,6 @@ inline bool set_constant(datalog_expression& exp, unsigned int value) {
 
 inline bool predicate_arg_not_empty(datalog_expression*& arg) {
 	if (arg->type == DATALOG_CONSTANT) {
-		if (arg->constant.is_excluded(DATALOG_LABEL_EMPTY))
-			return false;
 		datalog_expression* new_arg;
 		if (arg->reference_count == 1) {
 			new_arg = arg;
@@ -6574,7 +7003,25 @@ inline bool predicate_arg_not_empty(datalog_expression*& arg) {
 		if (new_arg->constant.label == DATALOG_LABEL_WILDCARD
 		 && !new_arg->constant.exclude(&DATALOG_LABEL_EMPTY, 1))
 			exit(EXIT_FAILURE);
-	} else if (arg->type != DATALOG_VARIABLE && arg->type != DATALOG_ANY) {
+	} else if (arg->type == DATALOG_PREDICATE) {
+		datalog_expression* new_arg;
+		if (arg->reference_count == 1) {
+			new_arg = arg;
+		} else {
+			if (!init(new_arg, *arg)) exit(EXIT_FAILURE);
+			free(*arg);
+			arg = new_arg;
+		}
+		if (new_arg->pred.function == DATALOG_LABEL_WILDCARD
+		 && !new_arg->pred.exclude(&DATALOG_LABEL_EMPTY, 1))
+			exit(EXIT_FAILURE);
+	} else if (arg->type == DATALOG_ANY || arg->type == DATALOG_NON_EMPTY) {
+		free(*arg);
+		if (arg->reference_count == 0)
+			free(arg);
+		arg = &DATALOG_NON_EMPTY_TREE;
+		DATALOG_NON_EMPTY_TREE.reference_count++;
+	} else if (arg->type != DATALOG_VARIABLE && arg->type != DATALOG_STRING) {
 		return false;
 	}
 	return true;
@@ -6587,7 +7034,7 @@ inline bool set_predicate_arity_any(datalog_predicate& pred, unsigned int value)
 	DATALOG_ANY_TREE.reference_count++;
 
 	unsigned int boundary;
-	if (value == ARITY_ONE) boundary = 0;
+	if (value == ARITY_ZERO) boundary = 0;
 	else if (value == ARITY_ONE) boundary = 1;
 	else if (value == ARITY_TWO) boundary = 2;
 	else if (value == ARITY_THREE) boundary = 3;
@@ -6615,12 +7062,10 @@ inline bool set_predicate_arity(datalog_predicate& pred, unsigned int value) {
 		return false;
 	}
 
-	for (unsigned int i = 0; i < boundary; i++) {
-		if (pred.args[i] == NULL || !predicate_arg_not_empty(pred.args[i]))
-			return false;
-	}
+	if (boundary > 0 && (pred.args[boundary - 1] == NULL || !predicate_arg_not_empty(pred.args[boundary - 1])))
+		return false;
 	for (unsigned int i = boundary; i < array_length(pred.args); i++) {
-		if (pred.args[i] == NULL) break;
+		if (pred.args[i] == NULL) continue;
 		if (!can_be_empty(*pred.args[i])) return false;
 		free(*pred.args[i]);
 		if (pred.args[i]->reference_count == 0)
@@ -6631,7 +7076,7 @@ inline bool set_predicate_arity(datalog_predicate& pred, unsigned int value) {
 }
 
 inline bool set_predicate_arity(datalog_expression& exp, unsigned int value) {
-	if (exp.type == DATALOG_ANY) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
 		if (value == ARITY_NULL) {
 			if (!init(exp.tuple, POSITION_LEFT, 1)) exit(EXIT_FAILURE);
 			exp.type = DATALOG_TUPLE;
@@ -6675,7 +7120,7 @@ inline bool set_predicate_arity(datalog_expression& exp, unsigned int value) {
 
 template<unsigned int Index, bool ConstantOnly>
 inline bool set_arg_constant(datalog_expression& exp, unsigned int value) {
-	if (exp.type == DATALOG_ANY) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
 		if (value == ARG_OTHER) return true;
 		else if (!new_expression(exp.pred.args[Index])) exit(EXIT_FAILURE);
 		exp.pred.args[Index]->type = DATALOG_ANY;
@@ -6696,7 +7141,8 @@ inline bool set_arg_constant(datalog_expression& exp, unsigned int value) {
 			return value == DATALOG_LABEL_EMPTY;
 
 		if (value == DATALOG_LABEL_EMPTY) {
-			if (exp.pred.args[Index]->type != DATALOG_ANY && exp.pred.args[Index]->type != DATALOG_EMPTY)
+			if (exp.pred.args[Index]->type != DATALOG_ANY
+			 && exp.pred.args[Index]->type != DATALOG_EMPTY)
 				return false;
 			free(*exp.pred.args[Index]);
 			if (exp.pred.args[Index]->reference_count == 0)
@@ -6737,6 +7183,130 @@ inline bool set_arg_constant(datalog_expression& exp, unsigned int value) {
 	return true;
 }
 
+inline bool set_string(datalog_expression& exp, unsigned int value) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
+		exp.type = DATALOG_STRING;
+		if (!init(exp.str, 1)) return false;
+		exp.str.tokens[0] = value;
+	} else if (exp.type == DATALOG_STRING) {
+		return exp.str.length == 1 && exp.str.tokens[0] == value;
+	} else {
+		return false;
+	}
+	return true;
+}
+
+template<unsigned int Index>
+inline bool set_arg_string(datalog_expression& exp, unsigned int value) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
+		for (unsigned int i = 0; i < array_length(exp.pred.args); i++)
+			if (i != Index) exp.pred.args[i] = &DATALOG_ANY_TREE;
+		DATALOG_ANY_TREE.reference_count += (array_length(exp.pred.args) - 1);
+		exp.pred.function = DATALOG_LABEL_WILDCARD;
+		exp.pred.excluded_count = 0;
+		exp.type = DATALOG_PREDICATE;
+		if (value == DATALOG_LABEL_EMPTY) {
+			exp.pred.args[Index] = NULL;
+		} else {
+			if (!new_expression(exp.pred.args[Index])) exit(EXIT_FAILURE);
+			exp.pred.args[Index]->type = DATALOG_ANY;
+			exp.pred.args[Index]->reference_count = 1;
+			return set_string(*exp.pred.args[Index], value);
+		}
+	} else if (exp.type == DATALOG_PREDICATE) {
+		if (exp.pred.args[Index] == NULL)
+			return value == DATALOG_LABEL_EMPTY;
+
+		if (value == DATALOG_LABEL_EMPTY) {
+			if (exp.pred.args[Index]->type != DATALOG_ANY
+			 && exp.pred.args[Index]->type != DATALOG_EMPTY)
+				return false;
+			free(*exp.pred.args[Index]);
+			if (exp.pred.args[Index]->reference_count == 0)
+				free(exp.pred.args[Index]);
+			exp.pred.args[Index] = NULL;
+		} else {
+			datalog_expression* arg;
+			if (exp.pred.args[Index]->reference_count == 1) {
+				arg = exp.pred.args[Index];
+			} else {
+				if (!init(arg, *exp.pred.args[Index])) exit(EXIT_FAILURE);
+				free(*exp.pred.args[Index]);
+				exp.pred.args[Index] = arg;
+			}
+			return set_string(*arg, value);
+		}
+	} else {
+		return false;
+	}
+	return true;
+}
+
+template<unsigned int Index>
+inline bool set_arg_arity(datalog_expression& exp, unsigned int value) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
+		if (value == ARG_OTHER) return true;
+		else if (!new_expression(exp.pred.args[Index])) exit(EXIT_FAILURE);
+		exp.pred.args[Index]->type = DATALOG_ANY;
+		exp.pred.args[Index]->reference_count = 1;
+		for (unsigned int i = 0; i < array_length(exp.pred.args); i++)
+			if (i != Index) exp.pred.args[i] = &DATALOG_ANY_TREE;
+		DATALOG_ANY_TREE.reference_count += (array_length(exp.pred.args) - 1);
+		exp.pred.function = DATALOG_LABEL_WILDCARD;
+		exp.pred.excluded_count = 0;
+		exp.type = DATALOG_PREDICATE;
+		if (value == DATALOG_LABEL_EMPTY) {
+			exp.pred.args[Index] = NULL;
+		} else {
+			return set_predicate_arity(*exp.pred.args[Index], value);
+		}
+	} else if (exp.type == DATALOG_PREDICATE) {
+		if (exp.pred.args[Index] == NULL)
+			return value == DATALOG_LABEL_EMPTY;
+
+		if (value == DATALOG_LABEL_EMPTY) {
+			if (exp.pred.args[Index]->type != DATALOG_ANY
+			 && exp.pred.args[Index]->type != DATALOG_EMPTY)
+				return false;
+			free(*exp.pred.args[Index]);
+			if (exp.pred.args[Index]->reference_count == 0)
+				free(exp.pred.args[Index]);
+			exp.pred.args[Index] = NULL;
+		} else {
+			datalog_expression* arg;
+			if (exp.pred.args[Index]->reference_count == 1) {
+				arg = exp.pred.args[Index];
+			} else {
+				if (!init(arg, *exp.pred.args[Index])) exit(EXIT_FAILURE);
+				free(*exp.pred.args[Index]);
+				exp.pred.args[Index] = arg;
+			}
+			return set_predicate_arity(*arg, value);
+		}
+	} else if (exp.type == DATALOG_TUPLE) {
+		if (exp.tuple.position == POSITION_RIGHT) {
+			return false; /* prune this region of the search */
+		} else if (exp.tuple.elements.length == 0) {
+			if (exp.tuple.position == POSITION_EXACT)
+				return value == ARG_OTHER;
+			else return value == DATALOG_LABEL_WILDCARD;
+		} else {
+			datalog_expression* element;
+			if (exp.tuple.elements[0]->reference_count == 1) {
+				element = exp.tuple.elements[0];
+			} else {
+				if (!init(element, *exp.tuple.elements[0])) exit(EXIT_FAILURE);
+				free(*exp.tuple.elements[0]);
+				exp.tuple.elements[0] = element;
+			}
+			return set_arg_arity<Index>(*element, value);
+		}
+	} else {
+		return value == ARG_OTHER;
+	}
+	return true;
+}
+
 bool set_feature(
 		datalog_expression_root::feature feature,
 		datalog_expression_root& exp, unsigned int value)
@@ -6751,7 +7321,7 @@ bool set_feature(
 	case datalog_expression_root::FEATURE_FUNCTION_ONLY:
 		return set_function<true>(exp.root, value);
 	case datalog_expression_root::FEATURE_FUNCTION_ANSWER:
-		if (exp.root.type == DATALOG_ANY) {
+		if (exp.root.type == DATALOG_ANY || exp.root.type == DATALOG_NON_EMPTY) {
 			exp.root.func.function = PREDICATE_ANSWER;
 			set_function_variables<PREDICATE_ANSWER>(exp.root.func);
 			exp.root.type = DATALOG_FUNCTION;
@@ -6786,7 +7356,7 @@ bool set_feature(
 	case datalog_expression_root::FEATURE_HAS_FUNCTION_COUNT_NOT:
 		return set_has_function(exp.root, value, PREDICATES_COUNT_NOT);
 	case datalog_expression_root::FEATURE_HAS_FUNCTION_ANSWER:
-		if (exp.root.type == DATALOG_ANY) {
+		if (exp.root.type == DATALOG_ANY || exp.root.type == DATALOG_NON_EMPTY) {
 			exp.root.func.function = PREDICATE_ANSWER;
 			set_function_variables<PREDICATE_ANSWER>(exp.root.func);
 			exp.root.type = DATALOG_FUNCTION;
@@ -6846,6 +7416,10 @@ bool set_feature(
 		return set_arg_constant<1, true>(exp.root, value);
 	case datalog_expression_root::FEATURE_ARG3_ONLY:
 		return set_arg_constant<2, true>(exp.root, value);
+	case datalog_expression_root::FEATURE_ARG1_STRING:
+		return set_arg_string<0>(exp.root, value);
+	case datalog_expression_root::FEATURE_ARG2_ARITY:
+		return set_arg_arity<1>(exp.root, value);
 
 	case datalog_expression_root::FEATURE_NUMBER:
 		return intersect(exp.concord, exp.concord, static_cast<grammatical_number>(value + 1 - NUMBER_OFFSET));
@@ -6873,7 +7447,7 @@ bool exclude_function(datalog_expression& exp, const unsigned int* values, unsig
 
 template<unsigned int Index>
 bool exclude_predicates(datalog_expression& exp, const unsigned int* values, unsigned int count) {
-	if (exp.type == DATALOG_ANY) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
 		return false;
 	} else if (exp.type == DATALOG_PREDICATE) {
 		if (Index != 0)
@@ -6889,7 +7463,7 @@ bool exclude_predicates(datalog_expression& exp, const unsigned int* values, uns
 		else if (Index >= exp.tuple.elements.length)
 			return last_index_of(DATALOG_LABEL_EMPTY, values, count) == static_cast<unsigned int>(-1);
 		datalog_expression& element = *exp.tuple.elements[Index];
-		if (element.type == DATALOG_ANY) {
+		if (element.type == DATALOG_ANY || element.type == DATALOG_NON_EMPTY) {
 			return false;
 		} else if (element.type == DATALOG_PREDICATE) {
 			if (element.pred.function == DATALOG_LABEL_WILDCARD) {
@@ -6912,7 +7486,7 @@ bool exclude_predicates(datalog_expression& exp, const unsigned int* values, uns
 
 template<unsigned int Index>
 bool exclude_right_predicates(datalog_expression& exp, const unsigned int* values, unsigned int count) {
-	if (exp.type == DATALOG_ANY) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
 		return false;
 	} else if (exp.type == DATALOG_PREDICATE) {
 		if (Index != 0)
@@ -6928,7 +7502,7 @@ bool exclude_right_predicates(datalog_expression& exp, const unsigned int* value
 		else if (Index >= exp.tuple.elements.length)
 			return last_index_of(DATALOG_LABEL_EMPTY, values, count) == static_cast<unsigned int>(-1);
 		datalog_expression& element = *exp.tuple.elements[exp.tuple.elements.length - Index - 1];
-		if (element.type == DATALOG_ANY) {
+		if (element.type == DATALOG_ANY || element.type == DATALOG_NON_EMPTY) {
 			return false;
 		} else if (element.type == DATALOG_PREDICATE) {
 			if (element.pred.function == DATALOG_LABEL_WILDCARD) {
@@ -6952,7 +7526,7 @@ bool exclude_right_predicates(datalog_expression& exp, const unsigned int* value
 inline bool exclude_constant(datalog_expression& exp,
 		const unsigned int* values, unsigned int count)
 {
-	if (exp.type == DATALOG_ANY) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
 		exp.type = DATALOG_CONSTANT;
 		exp.constant.label = DATALOG_LABEL_WILDCARD;
 		if (count > 0 && !init_excluded(exp.constant.excluded, values, count))
@@ -6962,6 +7536,12 @@ inline bool exclude_constant(datalog_expression& exp,
 		if (exp.constant.label == DATALOG_LABEL_WILDCARD) {
 			if (!exp.constant.exclude(values, count)) exit(EXIT_FAILURE);
 		} else if (index_of(exp.constant.label, values, count) < count) return false;
+	} else if (exp.type == DATALOG_PREDICATE) {
+		if (exp.pred.function == DATALOG_LABEL_WILDCARD) {
+			if (!exp.pred.exclude(values, count)) exit(EXIT_FAILURE);
+		} else if (index_of(exp.pred.function, values, count) < count) return false;
+	} else if (exp.type == DATALOG_STRING && exp.str.length > 0) {
+		return false; /* disallow ambiguity in strings, so prune this part of the search */
 	} else {
 		return false;
 	}
@@ -6972,7 +7552,7 @@ template<unsigned int Index>
 inline bool exclude_arg_constant(datalog_expression& exp,
 		const unsigned int* values, unsigned int count)
 {
-	if (exp.type == DATALOG_ANY) {
+	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
 		return false; /* this feature is only used in one nonterminal, so we can prune some unnecessary searching */
 	} else if (exp.type == DATALOG_PREDICATE) {
 		if (exp.pred.args[Index] == NULL)
@@ -7032,6 +7612,10 @@ bool exclude_features(datalog_expression_root::feature feature,
 	case datalog_expression_root::FEATURE_ARG3:
 	case datalog_expression_root::FEATURE_ARG3_ONLY:
 		return exclude_arg_constant<2>(exp.root, values, count);
+	case datalog_expression_root::FEATURE_ARG1_STRING:
+		return false;
+	case datalog_expression_root::FEATURE_ARG2_ARITY:
+		return false;
 	case datalog_expression_root::FEATURE_NUMBER:
 	case datalog_expression_root::FEATURE_INFLECTION:
 		return false;
@@ -7051,6 +7635,7 @@ bool feature_pruneable(datalog_expression_root::feature feature) {
 	case datalog_expression_root::FEATURE_DIRECTION_ROOT:
 	case datalog_expression_root::FEATURE_ARG1:
 	case datalog_expression_root::FEATURE_ARG1_ONLY:
+	case datalog_expression_root::FEATURE_ARG1_STRING:
 	case datalog_expression_root::FEATURE_ARG2:
 	case datalog_expression_root::FEATURE_ARG2_ONLY:
 	case datalog_expression_root::FEATURE_ARG3:
@@ -7067,6 +7652,7 @@ bool feature_pruneable(datalog_expression_root::feature feature) {
 	case datalog_expression_root::FEATURE_HAS_FUNCTION_COUNT_NOT:
 	case datalog_expression_root::FEATURE_HAS_FUNCTION_ANSWER:
 	case datalog_expression_root::FEATURE_PREDICATE_ARITY:
+	case datalog_expression_root::FEATURE_ARG2_ARITY:
 	case datalog_expression_root::FEATURE_PREDICATE:
 	case datalog_expression_root::FEATURE_PREDICATE_ONLY:
 	case datalog_expression_root::FEATURE_CONSTANT:
@@ -7182,14 +7768,24 @@ bool intersect(datalog_expression& intersection,
 		array<unsigned int>& dst_variables)
 {
 	if (first->type == DATALOG_EMPTY) {
+		if (!can_be_empty(*second)) return false;
 		return init(intersection, *first, first_variables, dst_variables);
 	} else if (second->type == DATALOG_EMPTY) {
+		if (!can_be_empty(*first)) return false;
 		intersection.type = DATALOG_EMPTY;
 		intersection.reference_count = 1;
 	} else if (first->type == DATALOG_ANY) {
 		return init(intersection, *second, second_variables, dst_variables);
 	} else if (second->type == DATALOG_ANY) {
 		return init(intersection, *first, first_variables, dst_variables);
+	} else if (first->type == DATALOG_NON_EMPTY) {
+		if (!init(intersection, *second, second_variables, dst_variables)) return false;
+		if (intersection.type == DATALOG_ANY)
+			intersection.type = DATALOG_NON_EMPTY;
+	} else if (second->type == DATALOG_NON_EMPTY) {
+		if (!init(intersection, *first, first_variables, dst_variables)) return false;
+		if (intersection.type == DATALOG_ANY)
+			intersection.type = DATALOG_NON_EMPTY;
 	} else if (first->type == DATALOG_TUPLE) {
 		if (second->type == DATALOG_TUPLE) {
 			tuple_position position;
@@ -7418,6 +8014,15 @@ bool intersect(datalog_expression& intersection,
 		} else {
 			return false;
 		}
+	} else if (first->type == DATALOG_STRING) {
+		if (second->type == DATALOG_STRING) {
+			if (first->str != second->str) return false;
+			intersection.str = first->str;
+			intersection.type = DATALOG_STRING;
+			intersection.reference_count = 1;
+		} else {
+			return false;
+		}
 	} else {
 		return false;
 	}
@@ -7530,7 +8135,7 @@ bool invert_select_left(datalog_expression& inverse,
 {
 	array<bool> first_variables = array<bool>(8);
 	memset(first_variables.data, 0, sizeof(bool) * first_variables.capacity);
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		return invert_select_any<FieldCount, KeepHead, POSITION_LEFT>(inverse, second);
 	} else if (first.type == DATALOG_PREDICATE) {
 		if (FieldCount != 1) return false;
@@ -7634,6 +8239,12 @@ bool invert_select_left(datalog_expression& inverse,
 	} else {
 		return false;
 	}
+
+	unsigned int head = get_head(inverse);
+	if (head != 1 && head != DATALOG_LABEL_EMPTY && head != DATALOG_LABEL_WILDCARD) {
+		free(inverse);
+		return false;
+	}
 	return check_variable_overlap<MergeVariables>(inverse, first_variables, second_variable_map);
 }
 
@@ -7659,7 +8270,7 @@ bool invert_select_right(datalog_expression& inverse,
 {
 	array<bool> first_variables = array<bool>(8);
 	memset(first_variables.data, 0, sizeof(bool) * first_variables.capacity);
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		return invert_select_any<FieldCount, KeepHead, POSITION_RIGHT>(inverse, second);
 	} else if (first.type == DATALOG_PREDICATE) {
 		if (FieldCount != 1) return false;
@@ -7780,6 +8391,12 @@ bool invert_select_right(datalog_expression& inverse,
 	} else {
 		return false;
 	}
+
+	unsigned int head = get_head(inverse);
+	if (head != 1 && head != DATALOG_LABEL_EMPTY && head != DATALOG_LABEL_WILDCARD) {
+		free(inverse);
+		return false;
+	}
 	return check_variable_overlap<MergeVariables>(inverse, first_variables, second_variable_map);
 }
 
@@ -7805,7 +8422,7 @@ bool invert_delete_left(datalog_expression& inverse,
 {
 	array<bool> first_variables = array<bool>(8);
 	memset(first_variables.data, 0, sizeof(bool) * first_variables.capacity);
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		if (second.type == DATALOG_PREDICATE || second.type == DATALOG_FUNCTION) {
 			if (!init_tuple<FieldCount + 1, POSITION_EXACT>(inverse))
 				return false;
@@ -8106,6 +8723,12 @@ bool invert_delete_left(datalog_expression& inverse,
 	} else {
 		return false;
 	}
+
+	unsigned int head = get_head(inverse);
+	if (head != 1 && head != DATALOG_LABEL_EMPTY && head != DATALOG_LABEL_WILDCARD) {
+		free(inverse);
+		return false;
+	}
 	return check_variable_overlap<MergeVariables>(inverse, first_variables, second_variable_map);
 }
 
@@ -8131,7 +8754,7 @@ bool invert_delete_right(datalog_expression& inverse,
 {
 	array<bool> first_variables = array<bool>(8);
 	memset(first_variables.data, 0, sizeof(bool) * first_variables.capacity);
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		if (second.type == DATALOG_PREDICATE || second.type == DATALOG_FUNCTION) {
 			if (!init_tuple<FieldCount + 1, POSITION_EXACT>(inverse))
 				return false;
@@ -8476,6 +9099,12 @@ bool invert_delete_right(datalog_expression& inverse,
 	} else {
 		return false;
 	}
+
+	unsigned int head = get_head(inverse);
+	if (head != 1 && head != DATALOG_LABEL_EMPTY && head != DATALOG_LABEL_WILDCARD) {
+		free(inverse);
+		return false;
+	}
 	return check_variable_overlap<MergeVariables>(inverse, first_variables, second_variable_map);
 }
 
@@ -8497,7 +9126,7 @@ template<unsigned int FieldCount, bool KeepHead, bool MergeVariables = true>
 bool invert_select_left_delete_answer(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		if (!init(inverse.func)) {
 			fprintf(stderr, "invert_select_left_delete_answer ERROR: Out of memory.\n");
 			return false;
@@ -8547,7 +9176,7 @@ template<unsigned int FieldCount, bool KeepHead, bool MergeVariables = true>
 bool invert_select_right_delete_answer(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		if (!init(inverse.func)) {
 			fprintf(stderr, "invert_select_left_delete_answer ERROR: Out of memory.\n");
 			return false;
@@ -8597,7 +9226,7 @@ template<unsigned int FieldCount, bool KeepHead, bool MergeVariables = true>
 bool invert_delete_left_answer(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		if (!init(inverse.func)) {
 			fprintf(stderr, "invert_delete_left_answer ERROR: Out of memory.\n");
 			return false;
@@ -8647,7 +9276,7 @@ template<unsigned int FieldCount, bool KeepHead, bool MergeVariables = true>
 bool invert_delete_right_answer(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		if (!init(inverse.func)) {
 			fprintf(stderr, "invert_delete_left_answer ERROR: Out of memory.\n");
 			return false;
@@ -8696,7 +9325,7 @@ bool invert_delete_right_answer(datalog_expression& inverse,
 bool invert_delete_answer(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		if (!init(inverse.func)) {
 			fprintf(stderr, "invert_delete_left_answer ERROR: Out of memory.\n");
 			return false;
@@ -8738,19 +9367,26 @@ bool invert_delete_answer(datalog_expression& inverse,
 	return true;
 }
 
-template<unsigned int FieldIndex>
+template<unsigned int FieldIndex, bool OtherArgsEmpty>
 bool invert_select_arg(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		inverse.type = DATALOG_PREDICATE;
 		inverse.pred.function = DATALOG_LABEL_WILDCARD;
-		inverse.pred.excluded_count = 0;
+		if (!init_excluded(inverse.pred.excluded, &DATALOG_LABEL_EMPTY, 1))
+			return false;
+		inverse.pred.excluded_count = 1;
 		inverse.reference_count = 1;
 
-		for (unsigned int i = 0; i < FieldIndex; i++)
-			inverse.pred.args[i] = &DATALOG_ANY_TREE;
-		DATALOG_ANY_TREE.reference_count += FieldIndex;
+		if (OtherArgsEmpty) {
+			for (unsigned int i = 0; i < FieldIndex; i++)
+				inverse.pred.args[i] = NULL;
+		} else {
+			for (unsigned int i = 0; i < FieldIndex; i++)
+				inverse.pred.args[i] = &DATALOG_ANY_TREE;
+			DATALOG_ANY_TREE.reference_count += FieldIndex;
+		}
 		if (second.type == DATALOG_EMPTY) {
 			for (unsigned int i = FieldIndex; i < array_length(inverse.pred.args); i++)
 				inverse.pred.args[i] = NULL;
@@ -8759,33 +9395,46 @@ bool invert_select_arg(datalog_expression& inverse,
 				inverse.pred.args[FieldIndex] = NULL;
 				free(inverse); return false;
 			}
-			for (unsigned int i = FieldIndex + 1; i < array_length(inverse.pred.args); i++)
-				inverse.pred.args[i] = &DATALOG_ANY_TREE;
-			DATALOG_ANY_TREE.reference_count += array_length(inverse.pred.args) - FieldIndex - 1;
+			if (OtherArgsEmpty) {
+				for (unsigned int i = FieldIndex + 1; i < array_length(inverse.pred.args); i++)
+					inverse.pred.args[i] = NULL;
+			} else {
+				for (unsigned int i = FieldIndex + 1; i < array_length(inverse.pred.args); i++)
+					inverse.pred.args[i] = &DATALOG_ANY_TREE;
+				DATALOG_ANY_TREE.reference_count += array_length(inverse.pred.args) - FieldIndex - 1;
+			}
 		}
 	} else if (first.type == DATALOG_PREDICATE) {
 		inverse.type = DATALOG_PREDICATE;
 		inverse.pred.function = first.pred.function;
+		inverse.reference_count = 1;
 		if (first.pred.excluded_count > 0 && !init_excluded(inverse.pred.excluded, first.pred.excluded, first.pred.excluded_count)) {
 			free(inverse); return false;
 		}
 		inverse.pred.excluded_count = first.pred.excluded_count;
-		inverse.reference_count = 1;
+		if (inverse.pred.function == DATALOG_LABEL_WILDCARD
+		 && !inverse.pred.exclude(&DATALOG_LABEL_EMPTY, 1)) {
+			free(inverse); return false;
+		}
 
 		for (unsigned int i = 0; i < array_length(inverse.pred.args); i++)
 			inverse.pred.args[i] = NULL;
 		for (unsigned int i = 0; i < FieldIndex; i++) {
-			if (first.pred.args[i] == NULL) {
-				free(inverse);
-				return false;
+			if (OtherArgsEmpty) {
+				if (first.pred.args[i] != NULL && !can_be_empty(*first.pred.args[i])) {
+					free(inverse); return false;
+				}
+				inverse.pred.args[i] = NULL;
+			} else {
+				inverse.pred.args[i] = first.pred.args[i];
+				if (first.pred.args[i] != NULL)
+					first.pred.args[i]->reference_count++;
 			}
-			inverse.pred.args[i] = first.pred.args[i];
-			first.pred.args[i]->reference_count++;
 		}
 
 		const datalog_expression* arg = first.pred.args[FieldIndex];
 		if (arg == NULL) {
-			if (second.type != DATALOG_EMPTY || second.type != DATALOG_ANY) {
+			if (second.type != DATALOG_EMPTY && second.type != DATALOG_ANY) {
 				free(inverse); return false;
 			}
 		} else if (!intersect(inverse.pred.args[FieldIndex], arg, &second)) {
@@ -8806,9 +9455,16 @@ bool invert_select_arg(datalog_expression& inverse,
 			}
 		} else {
 			for (unsigned int i = FieldIndex + 1; i < array_length(inverse.pred.args); i++) {
-				inverse.pred.args[i] = first.pred.args[i];
-				if (first.pred.args[i] != NULL)
-					first.pred.args[i]->reference_count++;
+				if (OtherArgsEmpty) {
+					if (first.pred.args[i] != NULL && !can_be_empty(*first.pred.args[i])) {
+						free(inverse); return false;
+					}
+					inverse.pred.args[i] = NULL;
+				} else {
+					inverse.pred.args[i] = first.pred.args[i];
+					if (first.pred.args[i] != NULL)
+						first.pred.args[i]->reference_count++;
+				}
 			}
 		}
 	} else {
@@ -8821,7 +9477,8 @@ template<unsigned int FieldIndex>
 bool invert_delete_arg(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY || (first.type == DATALOG_TUPLE && first.tuple.elements.length == 0 && first.tuple.position != POSITION_EXACT)) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY
+	 || (first.type == DATALOG_TUPLE && first.tuple.elements.length == 0 && first.tuple.position != POSITION_EXACT)) {
 		if (second.type != DATALOG_PREDICATE || (second.pred.args[FieldIndex] != NULL && second.pred.args[FieldIndex]->type != DATALOG_EMPTY))
 			return false;
 
@@ -8892,7 +9549,7 @@ bool invert_delete_arg(datalog_expression& inverse,
 bool invert_delete_args(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		if (second.type != DATALOG_PREDICATE)
 			return false;
 		for (unsigned int i = 0; i < array_length(second.pred.args); i++)
@@ -8941,20 +9598,20 @@ bool invert_head_arg_select_arg(datalog_expression& inverse,
 	if (first.type == DATALOG_TUPLE) {
 		if (first.tuple.elements.length == 0) {
 			if (first.tuple.position == POSITION_EXACT) return false;
-			if (!invert_select_arg<SelectIndex>(inverse, DATALOG_ANY_TREE, second))
+			if (!invert_select_arg<SelectIndex, false>(inverse, DATALOG_ANY_TREE, second))
 				return false;
 		} else if (first.tuple.elements.length > 1) {
 			return false;
 		} else {
-			if (!invert_select_arg<SelectIndex>(inverse, *first.tuple.elements[0], second))
+			if (!invert_select_arg<SelectIndex, false>(inverse, *first.tuple.elements[0], second))
 				return false;
 		}
 	} else {
-		if (!invert_select_arg<SelectIndex>(inverse, first, second))
+		if (!invert_select_arg<SelectIndex, false>(inverse, first, second))
 			return false;
 	}
 
-	if (inverse.pred.args[HeadIndex]->type == DATALOG_ANY) {
+	if (inverse.pred.args[HeadIndex]->type == DATALOG_ANY || inverse.pred.args[HeadIndex]->type == DATALOG_NON_EMPTY) {
 		if (inverse.pred.args[HeadIndex]->reference_count > 1) {
 			free(*inverse.pred.args[HeadIndex]);
 			if (!new_expression(inverse.pred.args[HeadIndex])) return false;
@@ -8992,7 +9649,7 @@ template<unsigned int FieldCount, unsigned int Predicate, bool MergeVariables = 
 bool invert_select_left_keep_function(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		/* we're not implementing the any-any case */
 		if (second.type != DATALOG_FUNCTION) return false;
 
@@ -9114,7 +9771,7 @@ bool invert_delete_left_keep_function(datalog_expression& inverse,
 		array<unsigned int>& first_variable_map, array<unsigned int>& second_variable_map,
 		array<unsigned int>& dst_variable_map)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		/* we're not implementing the any-any case */
 		if (second.type != DATALOG_FUNCTION) return false;
 
@@ -9236,7 +9893,7 @@ template<unsigned int FieldCount, unsigned int Predicate, bool KeepHead>
 bool invert_delete_right_keep_function(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		/* we're not implementing the any-any case */
 		if (second.type != DATALOG_FUNCTION) return false;
 
@@ -9353,7 +10010,8 @@ bool invert_select_left_delete_function(datalog_expression& inverse,
 		array<unsigned int>& first_variable_map, array<unsigned int>& second_variable_map,
 		array<unsigned int>& dst_variable_map)
 {
-	if (first.type == DATALOG_ANY || (first.type == DATALOG_TUPLE && first.tuple.elements.length == 0 && first.tuple.position != POSITION_EXACT)) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY
+	 || (first.type == DATALOG_TUPLE && first.tuple.elements.length == 0 && first.tuple.position != POSITION_EXACT)) {
 		inverse.type = DATALOG_FUNCTION;
 		inverse.reference_count = 1;
 		inverse.func.excluded_count = 0;
@@ -9436,7 +10094,7 @@ template<unsigned int FieldCount, unsigned int Predicate, bool KeepHead>
 bool invert_select_right_delete_function(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		inverse.type = DATALOG_FUNCTION;
 		inverse.reference_count = 1;
 		inverse.func.excluded_count = 0;
@@ -9501,7 +10159,7 @@ bool invert_delete_left_function(datalog_expression& inverse,
 		array<unsigned int>& first_variable_map, array<unsigned int>& second_variable_map,
 		array<unsigned int>& dst_variable_map)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		inverse.type = DATALOG_FUNCTION;
 		inverse.reference_count = 1;
 		inverse.func.excluded_count = 0;
@@ -9580,7 +10238,7 @@ template<unsigned int Predicate, bool KeepHead>
 bool invert_select_function(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		if (second.type != DATALOG_FUNCTION) return false;
 
 		inverse.type = DATALOG_FUNCTION;
@@ -9656,7 +10314,7 @@ template<unsigned int FieldCount, unsigned int Predicate, bool KeepHead, bool Me
 bool invert_delete_left_answer_keep_function(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		inverse.func.function = PREDICATE_ANSWER;
 		inverse.func.excluded_count = 0;
 		set_function_variables<PREDICATE_ANSWER>(inverse.func);
@@ -9711,7 +10369,7 @@ template<unsigned int FieldCount, unsigned int Predicate, bool KeepHead, bool Me
 bool invert_select_left_delete_function_answer(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		inverse.func.function = PREDICATE_ANSWER;
 		inverse.func.excluded_count = 0;
 		set_function_variables<PREDICATE_ANSWER>(inverse.func);
@@ -9765,7 +10423,7 @@ template<unsigned int FieldCount, unsigned int Predicate, bool KeepHead>
 bool invert_delete_left_function_answer(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		inverse.func.function = PREDICATE_ANSWER;
 		inverse.func.excluded_count = 0;
 		set_function_variables<PREDICATE_ANSWER>(inverse.func);
@@ -9819,7 +10477,8 @@ template<unsigned int Predicate, bool KeepHead, bool MergeVariables = true>
 bool invert_delete_function(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY || (first.type == DATALOG_TUPLE && first.tuple.elements.length == 0 && first.tuple.position != POSITION_EXACT)) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY
+	 || (first.type == DATALOG_TUPLE && first.tuple.elements.length == 0 && first.tuple.position != POSITION_EXACT)) {
 		inverse.type = DATALOG_FUNCTION;
 		inverse.func.function = Predicate;
 		inverse.func.excluded_count = 0;
@@ -9906,7 +10565,7 @@ template<unsigned int Predicate, bool KeepHead>
 bool invert_delete_function_answer(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		inverse.func.function = PREDICATE_ANSWER;
 		inverse.func.excluded_count = 0;
 		set_function_variables<PREDICATE_ANSWER>(inverse.func);
@@ -9946,7 +10605,7 @@ bool invert_delete_function_answer(datalog_expression& inverse,
 
 template<unsigned int Predicate, unsigned int Direction>
 inline bool set_predicate_answer(datalog_expression& inverse, const datalog_expression& first) {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		inverse.func.function = PREDICATE_ANSWER;
 		inverse.func.excluded_count = 0;
 		set_function_variables<PREDICATE_ANSWER>(inverse.func);
@@ -9990,7 +10649,7 @@ template<unsigned int Length>
 inline bool invert_tuple_length(datalog_expression& inverse,
 		const datalog_expression& first, const datalog_expression& second)
 {
-	if (first.type == DATALOG_ANY) {
+	if (first.type == DATALOG_ANY || first.type == DATALOG_NON_EMPTY) {
 		if (!tuple_length<Length>(second, inverse))
 			return false;
 	} else if (first.type == DATALOG_TUPLE) {
@@ -10035,19 +10694,29 @@ bool invert(
 	 || function.type == datalog_expression_root::FUNCTION_DELETE_LEFT_NOT_HEAD_FEATURES
 	 || function.type == datalog_expression_root::FUNCTION_DELETE_FUNCTION_FEATURES
 	 || function.type == datalog_expression_root::FUNCTION_DELETE_NOT_FEATURES
-	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES)
+	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG1_DELETE_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG2_DELETE_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY_DELETE_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY_DELETE_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY_DELETE_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_DELETE_ARG1_FEATURES
+	 || function.type == datalog_expression_root::FUNCTION_DELETE_ARG2_FEATURES)
 	{
 		inverse.inf = first.inf;
 		inverse.index = first.index;
 		inverse.concord = first.concord;
 	} else if (function.type == datalog_expression_root::FUNCTION_SINGULAR
 			|| function.type == datalog_expression_root::FUNCTION_SELECT_RIGHT2_SINGULAR
-			|| function.type == datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR) {
+			|| function.type == datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR
+			|| function.type == datalog_expression_root::FUNCTION_DELETE_ARG1_SINGULAR) {
 		if ((second.index != NUMBER_ANY && second.index != NUMBER_SINGULAR)
 		 || !intersect(inverse.inf, first.inf, second.inf) || !intersect(inverse.concord, first.concord, second.concord))
 			return false;
 		inverse.index = first.index;
-	} else if (function.type == datalog_expression_root::FUNCTION_PLURAL) {
+	} else if (function.type == datalog_expression_root::FUNCTION_PLURAL
+			|| function.type == datalog_expression_root::FUNCTION_SELECT_ARG1_PLURAL
+			|| function.type == datalog_expression_root::FUNCTION_DELETE_ARG1_PLURAL) {
 		if ((second.index != NUMBER_ANY && second.index != NUMBER_PLURAL)
 		 || !intersect(inverse.inf, first.inf, second.inf) || !intersect(inverse.concord, first.concord, second.concord))
 			return false;
@@ -10440,15 +11109,31 @@ bool invert(
 
 	case datalog_expression_root::FUNCTION_SELECT_ARG1:
 	case datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR:
-		return invert_select_arg<0>(inverse.root, first.root, second.root);
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_PLURAL:
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_DELETE_FEATURES:
+		return invert_select_arg<0, false>(inverse.root, first.root, second.root);
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY:
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY_DELETE_FEATURES:
+		return invert_select_arg<0, true>(inverse.root, first.root, second.root);
 	case datalog_expression_root::FUNCTION_SELECT_ARG2:
-		return invert_select_arg<1>(inverse.root, first.root, second.root);
+	case datalog_expression_root::FUNCTION_SELECT_ARG2_DELETE_FEATURES:
+		return invert_select_arg<1, false>(inverse.root, first.root, second.root);
+	case datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY:
+	case datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY_DELETE_FEATURES:
+		return invert_select_arg<1, true>(inverse.root, first.root, second.root);
 	case datalog_expression_root::FUNCTION_SELECT_ARG3:
 	case datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES:
-		return invert_select_arg<2>(inverse.root, first.root, second.root);
+		return invert_select_arg<2, false>(inverse.root, first.root, second.root);
+	case datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY:
+	case datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY_DELETE_FEATURES:
+		return invert_select_arg<2, true>(inverse.root, first.root, second.root);
 	case datalog_expression_root::FUNCTION_DELETE_ARG1:
+	case datalog_expression_root::FUNCTION_DELETE_ARG1_SINGULAR:
+	case datalog_expression_root::FUNCTION_DELETE_ARG1_PLURAL:
+	case datalog_expression_root::FUNCTION_DELETE_ARG1_FEATURES:
 		return invert_delete_arg<0>(inverse.root, first.root, second.root);
 	case datalog_expression_root::FUNCTION_DELETE_ARG2:
+	case datalog_expression_root::FUNCTION_DELETE_ARG2_FEATURES:
 		return invert_delete_arg<1>(inverse.root, first.root, second.root);
 	case datalog_expression_root::FUNCTION_DELETE_ARG3:
 		return invert_delete_arg<2>(inverse.root, first.root, second.root);
@@ -10463,9 +11148,9 @@ bool invert(
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE:
 		if (second.root.type == DATALOG_TUPLE) {
 			if (second.root.tuple.elements.length > 0) return false;
-		} else if (second.root.type != DATALOG_ANY) return false;
+		} else if (second.root.type != DATALOG_ANY && second.root.type != DATALOG_NON_EMPTY) return false;
 
-		if (first.root.type == DATALOG_ANY) {
+		if (first.root.type == DATALOG_ANY || first.root.type == DATALOG_NON_EMPTY) {
 			return init_tuple(inverse.root, POSITION_LEFT, 1);
 		} else if (first.root.type != DATALOG_TUPLE && first.root.type != DATALOG_PREDICATE && first.root.type != DATALOG_FUNCTION) {
 			return false;
@@ -10476,15 +11161,21 @@ bool invert(
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR:
 		if (second.root.type == DATALOG_TUPLE) {
 			if (second.root.tuple.elements.length > 0) return false;
-		} else if (second.root.type != DATALOG_ANY) return false;
+		} else if (second.root.type != DATALOG_ANY && second.root.type != DATALOG_NON_EMPTY) return false;
 
-		if (first.root.type == DATALOG_ANY) {
+		if (first.root.type == DATALOG_ANY || first.root.type == DATALOG_NON_EMPTY) {
 			return init_tuple(inverse.root, POSITION_EXACT, 1);
 		} else if (first.root.type != DATALOG_TUPLE || first.root.tuple.elements.length > 0) {
 			return false;
 		} else {
 			return init_tuple(inverse.root, POSITION_EXACT, 1);
 		}
+	case datalog_expression_root::FUNCTION_KEEP_NULL:
+		if (second.root.type != DATALOG_ANY && second.root.type != DATALOG_EMPTY)
+			return false;
+		inverse.root.type = DATALOG_EMPTY;
+		inverse.root.reference_count = 1;
+		return true;
 	case datalog_expression_root::FUNCTION_EMPTY_ARG2:
 		if (!intersect(inverse.root, &first.root, &second.root))
 			return false;
@@ -10498,6 +11189,90 @@ bool invert(
 			if (inverse.root.pred.args[1]->reference_count == 0)
 				free(inverse.root.pred.args[1]);
 			inverse.root.pred.args[1] = NULL;
+		}
+		return true;
+	case datalog_expression_root::FUNCTION_EMPTY_ARGS:
+		if (!intersect(inverse.root, &first.root, &second.root)) return false;
+		if (inverse.root.type != DATALOG_PREDICATE) return false;
+		for (unsigned int i = 0; i < array_length(inverse.root.pred.args); i++) {
+			if (inverse.root.pred.args[i] != NULL && !can_be_empty(*inverse.root.pred.args[i])) {
+				free(inverse.root);
+				return false;
+			}
+			if (inverse.root.pred.args[i] != NULL) {
+				free(*inverse.root.pred.args[i]);
+				if (inverse.root.pred.args[i]->reference_count == 0)
+					free(inverse.root.pred.args[i]);
+				inverse.root.pred.args[i] = NULL;
+			}
+		}
+		return inverse.root.pred.function != DATALOG_LABEL_WILDCARD
+			|| inverse.root.pred.exclude(&DATALOG_LABEL_EMPTY, 1);
+	case datalog_expression_root::FUNCTION_ARG2_ZERO_ARITY:
+		if (!intersect(inverse.root, &first.root, &second.root)) return false;
+		if (inverse.root.type == DATALOG_ANY || inverse.root.type == DATALOG_NON_EMPTY) {
+			if (!new_expression(inverse.root.pred.args[1])) return false;
+			datalog_expression& arg = *inverse.root.pred.args[1];
+			arg.type = DATALOG_PREDICATE;
+			arg.reference_count = 1;
+			arg.pred.function = DATALOG_LABEL_WILDCARD;
+			arg.pred.excluded_count = 0;
+			for (unsigned int i = 0; i < array_length(arg.pred.args); i++)
+				arg.pred.args[i] = NULL;
+			for (unsigned int i = 0; i < array_length(inverse.root.pred.args); i++)
+				if (i != 1) inverse.root.pred.args[i] = &DATALOG_ANY_TREE;
+			DATALOG_ANY_TREE.reference_count += array_length(inverse.root.pred.args) - 1;
+
+			inverse.root.pred.function = DATALOG_LABEL_WILDCARD;
+			if (!init_excluded(inverse.root.pred.excluded, &DATALOG_LABEL_EMPTY, 1))
+				return false;
+			inverse.root.pred.excluded_count = 1;
+			inverse.root.type = DATALOG_PREDICATE;
+		} else if (inverse.root.type == DATALOG_PREDICATE) {
+			if (inverse.root.pred.function == DATALOG_LABEL_WILDCARD
+			 && !inverse.root.pred.exclude(&DATALOG_LABEL_EMPTY, 1))
+				return false;
+			else if (inverse.root.pred.args[1] == NULL) return true;
+
+			datalog_expression* arg;
+			if (inverse.root.pred.args[1]->reference_count == 1) {
+				arg = inverse.root.pred.args[1];
+			} else {
+				if (!init(arg, *inverse.root.pred.args[1])) exit(EXIT_FAILURE);
+				free(*inverse.root.pred.args[1]);
+				inverse.root.pred.args[1] = arg;
+			}
+
+			if (arg->type == DATALOG_ANY) {
+				arg->type = DATALOG_PREDICATE;
+				arg->pred.function = DATALOG_LABEL_WILDCARD;
+				arg->pred.excluded_count = 0;
+				for (unsigned int i = 0; i < array_length(arg->pred.args); i++)
+					arg->pred.args[i] = NULL;
+			} else if (arg->type == DATALOG_NON_EMPTY) {
+				arg->type = DATALOG_PREDICATE;
+				arg->pred.function = DATALOG_LABEL_WILDCARD;
+				if (!init_excluded(arg->pred.excluded, &DATALOG_LABEL_EMPTY, 1)) exit(EXIT_FAILURE);
+				arg->pred.excluded_count = 1;
+				for (unsigned int i = 0; i < array_length(arg->pred.args); i++)
+					arg->pred.args[i] = NULL;
+			} else if (arg->type == DATALOG_PREDICATE) {
+				for (unsigned int i = 0; i < array_length(arg->pred.args); i++) {
+					if (arg->pred.args[i] != NULL) {
+						if (!can_be_empty(*arg->pred.args[i])) {
+							free(inverse.root); return false;
+						}
+						free(*arg->pred.args[i]);
+						if (arg->pred.args[i]->reference_count == 0)
+							free(arg->pred.args[i]);
+						arg->pred.args[i] = NULL;
+					}
+				}
+			} else {
+				return false;
+			}
+		} else {
+			return false;
 		}
 		return true;
 	case datalog_expression_root::FUNCTION_LOC:
@@ -10542,10 +11317,10 @@ bool invert(
 }
 
 inline bool any_number(const datalog_expression_root& src) {
-	return src.root.type == DATALOG_ANY;
+	return src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY;
 }
 
-/* NOTE: this function assumes src is not DATALOG_ANY */
+/* NOTE: this function assumes src is not DATALOG_ANY or DATALOG_NON_EMPTY */
 inline bool get_number(const datalog_expression_root& src, int& value) {
 	if (src.root.type != DATALOG_INTEGER)
 		return false;
@@ -10554,7 +11329,8 @@ inline bool get_number(const datalog_expression_root& src, int& value) {
 }
 
 inline bool set_number(datalog_expression_root& exp, const datalog_expression_root& set, int value) {
-	if (set.root.type != DATALOG_ANY && (set.root.type != DATALOG_INTEGER || set.root.integer != value))
+	if (set.root.type != DATALOG_ANY && set.root.type != DATALOG_NON_EMPTY
+	 && (set.root.type != DATALOG_INTEGER || set.root.integer != value))
 		return false;
 	exp.root.type = DATALOG_INTEGER;
 	exp.root.integer = value;
@@ -10565,6 +11341,29 @@ inline bool set_number(datalog_expression_root& exp, const datalog_expression_ro
 	return true;
 }
 
+inline bool any_string(const datalog_expression_root& src) {
+	return src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY;
+}
+
+/* NOTE: this function assumes src is not DATALOG_ANY or DATALOG_NON_EMPTY */
+inline bool get_string(const datalog_expression_root& src, sequence& value) {
+	if (src.root.type != DATALOG_STRING)
+		return false;
+	return init(value, src.root.str);
+}
+
+inline bool set_string(datalog_expression_root& exp, const datalog_expression_root& set, const sequence& value) {
+	if (set.root.type != DATALOG_ANY && set.root.type != DATALOG_NON_EMPTY
+	 && (set.root.type != DATALOG_STRING || set.root.str != value))
+		return false;
+	exp.root.type = DATALOG_STRING;
+	exp.root.reference_count = 1;
+	exp.concord = set.concord;
+	exp.index = set.index;
+	exp.inf = set.inf;
+	return init(exp.root.str, value);
+}
+
 inline bool next(const datalog_expression_root::invert_iterator& inverter, datalog_expression_root& dst) {
 	dst = *inverter.inverse;
 	return true;
@@ -10573,7 +11372,7 @@ inline bool next(const datalog_expression_root::invert_iterator& inverter, datal
 inline void operator ++ (datalog_expression_root::invert_iterator& inverter, int i) { }
 
 inline void get_selected(const datalog_expression_root::function& f,
-		int& num_conjuncts, tuple_position& position, bool& function)
+		int& num_conjuncts, bool* args, tuple_position& position, bool& function)
 {
 	function = false;
 	switch (f.type) {
@@ -10600,29 +11399,63 @@ inline void get_selected(const datalog_expression_root::function& f,
 	case datalog_expression_root::FUNCTION_FLIP_PREDICATE:
 	case datalog_expression_root::FUNCTION_FLIP_PREDICATE_PAST_PARTICIPLE:
 	case datalog_expression_root::FUNCTION_FLIP_PREDICATE_KEEP_PAST_PARTICIPLE:
-	case datalog_expression_root::FUNCTION_SELECT_ARG1:
-	case datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR:
-	case datalog_expression_root::FUNCTION_SELECT_ARG2:
-	case datalog_expression_root::FUNCTION_SELECT_ARG3:
-	case datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES:
-	case datalog_expression_root::FUNCTION_DELETE_ARG1:
-	case datalog_expression_root::FUNCTION_DELETE_ARG2:
-	case datalog_expression_root::FUNCTION_DELETE_ARG3:
-	case datalog_expression_root::FUNCTION_DELETE_ARGS:
-	case datalog_expression_root::FUNCTION_DELETE_ARGS_CONCORD_SINGULAR:
-	case datalog_expression_root::FUNCTION_DELETE_ARGS_KEEP_PLURAL:
 	case datalog_expression_root::FUNCTION_HEAD_ARG1_SELECT_ARG2:
 	case datalog_expression_root::FUNCTION_HEAD_ARG1_SELECT_ARG2_ONLY:
 	case datalog_expression_root::FUNCTION_EMPTY_ARG2:
+	case datalog_expression_root::FUNCTION_EMPTY_ARGS:
+	case datalog_expression_root::FUNCTION_ARG2_ZERO_ARITY:
 	case datalog_expression_root::FUNCTION_LOC:
 	case datalog_expression_root::FUNCTION_TWO_PREDICATES:
 		num_conjuncts = INT_MAX; break;
+	case datalog_expression_root::FUNCTION_SELECT_ARG1:
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR:
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_PLURAL:
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_DELETE_FEATURES:
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY:
+	case datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY_DELETE_FEATURES:
+		num_conjuncts = 0; args[0] = true; break;
+	case datalog_expression_root::FUNCTION_DELETE_ARG1:
+	case datalog_expression_root::FUNCTION_DELETE_ARG1_SINGULAR:
+	case datalog_expression_root::FUNCTION_DELETE_ARG1_PLURAL:
+	case datalog_expression_root::FUNCTION_DELETE_ARG1_FEATURES:
+		num_conjuncts = 1; position = POSITION_LEFT;
+		for (unsigned int i = 1; i < datalog_predicate::ARG_COUNT; i++)
+			args[i] = true;
+		break;
+	case datalog_expression_root::FUNCTION_SELECT_ARG2:
+	case datalog_expression_root::FUNCTION_SELECT_ARG2_DELETE_FEATURES:
+	case datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY:
+	case datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY_DELETE_FEATURES:
+		num_conjuncts = 0; args[1] = true; break;
+	case datalog_expression_root::FUNCTION_DELETE_ARG2:
+	case datalog_expression_root::FUNCTION_DELETE_ARG2_FEATURES:
+		num_conjuncts = 1; position = POSITION_LEFT;
+		for (unsigned int i = 0; i < datalog_predicate::ARG_COUNT; i++)
+			if (i != 1) args[i] = true;
+		break;
+	case datalog_expression_root::FUNCTION_SELECT_ARG3:
+	case datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES:
+	case datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY:
+	case datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY_DELETE_FEATURES:
+		num_conjuncts = 0; args[2] = true; break;
+	case datalog_expression_root::FUNCTION_DELETE_ARG3:
+		num_conjuncts = 1; position = POSITION_LEFT;
+		for (unsigned int i = 0; i < datalog_predicate::ARG_COUNT; i++)
+			if (i != 2) args[i] = true;
+		break;
+	case datalog_expression_root::FUNCTION_DELETE_ARGS:
+	case datalog_expression_root::FUNCTION_DELETE_ARGS_CONCORD_SINGULAR:
+	case datalog_expression_root::FUNCTION_DELETE_ARGS_KEEP_PLURAL:
+		num_conjuncts = 1; position = POSITION_LEFT; break;
+
 	case datalog_expression_root::FUNCTION_NULL:
 	case datalog_expression_root::FUNCTION_KEEP_FEATURES:
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE:
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY:
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR:
+	case datalog_expression_root::FUNCTION_KEEP_NULL:
 		num_conjuncts = 0; break;
+
 	case datalog_expression_root::FUNCTION_SELECT_LEFT:
 	case datalog_expression_root::FUNCTION_SELECT_LEFT_COORD:
 	case datalog_expression_root::FUNCTION_SELECT_LEFT_DISJOINT:
@@ -10805,11 +11638,17 @@ inline void get_selected(const datalog_expression_root::function& f,
 inline bool is_separable(const datalog_expression_root::function* functions, unsigned int rule_position) {
 	int num_conjuncts = 0; bool function = false;
 	tuple_position position = POSITION_EXACT;
+	bool args[datalog_predicate::ARG_COUNT];
+	for (unsigned int i = 0; i < array_length(args); i++)
+		args[i] = false;
 	for (unsigned int i = 0; i < rule_position; i++) {
 		int new_num_conjuncts = 0;
 		tuple_position new_position = POSITION_EXACT;
 		bool new_function = false;
-		get_selected(functions[i], new_num_conjuncts, new_position, new_function);
+		bool new_args[datalog_predicate::ARG_COUNT];
+		for (unsigned int i = 0; i < array_length(new_args); i++)
+			new_args[i] = false;
+		get_selected(functions[i], new_num_conjuncts, new_args, new_position, new_function);
 
 		function |= new_function;
 		if (position == POSITION_EXACT) {
@@ -10831,17 +11670,27 @@ inline bool is_separable(const datalog_expression_root::function* functions, uns
 				num_conjuncts = min(num_conjuncts, new_num_conjuncts);
 			else return false;
 		}
+
+		for (unsigned int i = 0; i < array_length(args); i++) {
+			if (args[i] && new_args[i]) return false;
+			args[i] |= new_args[i];
+		}
 	}
 
 	int new_num_conjuncts = 0;
 	tuple_position new_position = POSITION_EXACT;
 	bool new_function = false;
-	get_selected(functions[rule_position], new_num_conjuncts, new_position, new_function);
+	bool new_args[datalog_predicate::ARG_COUNT];
+	for (unsigned int i = 0; i < array_length(new_args); i++)
+		new_args[i] = false;
+	get_selected(functions[rule_position], new_num_conjuncts, new_args, new_position, new_function);
 
 	if (function && new_function) return false;
 	if (position != POSITION_EXACT && position != new_position) return false;
 	if (new_num_conjuncts == INT_MAX
 	 || num_conjuncts + new_num_conjuncts > 0) return false;
+	for (unsigned int i = 0; i < array_length(args); i++)
+		if (args[i] && new_args[i]) return false;
 
 	return true;
 }
@@ -10854,7 +11703,8 @@ inline bool is_separable(const datalog_expression_root::function* functions, uns
 constexpr unsigned int DATALOG_TYPE_ENTITY = 1;
 constexpr unsigned int DATALOG_TYPE_BOOLEAN = 2;
 constexpr unsigned int DATALOG_TYPE_INTEGER = 3;
-constexpr unsigned int DATALOG_TYPE_COUNTABLE = 4;
+constexpr unsigned int DATALOG_TYPE_STRING = 4;
+constexpr unsigned int DATALOG_TYPE_COUNTABLE = 5;
 constexpr unsigned int DATALOG_TYPE_ANY = UINT_MAX;
 
 inline bool parse_datalog_type(unsigned int& type, const string& name) {
@@ -10864,6 +11714,8 @@ inline bool parse_datalog_type(unsigned int& type, const string& name) {
 		type = DATALOG_TYPE_BOOLEAN; return true;
 	} else if (name == "i") {
 		type = DATALOG_TYPE_INTEGER; return true;
+	} else if (name == "str") {
+		type = DATALOG_TYPE_STRING; return true;
 	} else if (name == "countable") {
 		type = DATALOG_TYPE_COUNTABLE; return true;
 	} else {
@@ -10881,6 +11733,8 @@ inline bool print_datalog_type(unsigned int type, Stream& stream) {
 		return print('t', stream);
 	case DATALOG_TYPE_INTEGER:
 		return print('i', stream);
+	case DATALOG_TYPE_STRING:
+		return print("str", stream);
 	case DATALOG_TYPE_COUNTABLE:
 		return print("countable", stream);
 	case DATALOG_TYPE_ANY:
@@ -10904,6 +11758,7 @@ struct datalog_ontology {
 		if (!type_names.put("e", DATALOG_TYPE_ENTITY)
 		 || !type_names.put("t", DATALOG_TYPE_BOOLEAN)
 		 || !type_names.put("i", DATALOG_TYPE_INTEGER)
+		 || !type_names.put("str", DATALOG_TYPE_STRING)
 		 || !type_names.put("countable", DATALOG_TYPE_COUNTABLE))
 			exit(EXIT_FAILURE);
 	}
@@ -10931,6 +11786,7 @@ struct datalog_ontology {
 
 	bool initialize() {
 		if (!add_supertype(DATALOG_TYPE_INTEGER, DATALOG_TYPE_ENTITY)
+		 || !add_supertype(DATALOG_TYPE_STRING, DATALOG_TYPE_ENTITY)
 		 || !add_supertype(DATALOG_TYPE_COUNTABLE, DATALOG_TYPE_ENTITY))
 			return false;
 
@@ -11109,6 +11965,8 @@ bool build_context(
 			arg_type = T.types[predicate][0].return_type;
 		} else if (pred.args[1]->type == DATALOG_INTEGER) {
 			arg_type = DATALOG_TYPE_INTEGER;
+		} else if (pred.args[1]->type == DATALOG_STRING) {
+			arg_type = DATALOG_TYPE_STRING;
 		} else {
 			return false;
 		}
@@ -11126,7 +11984,7 @@ bool build_context(
 	if (Complete && signature.return_type != DATALOG_TYPE_BOOLEAN)
 		return false;
 	for (unsigned int i = 0; i < array_length(pred.args); i++) {
-		if (pred.args[i] == NULL || pred.args[i]->type == DATALOG_ANY) {
+		if (pred.args[i] == NULL || pred.args[i]->type == DATALOG_ANY || pred.args[i]->type == DATALOG_NON_EMPTY) {
 			/* predicate arguments can be empty during parsing */
 			continue;
 		} else if (pred.args[i]->type == DATALOG_VARIABLE) {
@@ -11135,6 +11993,11 @@ bool build_context(
 		} else if (pred.args[i]->type == DATALOG_INTEGER) {
 			if (!is_supertype(T, DATALOG_TYPE_INTEGER, signature.arg_types[i])
 			 && !is_supertype(T, signature.arg_types[i], DATALOG_TYPE_INTEGER)) {
+				return false;
+			}
+		} else if (pred.args[i]->type == DATALOG_STRING) {
+			if (!is_supertype(T, DATALOG_TYPE_STRING, signature.arg_types[i])
+			 && !is_supertype(T, signature.arg_types[i], DATALOG_TYPE_STRING)) {
 				return false;
 			}
 		} else if (pred.args[i]->type == DATALOG_CONSTANT) {
@@ -11176,7 +12039,7 @@ bool build_context(
 		return build_context(func.arg->tuple, T, context);
 	} else if (func.arg->type == DATALOG_FUNCTION) {
 		return build_context(func.arg->func, T, context);
-	} else if (func.arg->type == DATALOG_ANY || func.arg->type == DATALOG_EMPTY) {
+	} else if (func.arg->type == DATALOG_ANY || func.arg->type == DATALOG_NON_EMPTY || func.arg->type == DATALOG_EMPTY) {
 		return true;
 	} else {
 		fprintf(stderr, "build_context ERROR: Found a higher-order function with an "
@@ -11199,6 +12062,7 @@ bool build_context(
 			if (!build_context(element->func, T, context)) return false;
 			break;
 		case DATALOG_ANY:
+		case DATALOG_NON_EMPTY:
 			continue;
 		default:
 			fprintf(stderr, "build_context ERROR: Unrecognized tuple element type.\n");
@@ -11262,7 +12126,7 @@ bool type_check(
 					match = false;
 					break;
 				}
-			} else if (pred.args[i]->type == DATALOG_ANY) {
+			} else if (pred.args[i]->type == DATALOG_ANY || pred.args[i]->type == DATALOG_NON_EMPTY) {
 				if (Complete) {
 					match = false;
 					break;
@@ -11276,6 +12140,8 @@ bool type_check(
 				}
 			} else if (pred.args[i]->type == DATALOG_INTEGER) {
 				arg_type = DATALOG_TYPE_INTEGER;
+			} else if (pred.args[i]->type == DATALOG_STRING) {
+				arg_type = DATALOG_TYPE_STRING;
 			} else if (pred.args[i]->type == DATALOG_VARIABLE) {
 				if (pred.args[i]->variable >= context.capacity || context[pred.args[i]->variable] == 0) {
 					/* this variable is not in the context */
@@ -11347,7 +12213,7 @@ bool type_check(
 		return type_check<true>(func.arg->tuple, T, context);
 	} else if (func.arg->type == DATALOG_FUNCTION) {
 		return type_check(func.arg->func, T, context);
-	} else if (func.arg->type == DATALOG_ANY || func.arg->type == DATALOG_EMPTY) {
+	} else if (func.arg->type == DATALOG_ANY || func.arg->type == DATALOG_NON_EMPTY || func.arg->type == DATALOG_EMPTY) {
 		return true;
 	} else {
 		fprintf(stderr, "type_check ERROR: Found a higher-order function with an "
@@ -11375,6 +12241,7 @@ bool type_check(
 			if (!type_check(element->func, T, context)) return false;
 			break;
 		case DATALOG_ANY:
+		case DATALOG_NON_EMPTY:
 			continue;
 		default:
 			fprintf(stderr, "type_check ERROR: Unrecognized tuple element type.\n");
@@ -11388,8 +12255,9 @@ template<bool Complete>
 bool type_check(const datalog_ontology& T, const datalog_expression_root& e) {
 	array<unsigned int> context = array<unsigned int>(8);
 	memset(context.data, 0, sizeof(unsigned int) * context.capacity);
-	if (e.root.type == DATALOG_ANY || e.root.type == DATALOG_EMPTY
-	 || e.root.type == DATALOG_CONSTANT || e.root.type == DATALOG_INTEGER) {
+	if (e.root.type == DATALOG_ANY || e.root.type == DATALOG_NON_EMPTY
+	 || e.root.type == DATALOG_EMPTY || e.root.type == DATALOG_CONSTANT
+	 || e.root.type == DATALOG_INTEGER || e.root.type == DATALOG_STRING) {
 		return true;
 	} else if (e.root.type == DATALOG_TUPLE) {
 		return build_context(e.root.tuple, T, context)
@@ -11706,10 +12574,21 @@ bool morphology_is_valid(
 	if (pos == POS_OTHER) {
 		return true;
 	} else if (pos == POS_ADJECTIVE) {
+		if (logical_form.concord == NUMBER_SINGULAR || logical_form.concord == NUMBER_PLURAL)
+			return false;
+
 		/* we don't model adjective morphology, for now */
 		/* adjective compounds are head-final (TODO: need a database of exceptions) */
 		unsigned int head_index = terminal.length - 1;
 		return morphology_inflect({terminal[head_index], NUMBER_ANY, INFLECTION_ADJECTIVE}).length > 0;
+	} else if (pos == POS_ADVERB) {
+		if (logical_form.concord == NUMBER_SINGULAR || logical_form.concord == NUMBER_PLURAL)
+			return false;
+
+		/* we don't model adjective morphology, for now */
+		/* adjective compounds are head-final (TODO: need a database of exceptions) */
+		unsigned int head_index = terminal.length - 1;
+		return morphology_inflect({terminal[head_index], NUMBER_ANY, INFLECTION_ADVERB}).length > 0;
 	}
 
 	unsigned int head_index;
@@ -11771,13 +12650,16 @@ bool morphology_parse(const sequence& words, part_of_speech pos,
 {
 	if (pos == POS_OTHER) {
 		return emit_root(words, logical_form);
-	} else if (pos == POS_ADJECTIVE) {
+	} else if (pos == POS_ADJECTIVE || pos == POS_ADVERB) {
+		if (logical_form.concord == NUMBER_SINGULAR || logical_form.concord == NUMBER_PLURAL)
+			return false;
+
 		/* we don't model adjective morphology, for now */
 		/* adjective compounds are head-final (TODO: need a database of exceptions) */
 		unsigned int head_index = words.length - 1;
 		const fixed_array<token>& result = morphology_parse(words[head_index]);
 		for (unsigned int i = 0; i < result.length; i++) {
-			if (result[i].get_part_of_speech() == POS_ADJECTIVE)
+			if (result[i].get_part_of_speech() == pos)
 				return emit_root(words, logical_form);
 		}
 		return true;
@@ -11866,6 +12748,16 @@ bool morphology_parse(const sequence& words, part_of_speech pos,
 //		unsigned int head_index = terminal.length - 1;
 //		const fixed_array<unsigned int>& result = morphology_inflect(
 //				{terminal[head_index], NUMBER_ANY, INFLECTION_ADJECTIVE});
+//		if (result.length == 0)
+//			return false;
+//		terminal[head_index] = result.elements[0];
+//		return true;
+//	} else if (pos == POS_ADVERB) {
+//		/* we don't model adjective morphology, for now */
+//		/* adjective compounds are head-final (TODO: need a database of exceptions) */
+//		unsigned int head_index = terminal.length - 1;
+//		const fixed_array<unsigned int>& result = morphology_inflect(
+//				{terminal[head_index], NUMBER_ANY, INFLECTION_ADVERB});
 //		if (result.length == 0)
 //			return false;
 //		terminal[head_index] = result.elements[0];
@@ -11964,6 +12856,9 @@ inline bool yield(const rule<datalog_expression_root>& terminal,
 	} else if (pos == POS_ADJECTIVE) {
 		unsigned int head_index = terminal.length - 1;
 		sentence[length + head_index].inf = INFLECTION_ADJECTIVE;
+	} else if (pos == POS_ADVERB) {
+		unsigned int head_index = terminal.length - 1;
+		sentence[length + head_index].inf = INFLECTION_ADVERB;
 	} else if (pos != POS_OTHER) {
 		fprintf(stderr, "yield ERROR: Unrecognized part of speech.\n");
 		return false;

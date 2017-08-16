@@ -294,9 +294,6 @@ struct datalog_prior
 	array_map<unsigned int, array<unsigned int>*> constant_root_probabilities;
 	array<unsigned int>* unseen_constant_root_probabilities;
 
-	array_map<unsigned int, pair<unsigned int*, unsigned int>> edge_observations;
-	array_map<unsigned int, pair<unsigned int*, unsigned int>> constant_observations;
-
 	std::mutex edge_hdp_lock;
 	std::mutex constant_hdp_lock;
 
@@ -313,7 +310,7 @@ struct datalog_prior
 		edge_sampler(edge_hdp), edge_cache(edge_sampler), edge_root_probabilities(256), unseen_edge_root_probabilities(NULL),
 		constant_hdp(constant_count, constant_hdp_alpha, CONSTANT_HDP_DEPTH + 1), constant_sampler(constant_hdp),
 		constant_cache(constant_sampler), constant_root_probabilities(256), unseen_constant_root_probabilities(NULL),
-		edge_observations(16), constant_observations(16), edge_posterior_cache(1024), constant_posterior_cache(1024)
+		edge_posterior_cache(1024), constant_posterior_cache(1024)
 	{ }
 
 	~datalog_prior() {
@@ -329,10 +326,6 @@ struct datalog_prior
 			cleanup_root_probabilities(unseen_edge_root_probabilities, edge_sampler.posterior.length);
 		if (unseen_constant_root_probabilities != NULL)
 			cleanup_root_probabilities(unseen_constant_root_probabilities, constant_sampler.posterior.length);
-		for (auto entry : edge_observations)
-			core::free(entry.value.key);
-		for (auto entry : constant_observations)
-			core::free(entry.value.key);
 	}
 
 	inline unsigned int predicate_count() const {
@@ -408,7 +401,7 @@ struct datalog_prior
 		double score = 0.0;
 		bool any_edge_insertable = false;
 		array<datalog_term_set_path> paths(8);
-		if (example.root.type == DATALOG_ANY) {
+		if (example.root.type == DATALOG_ANY || example.root.type == DATALOG_NON_EMPTY) {
 			return 0.0;
 		} else if (example.root.type == DATALOG_TUPLE) {
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable); /* additional terms can be added before or after this tuple */
@@ -422,11 +415,7 @@ struct datalog_prior
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable); /* additional terms can be added before or after this one */
 			if (!compute_paths<CompleteContext, false>(example.root.pred, paths, score, any_edge_insertable)) exit(EXIT_FAILURE);
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable);
-		} else if (example.root.type == DATALOG_CONSTANT || example.root.type == DATALOG_INTEGER) {
-			if (CompleteContext)
-				return -std::numeric_limits<double>::infinity();
-			return 0.0;
-		} else if (example.root.type == DATALOG_EMPTY) {
+		} else if (example.root.type == DATALOG_CONSTANT || example.root.type == DATALOG_INTEGER || example.root.type == DATALOG_EMPTY) {
 			if (CompleteContext)
 				return -std::numeric_limits<double>::infinity();
 			else return 0.0;
@@ -917,7 +906,7 @@ private:
 		if (!edge_posterior_cache.check_size()) exit(EXIT_FAILURE);
 
 		bool contains; unsigned int bucket;
-		double& posterior = edge_posterior_cache.get({observation, prev}, contains, bucket);
+		double posterior = edge_posterior_cache.get({observation, prev}, contains, bucket);
 		edge_hdp_lock.unlock();
 if (debug2) {
 print("\tlog p(", stderr); print(observation.edge.predicate, stderr, *debug_terminal_printer);
@@ -946,8 +935,12 @@ fprintf(stderr, ") = %lf\n", contains ? posterior : nan(""));
 		}
 
 		edge_hdp_lock.lock();
-		if (!init(edge_posterior_cache.table.keys[bucket], observation, prev)) exit(EXIT_FAILURE);
-		edge_posterior_cache.table.size++;
+		edge_posterior_cache.get({observation, prev}, contains, bucket);
+		if (!contains) {
+			if (!init(edge_posterior_cache.table.keys[bucket], observation, prev)) exit(EXIT_FAILURE);
+			edge_posterior_cache.values[bucket] = posterior;
+			edge_posterior_cache.table.size++;
+		}
 		edge_hdp_lock.unlock();
 		return posterior;
 	}
@@ -1163,15 +1156,17 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 				}
 				/* make sure the arguments of the predicate are constants */
 				datalog_predicate& internal_predicate = pred.args[1]->pred;
-				if ((internal_predicate.args[0] != NULL && internal_predicate.args[0]->type != DATALOG_ANY && internal_predicate.args[0]->type != DATALOG_CONSTANT)
-				 || (internal_predicate.args[1] != NULL && internal_predicate.args[1]->type != DATALOG_ANY && internal_predicate.args[1]->type != DATALOG_CONSTANT)) {
+				if ((internal_predicate.args[0] != NULL && internal_predicate.args[0]->type != DATALOG_ANY
+				  && internal_predicate.args[0]->type != DATALOG_NON_EMPTY && internal_predicate.args[0]->type != DATALOG_CONSTANT)
+				 || (internal_predicate.args[1] != NULL && internal_predicate.args[1]->type != DATALOG_ANY
+				  && internal_predicate.args[1]->type != DATALOG_NON_EMPTY && internal_predicate.args[1]->type != DATALOG_CONSTANT)) {
 					log_probability = -std::numeric_limits<double>::infinity();
 					return true;
 				}
 				datalog_literal observed_constant;
 				if (internal_predicate.args[0] == NULL) {
 					observed_constant.label = DATALOG_LABEL_EMPTY; observed_constant.excluded_count = 0;
-				} else if (internal_predicate.args[0]->type == DATALOG_ANY) {
+				} else if (internal_predicate.args[0]->type == DATALOG_ANY || internal_predicate.args[0]->type == DATALOG_NON_EMPTY) {
 					observed_constant.label = DATALOG_LABEL_WILDCARD; observed_constant.excluded_count = 0;
 				} else {
 					observed_constant.label = internal_predicate.args[0]->constant.label;
@@ -1190,7 +1185,7 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 				return add_child_edge(
 						first, pred.function, pred.excluded, pred.excluded_count, paths, log_probability, any_edge_insertable,
 						pred.args[1]->constant.label, pred.args[1]->constant.excluded, pred.args[1]->constant.excluded_count);
-			} else if (pred.args[1]->type == DATALOG_INTEGER || pred.args[1]->type == DATALOG_ANY) {
+			} else if (pred.args[1]->type == DATALOG_INTEGER || pred.args[1]->type == DATALOG_ANY || pred.args[1]->type == DATALOG_NON_EMPTY) {
 				/* in the current grammar, this argument can only become an integer */
 				datalog_literal observed_constant;
 				if (pred.args[2] == NULL) {
@@ -1199,7 +1194,7 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 					} else { /* delete_arg3 allows for the third argument to become any constant */
 						observed_constant.label = DATALOG_LABEL_WILDCARD; observed_constant.excluded_count = 0;
 					}
-				} else if (pred.args[2]->type == DATALOG_ANY) {
+				} else if (pred.args[2]->type == DATALOG_ANY || pred.args[2]->type == DATALOG_NON_EMPTY) {
 					observed_constant.label = DATALOG_LABEL_WILDCARD; observed_constant.excluded_count = 0;
 				} else if (pred.args[2]->type == DATALOG_CONSTANT) {
 					observed_constant.label = pred.args[2]->constant.label;
@@ -1227,7 +1222,7 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 			/* we don't know the variable associated with this edge */
 			set_any_edges(paths, any_edge_insertable);
 			return true;
-		} else if (pred.args[0]->type == DATALOG_ANY) {
+		} else if (pred.args[0]->type == DATALOG_ANY || pred.args[0]->type == DATALOG_NON_EMPTY) {
 			/* the first argument could be any variable */
 			set_any_edges(paths, any_edge_insertable);
 			return true;
@@ -1329,7 +1324,7 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 		} else if (func.arg->type == DATALOG_EMPTY) {
 			if (CompleteContext)
 				log_probability = -std::numeric_limits<double>::infinity();
-		} else if (func.arg->type == DATALOG_ANY) {
+		} else if (func.arg->type == DATALOG_ANY || func.arg->type == DATALOG_NON_EMPTY) {
 			/* TODO: can any edge really appear in an ANY subexpression? */
 			set_any_edges(paths, any_edge_insertable);
 		} else {
@@ -1365,6 +1360,7 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 					if (child_edge_insertable) any_edge_insertable = true;
 					break;
 				case DATALOG_ANY:
+				case DATALOG_NON_EMPTY:
 					/* TODO: can any edge really appear in an ANY subexpression? */
 					set_any_edges(paths, any_edge_insertable);
 					break;

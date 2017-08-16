@@ -4,7 +4,7 @@
 This code implements the experiments as described in [this paper](http://asaparov.org/assets/conll_2017.pdf). It uses a generative model of semantic grammar, which is implemented as a separate modular repository [grammar](https://github.com/asaparov/grammar) (the parsing and MCMC sampling algorithm are implemented there).
 
 If you use this code in your research, please cite:
- > Abulhair Saparov, Vijay Saraswat, and Tom M. Mitchell. 2017. A Probabilistic Generative Grammar for Semantic Parsing. In *Proceedings of the 21st SIGNLL Conference on Computational Natural Language Learning*.
+ > Abulhair Saparov, Vijay Saraswat, and Tom M. Mitchell. 2017. A Probabilistic Generative Grammar for Semantic Parsing. In *Proceedings of the 21st Conference on Computational Natural Language Learning (CoNLL 2017)*.
 
 ### Dependencies
 

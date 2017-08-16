@@ -9,6 +9,7 @@
 #define PARSER_DATA_H_
 
 #include "datalog.h"
+#include "inmind.h"
 
 #include <grammar/grammar.h>
 
@@ -124,6 +125,73 @@ bool read_data(
 		 || data[i]->root.pred.args[0] == NULL || data[i]->root.pred.args[1] == NULL
 		 || !to_sequence(data[i]->root.pred.args[0], sentences[i], names)
 		 || !init(logical_forms[i], data[i]->root.pred.args[1])) {
+			cleanup(data, sentences, logical_forms, i); return false;
+		}
+
+		if (!valid_variable_scope(logical_forms[i]->root)) {
+			fprintf(stderr, "read_data ERROR: The logical form for sentence %u in '%s' has invalid scope.\n", i, data_filepath);
+			cleanup(data, sentences, logical_forms, i + 1);
+			return false;
+		}
+	}
+	return true;
+}
+
+bool read_inmind_data(array<datalog_expression_root*>& data,
+		hash_map<string, unsigned int>& names, const char* data_filepath)
+{
+	/* first lex the data */
+	array<inmind_token> tokens = array<inmind_token>(1024);
+	FILE* input = fopen(data_filepath, "r");
+	if (input == NULL) {
+		fprintf(stderr, "ERROR: Unable to open '%s' for reading.\n", data_filepath);
+		return false;
+	}
+	inmind_lex(tokens, input);
+
+	/* interpret the lexed data */
+	if (!inmind_interpret(tokens, data, names)) {
+		free_tokens(tokens);
+		cleanup(data);
+		fprintf(stderr, "ERROR: Unable to parse '%s'.\n", data_filepath);
+		return false;
+	}
+	free_tokens(tokens);
+	return true;
+}
+
+bool read_inmind_data(
+		array<datalog_expression_root*>& data,
+		hash_map<string, unsigned int>& names, sequence*& sentences,
+		datalog_expression_root**& logical_forms, const char* data_filepath)
+{
+	if (!read_inmind_data(data, names, data_filepath)) return false;
+
+	/* get the list of sentences and logical forms from the data */
+	sentences = NULL; logical_forms = NULL;
+	sentences = (sequence*) malloc(sizeof(sequence) * data.length);
+	logical_forms = (datalog_expression_root**) malloc(sizeof(datalog_expression_root*) * data.length);
+	if (sentences == NULL || logical_forms == NULL) {
+		if (sentences != NULL) free(sentences);
+		if (logical_forms != NULL) free(logical_forms);
+		cleanup(data);
+		return false;
+	}
+
+	for (unsigned int i = 0; i < data.length; i++) {
+		if (data[i]->root.type != DATALOG_PREDICATE
+		 || data[i]->root.pred.args[0] == NULL || data[i]->root.pred.args[1] == NULL)
+			return false;
+
+		const datalog_expression& utterance = *data[i]->root.pred.args[0];
+		const datalog_expression& logical_form = *data[i]->root.pred.args[1];
+		if (utterance.type != DATALOG_PREDICATE || logical_form.type != DATALOG_PREDICATE
+		 || utterance.pred.args[0] == NULL || logical_form.pred.args[0] == NULL
+		 || utterance.pred.args[0]->type != DATALOG_STRING)
+			return false;
+
+		if (!init(sentences[i], utterance.pred.args[0]->str)
+		 || !init(logical_forms[i], logical_form.pred.args[0])) {
 			cleanup(data, sentences, logical_forms, i); return false;
 		}
 
