@@ -320,6 +320,8 @@ void parse(const hdp_grammar_type& G_src,
 		unsigned int id = counter++;
 		if (id >= sentence_count)
 			break;
+id = 148;
+if (counter == 2) break;
 
 		bool skip = false;
 		console_lock.lock();
@@ -353,20 +355,20 @@ void parse(const hdp_grammar_type& G_src,
 		datalog_expression_root true_logical_form = *logical_forms[id];
 minimum_priority = 0.0;
 if (is_unknown(true_logical_form)) continue;
-//debug_flag = true;
-		if (!is_unknown(true_logical_form)
+debug_flag = true;
+		if (false && !is_unknown(true_logical_form)
 		 && parse<false>(parsed_syntax, true_logical_form, G, sentence, terminal_printer.map, time_limit)) {
-//debug2 = true;
-//			print(true_logical_form, out, terminal_printer); print("\n", out);
-//			print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
+debug2 = true;
+			print(true_logical_form, out, terminal_printer); print("\n", out);
+			print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
 			true_log_likelihood = log_probability(G, parsed_syntax, true_logical_form, terminal_printer.map);
 			true_log_prior = log_probability<true>(true_logical_form);
-//debug2 = false;
+debug2 = false;
 			datalog_expression_root logical_form_set;
 			logical_form_set.index = NUMBER_ALL;
 			logical_form_set.concord = NUMBER_NONE;
 			logical_form_set.inf = INFLECTION_NONE;
-//			fprintf(out, "%sParse log probability: %lf (prior: %lf)\n", prefix, true_log_likelihood, true_log_prior);
+			fprintf(out, "%sParse log probability: %lf (prior: %lf)\n", prefix, true_log_likelihood, true_log_prior);
 			is_parseable(parsed_syntax, true_logical_form, G, logical_form_set, nonterminal_printer, terminal_printer, terminal_printer.map);
 			free(parsed_syntax);
 			free(logical_form_set);
@@ -375,7 +377,7 @@ minimum_priority = exp(true_log_likelihood + true_log_prior - 1.0e-12);
 			fprintf(out, "%sWARNING: Unable to parse sentence %u with the true logical form.\n", prefix, id);
 minimum_priority = 0.0;
 		}
-//debug_flag = true;
+debug_flag = true;
 		if (parse<false>(parsed_syntax, logical_form, G, sentence, terminal_printer.map, time_limit)) {
 			console_lock.lock();
 			if (!equivalent(logical_form, *logical_forms[id])) {

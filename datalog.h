@@ -1017,6 +1017,10 @@ struct datalog_expression_root {
 			return *inverse;
 		}
 
+		inline const datalog_expression_root& get_next() const {
+			return *inverse;
+		}
+
 		static constexpr bool is_empty(const invert_iterator& inverter) {
 			return true;
 		}
@@ -11635,64 +11639,70 @@ inline void get_selected(const datalog_expression_root::function& f,
 	}
 }
 
-inline bool is_separable(const datalog_expression_root::function* functions, unsigned int rule_position) {
+inline void is_separable(
+		const datalog_expression_root::function* functions,
+		unsigned int rule_length, bool* separable)
+{
 	int num_conjuncts = 0; bool function = false;
 	tuple_position position = POSITION_EXACT;
 	bool args[datalog_predicate::ARG_COUNT];
-	for (unsigned int i = 0; i < array_length(args); i++)
-		args[i] = false;
-	for (unsigned int i = 0; i < rule_position; i++) {
+	for (unsigned int k = 0; k < array_length(args); k++)
+		args[k] = false;
+	for (unsigned int i = 0; i < rule_length; i++) {
 		int new_num_conjuncts = 0;
 		tuple_position new_position = POSITION_EXACT;
 		bool new_function = false;
 		bool new_args[datalog_predicate::ARG_COUNT];
-		for (unsigned int i = 0; i < array_length(new_args); i++)
-			new_args[i] = false;
+		for (unsigned int k = 0; k < array_length(new_args); k++)
+			new_args[k] = false;
 		get_selected(functions[i], new_num_conjuncts, new_args, new_position, new_function);
+
+		bool separable_i = true;
+		if (function && new_function) {
+			separable_i = false;
+		} else if (num_conjuncts + new_num_conjuncts > 0) {
+			separable_i = false;
+		}
 
 		function |= new_function;
 		if (position == POSITION_EXACT) {
 			position = new_position;
 		} else if (new_position != POSITION_EXACT && position != new_position) {
-			return false;
+			for (unsigned int j = i; j < rule_length; j++) separable[j] = false;
+			return;
 		}
 
 		if (new_num_conjuncts == INT_MAX) {
-			return false;
+			for (unsigned int j = i; j < rule_length; j++) separable[j] = false;
+			return;
 		} else if (num_conjuncts == 0) {
 			num_conjuncts = new_num_conjuncts;
 		} else if (num_conjuncts > 0) {
-			if (new_num_conjuncts >= 0)
+			if (new_num_conjuncts >= 0) {
 				num_conjuncts = max(num_conjuncts, new_num_conjuncts);
-			else return false;
+			} else {
+				for (unsigned int j = i; j < rule_length; j++) separable[j] = false;
+				return;
+			}
 		} else {
-			if (new_num_conjuncts <= 0)
+			if (new_num_conjuncts <= 0) {
 				num_conjuncts = min(num_conjuncts, new_num_conjuncts);
-			else return false;
+			} else {
+				for (unsigned int j = i; j < rule_length; j++) separable[j] = false;
+				return;
+			}
 		}
 
-		for (unsigned int i = 0; i < array_length(args); i++) {
-			if (args[i] && new_args[i]) return false;
-			args[i] |= new_args[i];
+		for (unsigned int k = 0; k < array_length(args); k++) {
+			if (args[k] && new_args[k]) {
+				for (unsigned int j = i; j < rule_length; j++) separable[j] = false;
+				return;
+			}
+			args[k] |= new_args[k];
 		}
+
+		separable[i] = separable_i;
 	}
-
-	int new_num_conjuncts = 0;
-	tuple_position new_position = POSITION_EXACT;
-	bool new_function = false;
-	bool new_args[datalog_predicate::ARG_COUNT];
-	for (unsigned int i = 0; i < array_length(new_args); i++)
-		new_args[i] = false;
-	get_selected(functions[rule_position], new_num_conjuncts, new_args, new_position, new_function);
-
-	if (function && new_function) return false;
-	if (position != POSITION_EXACT && position != new_position) return false;
-	if (new_num_conjuncts == INT_MAX
-	 || num_conjuncts + new_num_conjuncts > 0) return false;
-	for (unsigned int i = 0; i < array_length(args); i++)
-		if (args[i] && new_args[i]) return false;
-
-	return true;
 }
 
 

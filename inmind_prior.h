@@ -55,9 +55,9 @@ struct inmind_prior
 	array_map<unsigned int, array<unsigned int>*>* arg_root_probabilities;
 	array<unsigned int>** unseen_arg_root_probabilities;
 
-	hdp<uniform_distribution<unsigned int>, constant<unsigned int>, unsigned int, double> string_hdp;
-	hdp_sampler<uniform_distribution<unsigned int>, constant<unsigned int>, unsigned int, double> string_sampler;
-	cache<uniform_distribution<unsigned int>, constant<unsigned int>, unsigned int, double> string_cache;
+	hdp<uniform_distribution<double>, constant<unsigned int>, unsigned int, double> string_hdp;
+	hdp_sampler<uniform_distribution<double>, constant<unsigned int>, unsigned int, double> string_sampler;
+	cache<uniform_distribution<double>, constant<unsigned int>, unsigned int, double> string_cache;
 	array<unsigned int>** string_root_probabilities;
 
 	hash_map<unsigned int, unsigned int> text_observations;
@@ -159,6 +159,7 @@ struct inmind_prior
 				for (const auto& entry : field_lengths.values[i].counts)
 					field_sizes.values[i].key += entry.key * entry.value;
 				field_sizes.values[i].value = field_lengths.values[i].sum;
+				core::free(field_lengths.values[i]);
 			}
 		}
 
