@@ -7138,7 +7138,8 @@ inline bool set_arg_constant(datalog_expression& exp, unsigned int value) {
 		if (value == DATALOG_LABEL_EMPTY) {
 			exp.pred.args[Index] = NULL;
 		} else {
-			return set_constant<ConstantOnly>(*exp.pred.args[Index], value);
+			//return set_constant<ConstantOnly>(*exp.pred.args[Index], value);
+			return set_predicate<0, true, false>(*exp.pred.args[Index], value);
 		}
 	} else if (exp.type == DATALOG_PREDICATE) {
 		if (exp.pred.args[Index] == NULL)
@@ -7161,7 +7162,8 @@ inline bool set_arg_constant(datalog_expression& exp, unsigned int value) {
 				free(*exp.pred.args[Index]);
 				exp.pred.args[Index] = arg;
 			}
-			return set_constant<ConstantOnly>(*arg, value);
+			//return set_constant<ConstantOnly>(*arg, value);
+			return set_predicate<0, true, false>(*arg, value);
 		}
 	} else if (!ConstantOnly && exp.type == DATALOG_TUPLE) {
 		if (exp.tuple.position == POSITION_RIGHT) {

@@ -355,7 +355,6 @@ if (counter == 2) break;
 		datalog_expression_root true_logical_form = *logical_forms[id];
 minimum_priority = 0.0;
 if (is_unknown(true_logical_form)) continue;
-debug_flag = true;
 		if (false && !is_unknown(true_logical_form)
 		 && parse<false>(parsed_syntax, true_logical_form, G, sentence, terminal_printer.map, time_limit)) {
 debug2 = true;
@@ -384,7 +383,7 @@ debug_flag = true;
 				fprintf(out, "%sTrue logical form:      ", prefix); print(*logical_forms[id], out, terminal_printer); print('\n', out);
 				fprintf(out, "%sPredicted logical form: ", prefix); print(logical_form, out, terminal_printer); print('\n', out);
 //debug2 = true;
-//				print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
+				print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
 				double predicted_log_likelihood = log_probability(G, parsed_syntax, logical_form, terminal_printer.map);
 				double predicted_log_prior = log_probability<true>(logical_form);
 //debug2 = false;
