@@ -1671,9 +1671,10 @@ bool is_ambiguous(const datalog_expression& exp)
 		return (exp.constant.label == DATALOG_LABEL_WILDCARD);
 	case DATALOG_VARIABLE:
 	case DATALOG_INTEGER:
-	case DATALOG_STRING:
 	case DATALOG_EMPTY:
 		return false;
+	case DATALOG_STRING:
+		return exp.str.length == 1 && exp.str[0] == DATALOG_LABEL_WILDCARD;
 	case DATALOG_ANY:
 	case DATALOG_NON_EMPTY:
 		return true;
@@ -3432,6 +3433,8 @@ bool print(const datalog_expression& exp, Stream& out, Printer&&... printer) {
 	case DATALOG_INTEGER:
 		return print(exp.integer, out);
 	case DATALOG_STRING:
+		if (exp.str.length == 1 && exp.str[0] == DATALOG_LABEL_WILDCARD)
+			return print("<any string>", out);
 		return print('"', out) && print(exp.str, out, std::forward<Printer>(printer)...) && print('"', out);
 	case DATALOG_EMPTY:
 		return print("<empty>", out);
@@ -5903,6 +5906,9 @@ bool get_predicate(
 	} else if (src.type == DATALOG_FUNCTION) {
 		if (!AllowFunction) return false;
 		return get_predicate<Index, Preterminal, true>(*src.func.arg, value, excluded, excluded_count);
+	} else if (src.type == DATALOG_STRING) {
+		value = DATALOG_STRING;
+		excluded_count = 0;
 	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
 		excluded_count = 0;
@@ -6033,7 +6039,7 @@ inline bool get_constant(
 		excluded = src.pred.excluded;
 	} else if (src.type == DATALOG_STRING && src.str.length > 0) {
 		if (ConstantOnly) return false;
-		value = src.str[0];
+		value = DATALOG_STRING;
 		excluded_count = 0;
 	} else if (src.type != DATALOG_CONSTANT) {
 		if (ConstantOnly) return false;
@@ -6475,6 +6481,10 @@ bool set_predicate(datalog_expression& exp, unsigned int predicate) {
 		/* we prune this part of the search, since a higher-
 		   order function should have been set by now */
 		return false;
+	} else if (predicate == DATALOG_STRING) {
+		if (!init(exp.str, 1)) return false;
+		exp.str[0] = DATALOG_LABEL_WILDCARD;
+		exp.type = DATALOG_STRING;
 	} else {
 		exp.pred.function = predicate;
 		for (unsigned int i = 0; i < array_length(exp.pred.args); i++)
@@ -6606,6 +6616,8 @@ bool set_predicate(datalog_expression& exp, unsigned int predicate)
 		} else {
 			return false;
 		}
+	} else if (exp.type == DATALOG_STRING) {
+		return predicate == DATALOG_STRING;
 	} else if (exp.type == DATALOG_EMPTY) {
 		return predicate == DATALOG_LABEL_EMPTY;
 	} else {
@@ -6986,7 +6998,7 @@ inline bool set_constant(datalog_expression& exp, unsigned int value) {
 		} else return exp.pred.function == value;
 	} else if (exp.type == DATALOG_STRING && exp.str.length > 0) {
 		if (ConstantOnly) return false;
-		return value == exp.str[0];
+		return value == DATALOG_STRING;
 	} else {
 		if (ConstantOnly) return false;
 		return value == DATALOG_LABEL_EMPTY;
@@ -7573,6 +7585,8 @@ inline bool exclude_arg_constant(datalog_expression& exp,
 			exp.pred.args[Index] = arg;
 		}
 		return exclude_constant(*arg, values, count);
+	} else if (exp.type == DATALOG_EMPTY) {
+		return (index_of(ARG_OTHER, values, count) == count);
 	}
 	return true;
 }
@@ -8022,8 +8036,15 @@ bool intersect(datalog_expression& intersection,
 		}
 	} else if (first->type == DATALOG_STRING) {
 		if (second->type == DATALOG_STRING) {
-			if (first->str != second->str) return false;
-			intersection.str = first->str;
+			if (first->str.length == 1 && first->str[0] == DATALOG_LABEL_WILDCARD) {
+				intersection.str = second->str;
+			} else if (second->str.length == 1 && second->str[0] == DATALOG_LABEL_WILDCARD) {
+				intersection.str = first->str;
+			} else if (first->str == second->str) {
+				intersection.str = first->str;
+			} else {
+				return false;
+			}
 			intersection.type = DATALOG_STRING;
 			intersection.reference_count = 1;
 		} else {
@@ -11348,10 +11369,11 @@ inline bool set_number(datalog_expression_root& exp, const datalog_expression_ro
 }
 
 inline bool any_string(const datalog_expression_root& src) {
-	return src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY;
+	return src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY
+		|| (src.root.type == DATALOG_STRING && src.root.str.length == 1 && src.root.str[0] == DATALOG_LABEL_WILDCARD);
 }
 
-/* NOTE: this function assumes src is not DATALOG_ANY or DATALOG_NON_EMPTY */
+/* NOTE: this function assumes src is not DATALOG_ANY or DATALOG_NON_EMPTY or a wildcard string */
 inline bool get_string(const datalog_expression_root& src, sequence& value) {
 	if (src.root.type != DATALOG_STRING)
 		return false;
@@ -11359,9 +11381,12 @@ inline bool get_string(const datalog_expression_root& src, sequence& value) {
 }
 
 inline bool set_string(datalog_expression_root& exp, const datalog_expression_root& set, const sequence& value) {
-	if (set.root.type != DATALOG_ANY && set.root.type != DATALOG_NON_EMPTY
-	 && (set.root.type != DATALOG_STRING || set.root.str != value))
+	if (set.root.type == DATALOG_STRING) {
+		bool is_wildcard = (set.root.str.length == 1 && set.root.str[0] == DATALOG_LABEL_WILDCARD);
+		if (!is_wildcard && set.root.str != value) return false;
+	} else if (set.root.type != DATALOG_ANY && set.root.type != DATALOG_NON_EMPTY) {
 		return false;
+	}
 	exp.root.type = DATALOG_STRING;
 	exp.root.reference_count = 1;
 	exp.concord = set.concord;
@@ -11641,7 +11666,85 @@ inline void get_selected(const datalog_expression_root::function& f,
 	}
 }
 
-inline void is_separable(
+enum class separability {
+	SEPARABLE,
+	UNSEPARABLE,
+	ALL_UNSEPARABLE
+};
+
+inline separability is_separable(
+		const datalog_expression_root::function& transformation,
+		int& num_conjuncts, tuple_position& position,
+		bool (&args)[datalog_predicate::ARG_COUNT], bool& function)
+{
+	int new_num_conjuncts = 0;
+	tuple_position new_position = POSITION_EXACT;
+	bool new_function = false;
+	bool new_args[datalog_predicate::ARG_COUNT];
+	for (unsigned int k = 0; k < array_length(new_args); k++)
+		new_args[k] = false;
+	get_selected(transformation, new_num_conjuncts, new_args, new_position, new_function);
+
+	bool separable_i = true;
+	if (function && new_function) {
+		separable_i = false;
+	} else if (num_conjuncts + new_num_conjuncts > 0) {
+		separable_i = false;
+	}
+
+	function |= new_function;
+	if (position == POSITION_EXACT) {
+		position = new_position;
+	} else if (new_position != POSITION_EXACT && position != new_position) {
+		return separability::ALL_UNSEPARABLE;
+	}
+
+	if (new_num_conjuncts == INT_MAX) {
+		return separability::ALL_UNSEPARABLE;
+	} else if (num_conjuncts == 0) {
+		num_conjuncts = new_num_conjuncts;
+	} else if (num_conjuncts > 0) {
+		if (new_num_conjuncts >= 0) {
+			num_conjuncts = max(num_conjuncts, new_num_conjuncts);
+		} else {
+			return separability::ALL_UNSEPARABLE;
+		}
+	} else {
+		if (new_num_conjuncts <= 0) {
+			num_conjuncts = min(num_conjuncts, new_num_conjuncts);
+		} else {
+			return separability::ALL_UNSEPARABLE;
+		}
+	}
+
+	for (unsigned int k = 0; k < array_length(args); k++) {
+		if (args[k] && new_args[k]) return separability::ALL_UNSEPARABLE;
+		args[k] |= new_args[k];
+	}
+
+	return separable_i ? separability::SEPARABLE : separability::UNSEPARABLE;
+}
+
+bool right_separable(
+		const datalog_expression_root::function* functions,
+		unsigned int rule_length, unsigned int rule_position)
+{
+	int num_conjuncts = 0; bool function = false;
+	tuple_position position = POSITION_EXACT;
+	bool args[datalog_predicate::ARG_COUNT];
+	for (unsigned int k = 0; k < array_length(args); k++)
+		args[k] = false;
+
+	separability result;
+	for (unsigned int i = rule_length; i > rule_position; i--) {
+		result = is_separable(functions[i - 1], num_conjuncts, position, args, function);
+		if (result == separability::ALL_UNSEPARABLE)
+			return false;
+	}
+	return (result == separability::SEPARABLE);
+}
+
+void is_separable(
 		const datalog_expression_root::function* functions,
 		unsigned int rule_length, bool* separable)
 {
@@ -11651,59 +11754,17 @@ inline void is_separable(
 	for (unsigned int k = 0; k < array_length(args); k++)
 		args[k] = false;
 	for (unsigned int i = 0; i < rule_length; i++) {
-		int new_num_conjuncts = 0;
-		tuple_position new_position = POSITION_EXACT;
-		bool new_function = false;
-		bool new_args[datalog_predicate::ARG_COUNT];
-		for (unsigned int k = 0; k < array_length(new_args); k++)
-			new_args[k] = false;
-		get_selected(functions[i], new_num_conjuncts, new_args, new_position, new_function);
-
-		bool separable_i = true;
-		if (function && new_function) {
-			separable_i = false;
-		} else if (num_conjuncts + new_num_conjuncts > 0) {
-			separable_i = false;
-		}
-
-		function |= new_function;
-		if (position == POSITION_EXACT) {
-			position = new_position;
-		} else if (new_position != POSITION_EXACT && position != new_position) {
-			for (unsigned int j = i; j < rule_length; j++) separable[j] = false;
+		separability result = is_separable(functions[i], num_conjuncts, position, args, function);
+		switch (result) {
+		case separability::SEPARABLE:
+			separable[i] = true; break;
+		case separability::UNSEPARABLE:
+			separable[i] = false; break;
+		case separability::ALL_UNSEPARABLE:
+			for (unsigned int j = i; j < rule_length; j++)
+				separable[j] = false;
 			return;
 		}
-
-		if (new_num_conjuncts == INT_MAX) {
-			for (unsigned int j = i; j < rule_length; j++) separable[j] = false;
-			return;
-		} else if (num_conjuncts == 0) {
-			num_conjuncts = new_num_conjuncts;
-		} else if (num_conjuncts > 0) {
-			if (new_num_conjuncts >= 0) {
-				num_conjuncts = max(num_conjuncts, new_num_conjuncts);
-			} else {
-				for (unsigned int j = i; j < rule_length; j++) separable[j] = false;
-				return;
-			}
-		} else {
-			if (new_num_conjuncts <= 0) {
-				num_conjuncts = min(num_conjuncts, new_num_conjuncts);
-			} else {
-				for (unsigned int j = i; j < rule_length; j++) separable[j] = false;
-				return;
-			}
-		}
-
-		for (unsigned int k = 0; k < array_length(args); k++) {
-			if (args[k] && new_args[k]) {
-				for (unsigned int j = i; j < rule_length; j++) separable[j] = false;
-				return;
-			}
-			args[k] |= new_args[k];
-		}
-
-		separable[i] = separable_i;
 	}
 }
 
