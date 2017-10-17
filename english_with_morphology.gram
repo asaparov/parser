@@ -1,0 +1,441 @@
+
+# This grammar aims to capture a good chunk of English.
+
+SQ nonterminal {first_predicate, last_predicate} {10000000.0, 10.0, 1.0} {1.0, 1.0, 1.0} {} 10 1.0 {}
+SQ -> SQ':singular
+SQ -> SQ':plural
+SQ -> DP:delete_answer QUESTION:null
+
+SQ' nonterminal {has_function_answer, first_predicate, second_predicate, third_predicate} {10000000.0, 10.0, 10.0, 100.0, 100.0} {1.0, 1.0, 0.1, 1.0, 1.0} {} 10 1.0 {}
+SQ' -> HOW:null ADJ:select_left_delete_answer VPQ:delete_answer QUESTION:null
+SQ' -> HOW_MANY:keep_plural NP_PLURAL:select_left_delete_count_answer VPQ:delete_left_count_answer QUESTION:null
+SQ' -> HOW_MANY:keep_plural NP_PLURAL:select_left2_delete_count_answer VPQ:delete_left2_count_answer QUESTION:null
+SQ' -> HOW_MANY:keep_plural NP_PLURAL:select_left_delete_answer VPQ:delete_answer QUESTION:null
+# TODO: add rule for "could you tell me...", "can you tell me...", and "count..."
+SQ' -> DP:select_left_delete_answer_head VP:delete_left_keep_answer QUESTION:null
+SQ' -> WHAT:null V_BE:keep_features DP:delete_answer QUESTION:null
+SQ' -> WHAT:null NP_ANY:select_left_delete_function_answer VPQ:delete_left_answer_keep_function QUESTION:null
+SQ' -> WHAT:null NP_ANY:select_left2_delete_function_answer VPQ:delete_left2_answer_keep_function QUESTION:null
+SQ' -> WHAT:null NP_ANY:select_left3_delete_function_answer VPQ:delete_left3_answer_keep_function QUESTION:null
+SQ' -> WHAT:null NP_ANY:select_left3_delete_function_answer VPQ:delete_left3_answer_head_keep_function QUESTION:null
+SQ' -> WHAT:null N_ADJUNCT:select_left3_delete_function_answer VPQ:delete_left3_answer_keep_function QUESTION:null
+SQ' -> WHAT:null NP_ANY:select_left_delete_answer VPQ:delete_left_answer QUESTION:null
+SQ' -> WHAT:null NP_ANY:select_left_delete_answer VPQ:delete_left_answer_head QUESTION:null
+SQ' -> WHAT:null NP_ANY:select_left2_delete_answer VPQ:delete_left2_answer QUESTION:null
+SQ' -> WHAT:null NP_ANY:select_left3_delete_answer VPQ:delete_left3_answer QUESTION:null
+SQ' -> WHAT:null NP_ANY:select_left3_delete_answer_disjoint VPQ:delete_left3_answer_disjoint QUESTION:null
+SQ' -> WHAT:null NP_ANY:select_left5_delete_answer_disjoint VPQ:delete_left5_answer_disjoint QUESTION:null
+SQ' -> WHERE:loc V_BE:keep_features DP:delete_left_answer_head QUESTION:null
+SQ' -> WHERE:null V_BE:keep_features DP:delete_answer_has_loc QUESTION:null
+SQ' -> V_BE:keep_features THERE:null DP:delete_answer QUESTION:null
+SQ' -> V_BE:keep_features THERE:null DP:delete_answer ADJ:null QUESTION:null			# for movement
+SQ' -> NAME:infinitive DP:delete_answer QUESTION:null
+SQ' -> NAME:infinitive DP:delete_answer PERIOD:null
+SQ' -> GIVE:infinitive DP:delete_answer QUESTION:null
+SQ' -> GIVE:infinitive ME:null DP:delete_answer QUESTION:null
+SQ' -> GIVE:infinitive ME:null DP:delete_answer PERIOD:null
+SQ' -> SHOW:infinitive DP:delete_answer QUESTION:null
+SQ' -> SHOW:infinitive ME:null DP:delete_answer QUESTION:null
+SQ' -> COUNT:infinitive DP:delete_count_answer QUESTION:null
+SQ' -> FIND:infinitive DP:delete_answer QUESTION:null
+SQ' -> LIST:infinitive DP:delete_answer QUESTION:null
+SQ' -> TELL:infinitive ME:null SQ':identity
+SQ' -> MD:null YOU:null SQ':identity
+# TODO: add rules for questions that begin with prepositional phrases
+
+#DP_NO_FEATURES nonterminal {} {1.0} {1.0} {} 10 1.0 {}
+#DP_NO_FEATURES -> DP:delete_features
+
+# for modeling grammatical number, we use ideas from: King, Tracy Holloway, and Mary Dalrymple. "Determiner Agreement and Noun Conjunction." Journal of Linguistics, vol. 40, no. 1, 2004, pp. 69-104
+# TODO: not all conjunctions behave like "and" in their interaction with grammatical number
+DP nonterminal {has_function_not, first_predicate, second_predicate} {1000.0, 0.1, 10000.0, 1.0} {1.0, 1.0, 1.0, 1.0} {} 10 1.0 {}
+DP -> DP':identity
+DP -> ALL:null THE:null NP:concord_non_singular
+DP -> ALL:null NP:concord_non_singular
+DP -> ALL:null NUMBER:null NP:concord_non_singular
+DP -> A:null NP:concord_singular
+DP -> AT_LEAST:null A:null NP:concord_singular
+DP -> ANY:null NP:concord_singular
+DP -> SOME:null NP:concord_singular
+DP -> SOME:null NP:concord_non_singular
+DP -> NO:null NP:delete_not_concord_singular
+DP -> NO:null NP:delete_not_concord_plural
+DP -> NP:concord_non_singular
+DP -> NP:concord_singular			0.0000001	# grammatically incorrect absence of determiner
+DP -> DP':select_left_disjoint_coord CNJ:null DP':delete_left_disjoint_coord
+DP -> DP':select_left2_disjoint_coord CNJ:null DP':delete_left2_disjoint_coord
+DP -> DP':select_left_delete_head_disjoint_coord CNJ:null DP':delete_left_disjoint_coord
+
+# this DP cannot be coordinated; so the determiners here have strictly lower precedence than CNJ
+DP' nonterminal {has_function_not, first_predicate, second_predicate} {1000.0, 0.1, 10000.0, 1.0} {1.0, 1.0, 1.0, 1.0} {} 10 1.0 {}
+DP' -> ALL:null OF:null DP:identity	# TODO: the DP needs a definite determiner
+DP' -> THE:null NP:concord_all
+DP' -> THE:null NP:concord_non_plural_keep_singular
+
+NP_PLURAL nonterminal {} {1.0} {1.0} {} 10 1.0 {}
+NP_PLURAL -> NP:concord_plural
+
+NP_ANY nonterminal {} {1.0} {1.0} {} 10 1.0 {}
+NP_ANY -> NP:concord_non_singular
+NP_ANY -> NP:concord_singular
+
+NP nonterminal {has_function_count_not, first_predicate, second_predicate, third_predicate, arg3} {10000000.0, 100.0, 100.0, 100.0, 100.0, 0.01} {1.0, 1.0, 1.0, 1.0, 1.0, 1.0} {} 10 1.0 {}
+NP -> NP_ADJ:identity
+NP -> NP:identity N_ADJUNCT:keep_features
+NP -> THERE:empty_tuple N_ADJUNCT:identity	0.000000001
+NP -> NOT:null NP:delete_not
+NP -> NP:select_left N_ADJUNCT:identity
+NP -> NP:select_left_delete_function N_ADJUNCT:identity
+NP -> NP:select_left N_ADJUNCT:delete_left
+NP -> NP:select_left N_ADJUNCT:delete_left_head
+NP -> NP:select_left_delete_head_disjoint N_ADJUNCT:delete_left_disjoint
+NP -> NP:select_left2 N_ADJUNCT:delete_left2
+NP -> NP:select_left2 N_ADJUNCT:delete_left2_head
+NP -> NP:select_left3_disjoint N_ADJUNCT:delete_left3_disjoint
+NP -> NP:select_left4_disjoint N_ADJUNCT:delete_left4_disjoint
+NP -> NP:select_left_keep_function N_ADJUNCT:delete_function_head
+NP -> NP:select_left_keep_function N_ADJUNCT:delete_left_function
+NP -> NP:select_left_keep_function_disjoint N_ADJUNCT:delete_left_function_disjoint
+NP -> NP:select_left_keep_function N_ADJUNCT:delete_left_function_head
+NP -> NP:select_left2_keep_function N_ADJUNCT:delete_left2_function
+NP -> NP:select_left2_keep_function_disjoint N_ADJUNCT:delete_left2_function_disjoint
+NP -> NP:select_left_delete_function N_ADJUNCT:delete_left_keep_function
+NP -> NP:select_function N_ADJUNCT:delete_function
+NP -> NP:select_function_delete_head N_ADJUNCT:delete_function
+NP -> NP:select_left2_disjoint_coord CNJ:null NP:delete_left2_disjoint_coord
+NP -> NUMBER_OF:keep_concord_singular NP:delete_count_head_concord_plural
+NP -> NUMBER_OF:keep_concord_singular NP:concord_plural
+NP -> NP:identity CNJ:null NP:identity
+NP -> NP:delete_args_concord_singular NP:identity
+NP -> NP:delete_args N_ADJUNCT:identity
+NP -> NP:delete_arg3
+NP -> NP:delete_arg3 FREQ:select_arg3_delete_features
+NP -> QP:identity
+NP -> QP:delete_features N_PREDICATE:delete_args_keep_plural
+
+N_ADJUNCT nonterminal {function, last_predicate, first_predicate} {100000000.0, 1.0, 1.0, 1.0} {1.0, 1.0, 1.0, 1.0} {} 10 1.0 {}
+N_ADJUNCT -> P:keep_features DP:delete_features
+N_ADJUNCT -> P:select_left DP:delete_left_features
+N_ADJUNCT -> P:select_left DP:delete_left_head_features
+N_ADJUNCT -> P:select_left_delete_function DP:delete_left_features_keep_function
+N_ADJUNCT -> P:select_left_delete_function DP:delete_left_head_features_keep_function
+N_ADJUNCT -> P:delete_function DP:delete_features
+N_ADJUNCT -> NOT:null N_ADJUNCT:delete_not
+N_ADJUNCT -> OUTSIDE:select_left_delete_not DP:delete_function_features
+N_ADJUNCT -> CP:delete_features
+N_ADJUNCT -> COMP:select_left VP:identity
+N_ADJUNCT -> COMP:select_left_delete_function VP:identity
+N_ADJUNCT -> VP:keep_present_participle
+N_ADJUNCT -> VP:flip_predicate_keep_past_participle
+N_ADJUNCT -> VP:keep_past_participle					# for unary predicates, or binary predicates without variable arguments
+N_ADJUNCT -> ADJP:identity
+N_ADJUNCT -> N_ADJUNCT:select_left_disjoint CNJ:null N_ADJUNCT:delete_left_disjoint
+N_ADJUNCT -> N_ADJUNCT:select_left2_disjoint CNJ:null N_ADJUNCT:delete_left2_disjoint
+N_ADJUNCT -> P:flip_predicate	# preposition stranding/movement (TODO: this should depend on a flag)
+
+CP nonterminal {last_predicate, first_predicate} {100000000.0, 1.0, 1.0} {1.0, 1.0, 1.0} {} 10 1.0 {}
+CP -> CP':singular
+CP -> CP':plural
+
+CP' nonterminal {function, last_predicate, first_predicate} {100000000.0, 1.0, 1.0, 1.0} {1.0, 1.0, 1.0, 1.0} {} 10 1.0 {}
+CP' -> COMP:select_right DP:delete_right_head VP:select_right				# for movement (TODO: this could add a flag to the VP)
+CP' -> COMP:select_right DP:select_right_delete_head VP:delete_right		# for movement (TODO: this could add a flag to the VP)
+CP' -> P:select_left COMP:select_left DP:delete_left_head VP:select_left
+CP' -> P:select_right COMP:select_right DP:delete_right_head VP:select_right
+CP' -> P:select_right_delete_function COMP:select_right_delete_function DP:delete_right_head_keep_function V:select_right_delete_function
+
+# TODO: should we allow verbs to serve as adjectives (such as "neighboring states")?
+#       or should we just treat them as adjectives and add a direction feature to ADJ?
+NP_ADJ nonterminal {function, last_predicate, second_predicate, first_predicate} {100000000.0, 1.0, 0.01, 1.0, 0.001} {1.0, 1.0, 1.0, 1.0, 1.0} {} 10 1.0 {}
+NP_ADJ -> ADJ:delete_features N_PREDICATE:identity
+NP_ADJ -> ADJ:select_left_delete_features NP_ADJ:delete_left
+NP_ADJ -> QP:null NP_ADJ:identity
+NP_ADJ -> ADJ:select_function_delete_features NP_ADJ:delete_function
+NP_ADJ -> ADJ:select_function_delete_features NP_ADJ:delete_function_head
+NP_ADJ -> ADJ:select_function_delete_head_features NP_ADJ:delete_function
+NP_ADJ -> NP_ADJ:select_left_concord_singular NP_ADJ:delete_left
+NP_ADJ -> NP_ADJ:select_left_concord_singular NP_ADJ:delete_left_head
+NP_ADJ -> NP_ADJ:select_left_delete_head_concord_singular NP_ADJ:delete_left
+NP_ADJ -> NP_ADJ:select_left2_disjoint_concord_singular NP_ADJ:delete_left2_disjoint
+#NP_ADJ -> NP_ADJ:select_right2_concord_singular NP_ADJ:delete_right2
+NP_ADJ -> NP_ADJ_DUAL:two_predicates
+NP_ADJ -> NP_N:head_arg1_select_arg2_only
+NP_ADJ -> N_CONSTANT:head_arg1_select_arg2_only
+NP_ADJ -> NP_N:identity
+NP_ADJ -> ADJ:identity	0.00001
+NP_ADJ -> NP_ADJ:select_left_delete_head P:delete_left	# for movement (TODO: this should depend on a flag)
+
+NP_ADJ_DUAL nonterminal {first_predicate, direction_root} {100000000.0, 100.0, 0.01} {1.0, 1.0, 1.0} {} 10 1.0 {}
+NP_ADJ_DUAL -> NP_ADJ:delete_left_head
+
+NP_N nonterminal {first_predicate, arity} {100000000.0, 100.0, 0.01} {1.0, 1.0, 1.0} {} 10 1.0 {}
+NP_N -> N_CONSTANT:select_arg1
+NP_N -> N_CONSTANT:select_arg1_singular N_CONSTANT_ARG2:select_arg2
+NP_N -> NUMBER:head_arg1_select_arg2
+NP_N -> N_PREDICATE:select_left_concord_singular NP_ADJ:delete_left
+NP_N -> N_PREDICATE:select_left_delete_head_concord_singular NP_ADJ:delete_left
+NP_N -> N_PREDICATE':identity
+NP_N -> THERE:empty_tuple_only
+NP_N -> ONE:empty_tuple_only_keep_concord_singular
+NP_N -> ALL:empty_tuple_only_keep_concord_singular
+
+VPQ nonterminal {last_predicate} {1000.0, 1.0} {1.0, 1.0} {} 10 1.0 {}
+VPQ -> VP:identity
+VPQ -> VPQ':singular
+VPQ -> VPQ':plural
+
+# for subject-auxiliary inversion
+VPQ' nonterminal {last_predicate} {1000.0, 1.0} {1.0, 1.0} {} 10 1.0 {}
+# TODO: the verb phrase cannot use the auxiliary 'do' in the below constructions
+VPQ' -> V_DO:keep_features DP:delete_right_head VP_INFINITIVE:select_right
+VPQ' -> V_DO:keep_features DP:delete_left_head VP_INFINITIVE:select_left
+VPQ' -> V_DO:keep_features DP:identity VP_INFINITIVE:null
+VPQ' -> V_BE:keep_features DP:select_left_delete_head P:delete_left				# for movement
+VPQ' -> V_BE:keep_features DP:select_left_delete_head DP:delete_left_features	# for movement (TODO: add a flag to the DP indicating movement)
+
+VP_INFINITIVE nonterminal {} {1.0} {1.0} {} 10 1.0 {}
+VP_INFINITIVE -> VP:infinitive
+
+# TODO: expand this grammar by adding modals, perfect aspect, adverbs
+VP nonterminal {function, first_predicate, direction_root, second_predicate} {10000000.0, 1.0, 10.0, 10.0, 100.0} {1.0, 1.0, 1.0, 1.0, 1.0} {} 10 1.0 {}
+VP -> DONOT:keep_features V_BAR:delete_not_infinitive
+VP -> VP_V:identity
+#VP -> V_BE:keep_features VP_V:present_participle		# for continuous aspect
+VP -> VP:select_left_disjoint CNJ:null VP:delete_left_disjoint
+VP -> VP:select_left2_disjoint CNJ:null VP:delete_left2_disjoint
+VP -> VP:select_left4_disjoint CNJ:null VP:delete_left4_disjoint
+
+VP_V nonterminal {first_predicate, direction_root, second_predicate} {10000000.0, 10.0, 10.0, 100.0} {1.0, 1.0, 1.0, 1.0} {} 10 1.0 {}
+VP_V -> V_BAR:identity
+VP_V -> V_BE:keep_features P:null DP:delete_features
+VP_V -> V_BE:keep_features NOT:null P:select_left_delete_not DP:delete_left_not_head_features
+VP_V -> V_BE:keep_features ADJP:delete_features
+VP_V -> V_BE:keep_features V_BAR:flip_predicate_past_participle		# passive voice
+VP_V -> V_BE:keep_features V_BAR:past_participle					# passive voice, for unary predicates, or binary predicates without variable arguments
+
+V_BAR nonterminal {function, first_predicate, second_predicate} {10000000.0, 1.0, 10.0, 100.0} {1.0, 1.0, 1.0, 1.0} {} 10 1.0 {}
+V_BAR -> V:select_left_delete_not DP:delete_left_head_features_keep_not
+V_BAR -> V:keep_features DP:delete_features
+V_BAR -> V:identity DP:delete_features
+V_BAR -> V:identity ME:null DP:delete_features
+V_BAR -> V:select_left DP:delete_left_features
+V_BAR -> V:select_left DP:delete_left_head_features
+V_BAR -> ONLY:null V:select_left DP:delete_left_features
+V_BAR -> V:select_left ONLY:null DP:delete_left_head_features
+V_BAR -> V:select_left_delete_function DP:delete_left_features_keep_function
+V_BAR -> V:select_left_delete_function DP:delete_left_head_features_keep_function
+V_BAR -> V:keep_features NOT:null DP:delete_not
+V_BAR -> V:identity P:identity DP:delete_features
+V_BAR -> V:select_left_delete_function PP:identity
+V_BAR -> V:select_left PP:identity
+V_BAR -> V:identity	0.001
+
+PP nonterminal {function, first_predicate, second_predicate} {10000000.0, 1.0, 10.0, 100.0} {1.0, 1.0, 1.0, 1.0} {} 10 1.0 {}
+PP -> P:select_left DP:delete_left_features
+PP -> P:select_left DP:delete_left_head_features
+PP -> P:select_left_delete_function DP:delete_left_features_keep_function
+PP -> P:select_left_delete_function DP:delete_left_head_features_keep_function
+PP -> P:delete_function DP:delete_features
+
+ADJP nonterminal {first_predicate} {1000.0, 1.0} {1.0, 1.0} {} 10 1.0 {}
+ADJP -> RELATIVE_ADJ:select_left THAN:null DP:delete_left_head
+ADJP -> ADJ:select_left P:select_left DP:delete_left_head
+ADJP -> ADJ:select_function P:select_left_delete_function DP:delete_left_function_head
+
+FREQ nonterminal {constant} {10000000.0, 0.0001} {1.0, 1.0} {} 10 1.0 {}
+FREQ -> A:null N_CONSTANT:identity
+FREQ -> PER:null N_CONSTANT:identity
+
+QP nonterminal {predicate_only} {1000000.0, 0.01} {1.0, 1.0} {} 1 1.0 {}
+QP -> NUMBER:head_arg1_select_arg2_only
+QP -> OVER:null NUMBER:head_arg1_select_arg2_only
+QP -> RELATIVE_ADJ:delete_arg2 THAN:null NUMBER:head_arg1_select_arg2_only
+QP -> AT_LEAST:null NUMBER:head_arg1_select_arg2_only
+QP -> AT_LEAST:null ONE:null
+
+V nonterminal {} {1.0} {1.0} {} 10 1.0 {}
+V -> V_PREDICATE:identity
+# these two rules are for ungrammatical verb conjugations
+V -> V_PREDICATE:singular	0.0000001
+V -> V_PREDICATE:plural		0.0000001
+
+V_BE nonterminal {} {1.0} {1.0} {} 10 1.0 {}
+V_BE -> BE:identity
+# these two rules are for ungrammatical verb conjugations
+V_BE -> BE:singular			0.0000001
+V_BE -> BE:plural			0.0000001
+
+V_DO nonterminal {} {1.0} {1.0} {} 10 1.0 {}
+V_DO -> DO:identity
+# these two rules are for ungrammatical verb conjugations
+V_DO -> DO:singular			0.0000001
+V_DO -> DO:plural			0.0000001
+
+N_PREDICATE' nonterminal {predicate_only} {1000000.0, 0.01} {1.0, 1.0} {} 1 1.0 {}
+N_PREDICATE' -> N_PREDICATE:keep_concord_singular
+N_PREDICATE' -> N_PREDICATE:keep_concord_plural
+
+ADJ nonterminal {} {1.0} {1.0} {} 10 1.0 {}
+ADJ -> ADJ_PREDICATE:identity
+ADJ -> V_PREDICATE:keep_past_participle		0.00001
+
+# TODO: use a proper model of phrasal verbs and exclude prepositions as constituents of verbs
+V_PREDICATE	preterminal {function_only, predicate, direction} {1000000.0, 10.0, 0.01, 0.0001} {1.0, 0.1, 1.0, 1.0} {"than", "that", "those", "of", "in", "with", "whose", "who", "to", "on", "for", "by", "over", "at", "per", "outside", "from", "within", "as", "?", ".", "a", "an", "any", "all", "the", "what", "which", "how", "many", "much", "where", "bigger", "smaller", "longer", "shorter", "taller", "lower", "higher", "greater", "less", "more", "highest", "lowest", "longest", "shortest", "largest", "smallest", "biggest", "most", "least", "greatest", "fewest", "maximum", "minimum", "next", "not", "number", "and", "but", "or", "no", "it", "there", "one", "me", "dont", "only", "some", "can", "could", "you", "u"} 10000 0.95 verb {"through"}
+N_PREDICATE	preterminal {predicate_only, direction} {10000000.0, 0.01, 0.0001} {1.0, 100.0, 1.0} {"be", "is", "are", "do", "does", "did", "has", "have", "than", "that", "of", "in", "through", "with", "whose", "who", "to", "on", "for", "by", "over", "at", "per", "outside", "from", "within", "as", "?", ".", "a", "an", "any", "all", "the", "what", "which", "how", "many", "much", "where", "bigger", "smaller", "longer", "shorter", "taller", "lower", "higher", "greater", "less", "more", "highest", "lowest", "longest", "shortest", "largest", "smallest", "biggest", "most", "least", "greatest", "fewest", "maximum", "minimum", "next", "not", "number", "and", "but", "or", "no", "there", "tell", "give", "show", "one", "me", "dont", "find", "only", "some", "can", "could", "u", "flow"} 10000 0.95 noun {}
+N_CONSTANT	preterminal {constant} {10000000.0, 0.0001} {1.0, 1.0} {"be", "is", "are", "do", "does", "did", "has", "have", "than", "that", "of", "in", "through", "with", "whose", "who", "to", "on", "for", "by", "over", "at", "per", "outside", "from", "within", "as", "?", ".", "a", "an", "any", "all", "the", "what", "which", "how", "many", "much", "where", "bigger", "smaller", "longer", "shorter", "taller", "lower", "higher", "greater", "less", "more", "highest", "lowest", "longest", "shortest", "largest", "smallest", "biggest", "most", "least", "greatest", "fewest", "maximum", "minimum", "next", "not", "number", "and", "but", "or", "no", "there", "name", "tell", "give", "show", "one", "count", "me", "dont", "find", "only", "list", "some", "can", "could", "you", "u", "called"} 10000 0.9995 noun {}
+N_CONSTANT_ARG2	preterminal {constant} {10000000.0, 0.0001} {1.0, 1.0} {"be", "is", "are", "do", "does", "did", "has", "have", "than", "that", "of", "in", "through", "with", "whose", "who", "to", "on", "for", "by", "over", "at", "per", "outside", "from", "within", "as", "?", ".", "a", "an", "any", "all", "the", "what", "which", "how", "many", "much", "where", "bigger", "smaller", "longer", "shorter", "taller", "lower", "higher", "greater", "less", "more", "highest", "lowest", "longest", "shortest", "largest", "smallest", "biggest", "most", "least", "greatest", "fewest", "maximum", "minimum", "next", "not", "number", "and", "but", "or", "no", "there", "name", "tell", "give", "show", "one", "count", "me", "dont", "find", "only", "list", "some", "can", "could", "you", "u"} 10000 0.99 noun {}
+ADJ_PREDICATE	preterminal {function_only, predicate, direction} {10000000.0, 10.0, 0.0001, 1000.0} {1.0, 0.1, 100.0, 1.0} {"be", "is", "are", "do", "does", "did", "has", "have", "than", "that", "of", "in", "through", "with", "whose", "who", "to", "on", "for", "by", "over", "at", "per", "outside", "from", "within", "as", "?", ".", "a", "an", "any", "all", "the", "what", "which", "how", "many", "much", "where", "bigger", "smaller", "longer", "shorter", "taller", "lower", "higher", "greater", "less", "more", "number", "and", "but", "or", "no", "not", "it", "there", "name", "tell", "give", "show", "one", "count", "me", "dont", "find", "only", "list", "some", "can", "could", "you", "u"} 10000 1.0 adjective {}
+NUMBER number_preterminal {} {100.0} {1.0} {} 1 1.0 {}
+
+P preterminal {predicate_only, direction} {0.001, 0.01, 0.0001} {1.0, 1.0, 1.0} {} 10000 1.0 {}
+P -> "of"
+P -> "in"
+P -> "through"
+P -> "with"
+P -> "to"
+P -> "on"
+P -> "for"
+P -> "by"
+P -> "over"
+P -> "at"
+P -> "from"
+P -> "within"
+P -> "as"
+
+PER preterminal {} {100.0} {1.0} {} 1 1.0 {}
+PER -> "per"
+
+OUTSIDE preterminal {predicate_only, direction} {1000.0, 0.1, 0.1} {1.0, 1.0, 1.0} {} 1 1.0 {}
+OUTSIDE -> "outside"
+
+RELATIVE_ADJ preterminal {predicate_only, direction} {1000.0, 0.1, 0.1} {1.0, 1.0, 1.0} {} 10 1.0 {}
+RELATIVE_ADJ -> "bigger"
+RELATIVE_ADJ -> "smaller"
+RELATIVE_ADJ -> "longer"
+RELATIVE_ADJ -> "shorter"
+RELATIVE_ADJ -> "taller"
+RELATIVE_ADJ -> "lower"
+RELATIVE_ADJ -> "higher"
+RELATIVE_ADJ -> "greater"
+RELATIVE_ADJ -> "less"
+RELATIVE_ADJ -> "more"
+
+QUESTION preterminal {} {100.0} {1.0} {} 1 1.0 {}
+QUESTION -> "?"
+
+PERIOD preterminal {} {100.0} {1.0} {} 1 1.0 {}
+PERIOD -> "."
+
+WHAT preterminal {} {100.0} {1.0} {} 2 1.0 {}
+WHAT -> "what"
+WHAT -> "which"
+
+COMP preterminal {predicate_only, direction_root} {100.0, 0.1, 0.1} {1.0, 1.0, 1.0} {} 1 1.0 {}
+COMP -> "which"
+COMP -> "that"
+COMP -> "whose"
+COMP -> "who"
+
+# TODO: 'much' and 'many' need to agree with the subject
+HOW_MANY preterminal {} {100.0} {1.0} {} 1 1.0 {}
+HOW_MANY -> "how many"
+HOW_MANY -> "how much"
+
+HOW preterminal {} {100.0} {1.0} {} 1 1.0 {}
+HOW -> "how"
+
+WHERE preterminal {} {100.0} {1.0} {} 1 1.0 {}
+WHERE -> "where"
+
+DO preterminal {} {100.0} {1.0} {} 1 1.0 verb {}
+DO -> "do"
+
+A preterminal {} {100.0} {1.0} {} 2 1.0 {}
+A -> "a"
+A -> "an"
+
+ANY preterminal {} {100.0} {1.0} {} 2 1.0 {}
+ANY -> "any"
+
+ALL preterminal {} {100.0} {1.0} {} 1 1.0 {}
+ALL -> "all"
+
+THE preterminal {} {100.0} {1.0} {} 1 1.0 {}
+THE -> "the"
+
+NO preterminal {} {100.0} {1.0} {} 1 1.0 {}
+NO -> "no"
+
+NUMBER_OF preterminal {} {100.0} {1.0} {} 1 1.0 {}
+NUMBER_OF -> "number of"
+
+THAN preterminal {} {100.0} {1.0} {} 1 1.0 {}
+THAN -> "than"
+
+BE preterminal {} {100.0} {1.0} {} 1 1.0 verb {}
+BE -> "be"
+
+NOT preterminal {} {100.0} {1.0} {} 1 1.0 {}
+NOT -> "not"
+
+# TODO: 'and' and 'or' obviously have distinct semantic behavior
+CNJ preterminal {} {100.0} {1.0} {} 1 1.0 {}
+CNJ -> "and"
+CNJ -> "but"
+CNJ -> "or"
+
+AT_LEAST preterminal {} {100.0} {1.0} {} 1 1.0 {}
+AT_LEAST -> "at least"
+
+ONE preterminal {} {100.0} {1.0} {} 1 1.0 {}
+ONE -> "one"
+
+THERE preterminal {} {100.0} {1.0} {} 1 1.0 {}
+THERE -> "there"
+
+NAME preterminal {} {100.0} {1.0} {} 1 1.0 {}
+NAME -> "name"
+
+GIVE preterminal {} {100.0} {1.0} {} 1 1.0 {}
+GIVE -> "give"
+
+SHOW preterminal {} {100.0} {1.0} {} 1 1.0 {}
+SHOW -> "show"
+
+TELL preterminal {} {100.0} {1.0} {} 1 1.0 {}
+TELL -> "tell"
+
+COUNT preterminal {} {100.0} {1.0} {} 1 1.0 {}
+COUNT -> "count"
+
+ME preterminal {} {100.0} {1.0} {} 1 1.0 {}
+ME -> "me"
+
+DONOT preterminal {} {100.0} {1.0} {} 1 1.0 {}
+DONOT -> "dont"
+DONOT -> "do not"
+
+FIND preterminal {} {100.0} {1.0} {} 1 1.0 {}
+FIND -> "find"
+
+ONLY preterminal {} {100.0} {1.0} {} 1 1.0 {}
+ONLY -> "only"
+
+LIST preterminal {} {100.0} {1.0} {} 1 1.0 {}
+LIST -> "list"
+
+SOME preterminal {} {100.0} {1.0} {} 1 1.0 {}
+SOME -> "some"
+
+OF preterminal {} {100.0} {1.0} {} 1 1.0 {}
+OF -> "of"
+
+MD preterminal {} {100.0} {1.0} {} 1 1.0 {}
+MD -> "can"
+MD -> "could"
+
+YOU preterminal {} {100.0} {1.0} {} 1 1.0 {}
+YOU -> "you"
+
+OVER preterminal {} {100.0} {1.0} {} 1 1.0 {}
+OVER -> "over"

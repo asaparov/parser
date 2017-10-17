@@ -953,7 +953,7 @@ struct datalog_expression_root {
 		FUNCTION_HEAD_ARG1_SELECT_ARG2_ONLY					= 146,
 		FUNCTION_EMPTY_TUPLE								= 147,
 		FUNCTION_EMPTY_TUPLE_ONLY							= 148,
-		FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR				= 149,
+		FUNCTION_EMPTY_TUPLE_ONLY_KEEP_CONCORD_SINGULAR			= 149,
 		FUNCTION_KEEP_NULL										= 249,
 		FUNCTION_EMPTY_ARG2									= 150,
 		FUNCTION_EMPTY_ARGS										= 248,
@@ -970,7 +970,11 @@ struct datalog_expression_root {
 		FUNCTION_CONCORD_UNCOUNTABLE						= 158,
 		FUNCTION_CONCORD_NON_SINGULAR						= 159,
 		FUNCTION_CONCORD_NON_PLURAL							= 160,
+		FUNCTION_CONCORD_NON_PLURAL_KEEP_SINGULAR				= 252,
 		FUNCTION_CONCORD_ALL								= 161,
+		FUNCTION_KEEP_CONCORD_SINGULAR							= 251,
+		FUNCTION_KEEP_CONCORD_PLURAL							= 253,
+		FUNCTION_KEEP_CONCORD_UNCOUNTABLE						= 254,
 		FUNCTION_DELETE_NOT_CONCORD_SINGULAR				= 162,
 		FUNCTION_DELETE_NOT_CONCORD_PLURAL					= 163,
 		FUNCTION_KEEP_SINGULAR								= 164,
@@ -1451,7 +1455,7 @@ inline bool build_variable_map(unsigned int src,
 		array<unsigned int>& src_variable_map, array<unsigned int>& dst_variable_map)
 {
 	if (!ensure_variable_map_capacity(src_variable_map, src)
-	 || !ensure_variable_map_capacity(dst_variable_map, src))
+	 || !ensure_variable_map_capacity(dst_variable_map, src + Offset))
 		return false;
 	else if (src_variable_map[src] != 0) return true;
 	src_variable_map[src] = src + Offset;
@@ -2870,8 +2874,8 @@ bool parse(datalog_expression_root::function& f, const string& name) {
 		f.type = datalog_expression_root::FUNCTION_EMPTY_TUPLE;
 	} else if (name == "empty_tuple_only") {
 		f.type = datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY;
-	} else if (name == "empty_tuple_only_keep_singular") {
-		f.type = datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR;
+	} else if (name == "empty_tuple_only_keep_concord_singular") {
+		f.type = datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_CONCORD_SINGULAR;
 	} else if (name == "keep_null") {
 		f.type = datalog_expression_root::FUNCTION_KEEP_NULL;
 	} else if (name == "empty_arg2") {
@@ -2900,8 +2904,16 @@ bool parse(datalog_expression_root::function& f, const string& name) {
 		f.type = datalog_expression_root::FUNCTION_CONCORD_NON_SINGULAR;
 	} else if (name == "concord_non_plural") {
 		f.type = datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL;
+	} else if (name == "concord_non_plural_keep_singular") {
+		f.type = datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL_KEEP_SINGULAR;
 	} else if (name == "concord_all") {
 		f.type = datalog_expression_root::FUNCTION_CONCORD_ALL;
+	} else if (name == "keep_concord_singular") {
+		f.type = datalog_expression_root::FUNCTION_KEEP_CONCORD_SINGULAR;
+	} else if (name == "keep_concord_plural") {
+		f.type = datalog_expression_root::FUNCTION_KEEP_CONCORD_PLURAL;
+	} else if (name == "keep_concord_uncountable") {
+		f.type = datalog_expression_root::FUNCTION_KEEP_CONCORD_UNCOUNTABLE;
 	} else if (name == "delete_not_concord_singular") {
 		f.type = datalog_expression_root::FUNCTION_DELETE_NOT_CONCORD_SINGULAR;
 	} else if (name == "delete_not_concord_plural") {
@@ -3270,8 +3282,8 @@ bool print(const datalog_expression_root::function& f, Stream& out) {
 		return print("empty_tuple", out);
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY:
 		return print("empty_tuple_only", out);
-	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR:
-		return print("empty_tuple_only_keep_singular", out);
+	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_CONCORD_SINGULAR:
+		return print("empty_tuple_only_keep_concord_singular", out);
 	case datalog_expression_root::FUNCTION_KEEP_NULL:
 		return print("keep_null", out);
 	case datalog_expression_root::FUNCTION_EMPTY_ARG2:
@@ -3300,8 +3312,16 @@ bool print(const datalog_expression_root::function& f, Stream& out) {
 		return print("concord_non_singular", out);
 	case datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL:
 		return print("concord_non_plural", out);
+	case datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL_KEEP_SINGULAR:
+		return print("concord_non_plural_keep_singular", out);
 	case datalog_expression_root::FUNCTION_CONCORD_ALL:
 		return print("concord_all", out);
+	case datalog_expression_root::FUNCTION_KEEP_CONCORD_SINGULAR:
+		return print("keep_concord_singular", out);
+	case datalog_expression_root::FUNCTION_KEEP_CONCORD_PLURAL:
+		return print("keep_concord_plural", out);
+	case datalog_expression_root::FUNCTION_KEEP_CONCORD_UNCOUNTABLE:
+		return print("keep_concord_uncountable", out);
 	case datalog_expression_root::FUNCTION_DELETE_NOT_CONCORD_SINGULAR:
 		return print("delete_not_concord_singular", out);
 	case datalog_expression_root::FUNCTION_DELETE_NOT_CONCORD_PLURAL:
@@ -4771,7 +4791,7 @@ inline bool select_function(const datalog_expression& src, datalog_expression& d
 	if (src.type == DATALOG_FUNCTION) {
 		if (Predicate != DATALOG_LABEL_WILDCARD && src.func.function != DATALOG_LABEL_WILDCARD && src.func.function != Predicate)
 			return false;
-	} else if (src.type != DATALOG_ANY && src.type == DATALOG_NON_EMPTY) return false;
+	} else if (src.type != DATALOG_ANY && src.type != DATALOG_NON_EMPTY) return false;
 	if (!init(dst.func)) return false;
 	dst.func.arg = (datalog_expression*) malloc(sizeof(datalog_expression));
 	if (dst.func.arg == NULL || !init(dst.func.arg->tuple, POSITION_EXACT, 1)) {
@@ -4955,7 +4975,7 @@ inline bool head_arg_select_arg(const datalog_expression& src, datalog_expressio
 		}
 	} else if (src.type != DATALOG_PREDICATE || HeadIndex >= array_length(src.pred.args))
 		return false;
-	if (src.pred.args[HeadIndex] == NULL) return false;
+	if (src.pred.args[HeadIndex] == NULL || src.pred.args[SelectIndex] == NULL) return false;
 	if (src.pred.args[HeadIndex]->type != DATALOG_ANY && src.pred.args[HeadIndex]->type != DATALOG_NON_EMPTY
 	 && (src.pred.args[HeadIndex]->type != DATALOG_VARIABLE || src.pred.args[HeadIndex]->variable != 1))
 		return false;
@@ -5214,31 +5234,52 @@ bool apply(datalog_expression_root::function function, const datalog_expression_
 		dst.index = src.index;
 		dst.concord = NUMBER_NON_PLURAL;
 		dst.inf = src.inf;
+	} else if (function.type == datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL_KEEP_SINGULAR) {
+		if (src.index != NUMBER_SINGULAR) return false;
+		dst.index = src.index;
+		dst.concord = NUMBER_NON_PLURAL;
+		dst.inf = src.inf;
 	} else if (function.type == datalog_expression_root::FUNCTION_CONCORD_ALL) {
 		if (src.index == NUMBER_SINGULAR) return false;
 		dst.index = src.index;
 		dst.concord = NUMBER_ALL;
 		dst.inf = src.inf;
-	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_SINGULAR
-			|| function.type == datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR) {
-		/* TODO: the "keep_*" functions for grammatical number need to be fixed */
-		if (src.concord != NUMBER_SINGULAR && src.concord != NUMBER_ANY
-		 && src.index != NUMBER_SINGULAR && src.index != NUMBER_ANY) return false;
+	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_CONCORD_SINGULAR
+			|| function.type == datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_CONCORD_SINGULAR) {
+		if (src.concord != NUMBER_SINGULAR && src.concord != NUMBER_NON_PLURAL
+		 && src.concord != NUMBER_ALL && src.concord != NUMBER_ANY) return false;
 		dst.index = src.index;
 		dst.concord = NUMBER_SINGULAR;
 		dst.inf = src.inf;
-	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_PLURAL
-			|| function.type == datalog_expression_root::FUNCTION_DELETE_ARGS_KEEP_PLURAL) {
-		if (src.concord != NUMBER_PLURAL && src.concord != NUMBER_ANY
-		 && src.index != NUMBER_PLURAL && src.index != NUMBER_ANY) return false;
+	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_CONCORD_PLURAL) {
+		if (src.concord != NUMBER_PLURAL && src.concord != NUMBER_NON_SINGULAR
+		 && src.concord != NUMBER_ALL && src.concord != NUMBER_ANY) return false;
 		dst.index = src.index;
 		dst.concord = NUMBER_PLURAL;
 		dst.inf = src.inf;
-	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_UNCOUNTABLE) {
-		if (src.concord != NUMBER_UNCOUNTABLE && src.concord != NUMBER_ANY
-		 && src.index != NUMBER_UNCOUNTABLE && src.index != NUMBER_ANY) return false;
+	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_CONCORD_UNCOUNTABLE) {
+		if (src.concord != NUMBER_UNCOUNTABLE
+		 && src.concord != NUMBER_NON_SINGULAR && src.concord != NUMBER_NON_PLURAL
+		 && src.concord != NUMBER_ALL && src.concord != NUMBER_ANY) return false;
 		dst.index = src.index;
 		dst.concord = NUMBER_UNCOUNTABLE;
+		dst.inf = src.inf;
+	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_SINGULAR) {
+		if (src.index != NUMBER_SINGULAR && src.index != NUMBER_NON_PLURAL && src.index != NUMBER_ANY) return false;
+		dst.index = NUMBER_SINGULAR;
+		dst.concord = src.concord;
+		dst.inf = src.inf;
+	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_PLURAL
+			|| function.type == datalog_expression_root::FUNCTION_DELETE_ARGS_KEEP_PLURAL) {
+		if (src.index != NUMBER_PLURAL && src.index != NUMBER_NON_SINGULAR && src.index != NUMBER_ANY) return false;
+		dst.index = NUMBER_PLURAL;
+		dst.concord = src.concord;
+		dst.inf = src.inf;
+	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_UNCOUNTABLE) {
+		if (src.index != NUMBER_UNCOUNTABLE && src.index != NUMBER_NON_SINGULAR
+		 && src.index != NUMBER_NON_PLURAL && src.index != NUMBER_ANY) return false;
+		dst.index = NUMBER_UNCOUNTABLE;
+		dst.concord = src.concord;
 		dst.inf = src.inf;
 	} else if (function.type == datalog_expression_root::FUNCTION_PRESENT_PARTICIPLE) {
 		dst.index = src.index;
@@ -5295,7 +5336,11 @@ bool apply(datalog_expression_root::function function, const datalog_expression_
 	case datalog_expression_root::FUNCTION_CONCORD_UNCOUNTABLE:
 	case datalog_expression_root::FUNCTION_CONCORD_NON_SINGULAR:
 	case datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL:
+	case datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL_KEEP_SINGULAR:
 	case datalog_expression_root::FUNCTION_CONCORD_ALL:
+	case datalog_expression_root::FUNCTION_KEEP_CONCORD_SINGULAR:
+	case datalog_expression_root::FUNCTION_KEEP_CONCORD_PLURAL:
+	case datalog_expression_root::FUNCTION_KEEP_CONCORD_UNCOUNTABLE:
 	case datalog_expression_root::FUNCTION_KEEP_SINGULAR:
 	case datalog_expression_root::FUNCTION_KEEP_PLURAL:
 	case datalog_expression_root::FUNCTION_KEEP_UNCOUNTABLE:
@@ -5586,7 +5631,7 @@ bool apply(datalog_expression_root::function function, const datalog_expression_
 		} else return false;
 		return true;
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY:
-	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR:
+	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_CONCORD_SINGULAR:
 		if (src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY || src.root.type == DATALOG_EMPTY
 		 || (src.root.type == DATALOG_TUPLE && src.root.tuple.elements.length == 0)) {
 			if (!init(dst.root.tuple, POSITION_EXACT, 1)) return false;
@@ -6433,9 +6478,19 @@ bool set_function(datalog_expression& exp, unsigned int value)
 bool set_has_function(datalog_expression& exp, unsigned int value) {
 	if (value == DATALOG_LABEL_EMPTY) {
 		return (exp.type != DATALOG_FUNCTION);
+	} else if (value == DATALOG_TRUE) {
+		if (exp.type == DATALOG_ANY) {
+			exp.func.function = DATALOG_LABEL_WILDCARD;
+			exp.func.excluded_count = 0;
+			exp.func.arg = &DATALOG_ANY_TREE;
+			set_function_variables<DATALOG_LABEL_WILDCARD>(exp.func);
+			DATALOG_ANY_TREE.reference_count++;
+			exp.type = DATALOG_FUNCTION;
+		} else return (exp.type == DATALOG_FUNCTION);
 	} else {
-		return (exp.type == DATALOG_FUNCTION);
+		return false;
 	}
+	return true;
 }
 
 template<size_t N>
@@ -6471,16 +6526,12 @@ bool set_has_function(
 
 bool set_predicate(datalog_expression& exp, unsigned int predicate) {
 	if (predicate <= NUM_PREDICATES) {
-		/*exp.func.function = predicate;
+		exp.func.function = predicate;
 		exp.func.arg = &DATALOG_ANY_TREE;
 		DATALOG_ANY_TREE.reference_count++;
 		exp.func.excluded_count = 0;
-		set_function_variables(exp.func, predicate);
-		exp.type = DATALOG_FUNCTION;*/
-
-		/* we prune this part of the search, since a higher-
-		   order function should have been set by now */
-		return false;
+		set_function_variables<DATALOG_LABEL_WILDCARD>(exp.func); /* we don't know the head of the function variables */
+		exp.type = DATALOG_FUNCTION;
 	} else if (predicate == DATALOG_STRING) {
 		if (!init(exp.str, 1)) return false;
 		exp.str[0] = DATALOG_LABEL_WILDCARD;
@@ -7376,6 +7427,7 @@ bool set_feature(
 	case datalog_expression_root::FEATURE_HAS_FUNCTION_ANSWER:
 		if (exp.root.type == DATALOG_ANY || exp.root.type == DATALOG_NON_EMPTY) {
 			exp.root.func.function = PREDICATE_ANSWER;
+			exp.root.func.excluded_count = 0;
 			set_function_variables<PREDICATE_ANSWER>(exp.root.func);
 			exp.root.type = DATALOG_FUNCTION;
 			if (!new_expression(exp.root.func.arg)) exit(EXIT_FAILURE);
@@ -7474,22 +7526,37 @@ bool exclude_predicates(datalog_expression& exp, const unsigned int* values, uns
 			if (!exp.pred.exclude(values, count)) exit(EXIT_FAILURE);
 		} else return index_of(exp.pred.function, values, count) == count;
 	} else if (exp.type == DATALOG_FUNCTION) {
-		return exclude_predicates<Index>(*exp.func.arg, values, count);
+		datalog_expression* arg;
+		if (exp.func.arg->reference_count == 1) {
+			arg = exp.func.arg;
+		} else {
+			if (!init(arg, *exp.func.arg)) exit(EXIT_FAILURE);
+			free(*exp.func.arg);
+			exp.func.arg = arg;
+		}
+		return exclude_predicates<Index>(*arg, values, count);
 	} else if (exp.type == DATALOG_TUPLE) {
 		if (exp.tuple.position != POSITION_EXACT)
 			return false;
 		else if (Index >= exp.tuple.elements.length)
 			return last_index_of(DATALOG_LABEL_EMPTY, values, count) == static_cast<unsigned int>(-1);
-		datalog_expression& element = *exp.tuple.elements[Index];
-		if (element.type == DATALOG_ANY || element.type == DATALOG_NON_EMPTY) {
+		datalog_expression* element;
+		if (exp.tuple.elements[Index]->reference_count == 1) {
+			element = exp.tuple.elements[Index];
+		} else {
+			if (!init(element, *exp.tuple.elements[Index])) exit(EXIT_FAILURE);
+			free(*exp.tuple.elements[Index]);
+			exp.tuple.elements[Index] = element;
+		}
+		if (element->type == DATALOG_ANY || element->type == DATALOG_NON_EMPTY) {
 			return false;
-		} else if (element.type == DATALOG_PREDICATE) {
-			if (element.pred.function == DATALOG_LABEL_WILDCARD) {
-				if (!element.pred.exclude(values, count)) exit(EXIT_FAILURE);
+		} else if (element->type == DATALOG_PREDICATE) {
+			if (element->pred.function == DATALOG_LABEL_WILDCARD) {
+				if (!element->pred.exclude(values, count)) exit(EXIT_FAILURE);
 			} else return index_of(exp.pred.function, values, count) == count;
-		} else if (element.type == DATALOG_FUNCTION) {
-			if (element.func.function == DATALOG_LABEL_WILDCARD) {
-				if (!element.func.exclude(values, count)) exit(EXIT_FAILURE);
+		} else if (element->type == DATALOG_FUNCTION) {
+			if (element->func.function == DATALOG_LABEL_WILDCARD) {
+				if (!element->func.exclude(values, count)) exit(EXIT_FAILURE);
 			} else return index_of(exp.func.function, values, count) == count;
 		} else {
 			return false;
@@ -7513,22 +7580,37 @@ bool exclude_right_predicates(datalog_expression& exp, const unsigned int* value
 			if (!exp.pred.exclude(values, count)) exit(EXIT_FAILURE);
 		} else return index_of(exp.pred.function, values, count) == count;
 	} else if (exp.type == DATALOG_FUNCTION) {
-		return exclude_right_predicates<Index>(*exp.func.arg, values, count);
+		datalog_expression* arg;
+		if (exp.func.arg->reference_count == 1) {
+			arg = exp.func.arg;
+		} else {
+			if (!init(arg, *exp.func.arg)) exit(EXIT_FAILURE);
+			free(*exp.func.arg);
+			exp.func.arg = arg;
+		}
+		return exclude_right_predicates<Index>(*arg, values, count);
 	} else if (exp.type == DATALOG_TUPLE) {
 		if (exp.tuple.position != POSITION_EXACT)
 			return false;
 		else if (Index >= exp.tuple.elements.length)
 			return last_index_of(DATALOG_LABEL_EMPTY, values, count) == static_cast<unsigned int>(-1);
-		datalog_expression& element = *exp.tuple.elements[exp.tuple.elements.length - Index - 1];
-		if (element.type == DATALOG_ANY || element.type == DATALOG_NON_EMPTY) {
+		datalog_expression* element;
+		if (exp.tuple.elements[exp.tuple.elements.length - Index - 1]->reference_count == 1) {
+			element = exp.tuple.elements[exp.tuple.elements.length - Index - 1];
+		} else {
+			if (!init(element, *exp.tuple.elements[exp.tuple.elements.length - Index - 1])) exit(EXIT_FAILURE);
+			free(*exp.tuple.elements[exp.tuple.elements.length - Index - 1]);
+			exp.tuple.elements[exp.tuple.elements.length - Index - 1] = element;
+		}
+		if (element->type == DATALOG_ANY || element->type == DATALOG_NON_EMPTY) {
 			return false;
-		} else if (element.type == DATALOG_PREDICATE) {
-			if (element.pred.function == DATALOG_LABEL_WILDCARD) {
-				if (!element.pred.exclude(values, count)) exit(EXIT_FAILURE);
+		} else if (element->type == DATALOG_PREDICATE) {
+			if (element->pred.function == DATALOG_LABEL_WILDCARD) {
+				if (!element->pred.exclude(values, count)) exit(EXIT_FAILURE);
 			} else return index_of(exp.pred.function, values, count) == count;
-		} else if (element.type == DATALOG_FUNCTION) {
-			if (element.func.function == DATALOG_LABEL_WILDCARD) {
-				if (!element.func.exclude(values, count)) exit(EXIT_FAILURE);
+		} else if (element->type == DATALOG_FUNCTION) {
+			if (element->func.function == DATALOG_LABEL_WILDCARD) {
+				if (!element->func.exclude(values, count)) exit(EXIT_FAILURE);
 			} else return index_of(exp.func.function, values, count) == count;
 		} else {
 			return false;
@@ -8267,11 +8349,6 @@ bool invert_select_left(datalog_expression& inverse,
 		return false;
 	}
 
-	unsigned int head = get_head(inverse);
-	if (head != 1 && head != DATALOG_LABEL_EMPTY && head != DATALOG_LABEL_WILDCARD) {
-		free(inverse);
-		return false;
-	}
 	return check_variable_overlap<MergeVariables>(inverse, first_variables, second_variable_map);
 }
 
@@ -8419,11 +8496,6 @@ bool invert_select_right(datalog_expression& inverse,
 		return false;
 	}
 
-	unsigned int head = get_head(inverse);
-	if (head != 1 && head != DATALOG_LABEL_EMPTY && head != DATALOG_LABEL_WILDCARD) {
-		free(inverse);
-		return false;
-	}
 	return check_variable_overlap<MergeVariables>(inverse, first_variables, second_variable_map);
 }
 
@@ -8751,11 +8823,6 @@ bool invert_delete_left(datalog_expression& inverse,
 		return false;
 	}
 
-	unsigned int head = get_head(inverse);
-	if (head != 1 && head != DATALOG_LABEL_EMPTY && head != DATALOG_LABEL_WILDCARD) {
-		free(inverse);
-		return false;
-	}
 	return check_variable_overlap<MergeVariables>(inverse, first_variables, second_variable_map);
 }
 
@@ -9127,11 +9194,6 @@ bool invert_delete_right(datalog_expression& inverse,
 		return false;
 	}
 
-	unsigned int head = get_head(inverse);
-	if (head != 1 && head != DATALOG_LABEL_EMPTY && head != DATALOG_LABEL_WILDCARD) {
-		free(inverse);
-		return false;
-	}
 	return check_variable_overlap<MergeVariables>(inverse, first_variables, second_variable_map);
 }
 
@@ -9625,7 +9687,7 @@ bool invert_head_arg_select_arg(datalog_expression& inverse,
 	if (first.type == DATALOG_TUPLE) {
 		if (first.tuple.elements.length == 0) {
 			if (first.tuple.position == POSITION_EXACT) return false;
-			if (!invert_select_arg<SelectIndex, false>(inverse, DATALOG_ANY_TREE, second))
+			if (!invert_select_arg<SelectIndex, false>(inverse, DATALOG_NON_EMPTY_TREE, second))
 				return false;
 		} else if (first.tuple.elements.length > 1) {
 			return false;
@@ -9634,6 +9696,7 @@ bool invert_head_arg_select_arg(datalog_expression& inverse,
 				return false;
 		}
 	} else {
+		if (first.type == DATALOG_EMPTY) return false;
 		if (!invert_select_arg<SelectIndex, false>(inverse, first, second))
 			return false;
 	}
@@ -9709,10 +9772,10 @@ bool invert_select_left_keep_function(datalog_expression& inverse,
 		inverse.type = DATALOG_FUNCTION;
 		inverse.func.excluded_count = 0;
 		if (Predicate != DATALOG_LABEL_WILDCARD) {
-			if (first.func.excluded_count > 0) {
+			if (first.func.function == DATALOG_LABEL_WILDCARD) {
 				if (first.func.is_excluded(Predicate)) {
 					return false;
-				} else if (second.func.excluded_count > 0) {
+				} else if (second.func.function == DATALOG_LABEL_WILDCARD) {
 					/* prune cases where the variables are unknown */
 					return false;
 				} else if (second.func.function != Predicate) {
@@ -9834,10 +9897,10 @@ bool invert_delete_left_keep_function(datalog_expression& inverse,
 		inverse.type = DATALOG_FUNCTION;
 		inverse.func.excluded_count = 0;
 		if (Predicate != DATALOG_LABEL_WILDCARD) {
-			if (first.func.excluded_count > 0) {
+			if (first.func.function == DATALOG_LABEL_WILDCARD) {
 				if (first.func.is_excluded(Predicate)) {
 					return false;
-				} else if (second.func.excluded_count > 0) {
+				} else if (second.func.function == DATALOG_LABEL_WILDCARD) {
 					/* prune cases where the variables are unknown */
 					return false;
 				} else if (second.func.function != Predicate) {
@@ -9872,9 +9935,9 @@ bool invert_delete_left_keep_function(datalog_expression& inverse,
 					if (second_variable_map[second_var] != 0) {
 						inverse.func.vars[i] = second_variable_map[second_var];
 					} else {
-						inverse.func.vars[i] = second_var;
-						second_variable_map[second_var] = second_var;
-						dst_variable_map[second_var] = 1;
+						inverse.func.vars[i] = second_var + (KeepHead ? 0 : 1);
+						second_variable_map[second_var] = second_var + (KeepHead ? 0 : 1);
+						dst_variable_map[second_var + (KeepHead ? 0 : 1)] = 1;
 					}
 				}
 			} else if (second_var == 0) {
@@ -9956,10 +10019,10 @@ bool invert_delete_right_keep_function(datalog_expression& inverse,
 		inverse.type = DATALOG_FUNCTION;
 		inverse.func.excluded_count = 0;
 		if (Predicate != DATALOG_LABEL_WILDCARD) {
-			if (first.func.excluded_count > 0) {
+			if (first.func.function == DATALOG_LABEL_WILDCARD) {
 				if (first.func.is_excluded(Predicate)) {
 					return false;
-				} else if (second.func.excluded_count > 0) {
+				} else if (second.func.function == DATALOG_LABEL_WILDCARD) {
 					/* prune cases where the variables are unknown */
 					return false;
 				} else if (second.func.function != Predicate) {
@@ -10001,9 +10064,9 @@ bool invert_delete_right_keep_function(datalog_expression& inverse,
 					if (second_variable_map[second_var] != 0) {
 						inverse.func.vars[i] = second_variable_map[second_var];
 					} else {
-						inverse.func.vars[i] = second_var;
-						second_variable_map[second_var] = second_var;
-						dst_variable_map[second_var] = 1;
+						inverse.func.vars[i] = second_var + (KeepHead ? 0 : 1);
+						second_variable_map[second_var] = second_var + (KeepHead ? 0 : 1);
+						dst_variable_map[second_var + (KeepHead ? 0 : 1)] = 1;
 					}
 				}
 			} else if (second_var == 0) {
@@ -10053,7 +10116,7 @@ bool invert_select_left_delete_function(datalog_expression& inverse,
 		inverse.type = DATALOG_FUNCTION;
 		inverse.func.excluded_count = 0;
 		if (Predicate != DATALOG_LABEL_WILDCARD) {
-			if (first.func.excluded_count > 0) {
+			if (first.func.function == DATALOG_LABEL_WILDCARD) {
 				if (first.func.is_excluded(Predicate))
 					return false;
 			} else if (first.func.function != Predicate) {
@@ -10136,7 +10199,7 @@ bool invert_select_right_delete_function(datalog_expression& inverse,
 		inverse.type = DATALOG_FUNCTION;
 		inverse.func.excluded_count = 0;
 		if (Predicate != DATALOG_LABEL_WILDCARD) {
-			if (first.func.excluded_count > 0) {
+			if (first.func.function == DATALOG_LABEL_WILDCARD) {
 				if (first.func.is_excluded(Predicate))
 					return false;
 			} else if (first.func.function != Predicate) {
@@ -10201,7 +10264,7 @@ bool invert_delete_left_function(datalog_expression& inverse,
 		inverse.type = DATALOG_FUNCTION;
 		inverse.func.excluded_count = 0;
 		if (Predicate != DATALOG_LABEL_WILDCARD) {
-			if (first.func.excluded_count > 0) {
+			if (first.func.function == DATALOG_LABEL_WILDCARD) {
 				if (first.func.is_excluded(Predicate))
 					return false;
 			} else if (first.func.function != Predicate) {
@@ -10785,32 +10848,57 @@ bool invert(
 		 || !intersect(inverse.inf, first.inf, second.inf) || !intersect(inverse.index, first.index, second.index))
 			return false;
 		inverse.concord = first.concord;
+	} else if (function.type == datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL_KEEP_SINGULAR) {
+		if ((second.concord != NUMBER_ANY && second.concord != NUMBER_NON_PLURAL)
+		 || !intersect(inverse.inf, first.inf, second.inf) || !intersect(inverse.index, first.index, second.index))
+			return false;
+		if (inverse.index != NUMBER_SINGULAR) return false;
+		inverse.concord = first.concord;
 	} else if (function.type == datalog_expression_root::FUNCTION_CONCORD_ALL) {
 		if ((second.concord != NUMBER_ANY && second.concord != NUMBER_ALL)
 		 || !intersect(inverse.inf, first.inf, second.inf) || !intersect(inverse.index, first.index, second.index))
 			return false;
 		if (inverse.index == NUMBER_SINGULAR) return false;
 		inverse.concord = first.concord;
-	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_SINGULAR
-			|| function.type == datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR) {
-		if ((first.concord != NUMBER_ANY && first.concord != NUMBER_SINGULAR)
-		 || (second.concord != NUMBER_ANY && second.concord != NUMBER_SINGULAR)
-		 || !intersect(inverse.inf, first.inf, second.inf) || !intersect(inverse.index, first.index, second.index))
+	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_CONCORD_SINGULAR
+			|| function.type == datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_CONCORD_SINGULAR) {
+		if ((second.concord != NUMBER_ANY && second.concord != NUMBER_ALL
+		  && second.concord != NUMBER_NON_PLURAL && second.concord != NUMBER_SINGULAR)
+		 || !intersect(inverse.inf, first.inf, second.inf)
+		 || !intersect(inverse.index, first.index, second.index))
 			return false;
 		inverse.concord = first.concord;
+	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_CONCORD_PLURAL) {
+		if ((second.concord != NUMBER_ANY && second.concord != NUMBER_ALL
+		  && second.concord != NUMBER_NON_SINGULAR && second.concord != NUMBER_PLURAL)
+		 || !intersect(inverse.inf, first.inf, second.inf)
+		 || !intersect(inverse.index, first.index, second.index))
+			return false;
+		inverse.concord = first.concord;
+	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_CONCORD_UNCOUNTABLE) {
+		if ((second.concord != NUMBER_ANY && second.concord != NUMBER_ALL
+		  && second.concord != NUMBER_NON_PLURAL && second.concord != NUMBER_NON_SINGULAR
+		  && second.concord != NUMBER_UNCOUNTABLE)
+		 || !intersect(inverse.inf, first.inf, second.inf)
+		 || !intersect(inverse.index, first.index, second.index))
+			return false;
+		inverse.concord = first.concord;
+	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_SINGULAR) {
+		if ((second.index != NUMBER_ANY && second.index != NUMBER_SINGULAR)
+		 || !intersect(inverse.inf, first.inf, second.inf) || !intersect(inverse.concord, first.concord, second.concord))
+			return false;
+		inverse.index = first.index;
 	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_PLURAL
 			|| function.type == datalog_expression_root::FUNCTION_DELETE_ARGS_KEEP_PLURAL) {
-		if ((first.concord != NUMBER_ANY && first.concord != NUMBER_PLURAL)
-		 || (second.concord != NUMBER_ANY && second.concord != NUMBER_PLURAL)
-		 || !intersect(inverse.inf, first.inf, second.inf) || !intersect(inverse.index, first.index, second.index))
+		if ((second.index != NUMBER_ANY && second.index != NUMBER_PLURAL)
+		 || !intersect(inverse.inf, first.inf, second.inf) || !intersect(inverse.concord, first.concord, second.concord))
 			return false;
-		inverse.concord = first.concord;
+		inverse.index = first.index;
 	} else if (function.type == datalog_expression_root::FUNCTION_KEEP_UNCOUNTABLE) {
-		if ((first.concord != NUMBER_ANY && first.concord != NUMBER_UNCOUNTABLE)
-		 || (second.concord != NUMBER_ANY && second.concord != NUMBER_UNCOUNTABLE)
-		 || !intersect(inverse.inf, first.inf, second.inf) || !intersect(inverse.index, first.index, second.index))
+		if ((second.index != NUMBER_ANY && second.index != NUMBER_UNCOUNTABLE)
+		 || !intersect(inverse.inf, first.inf, second.inf) || !intersect(inverse.concord, first.concord, second.concord))
 			return false;
-		inverse.concord = first.concord;
+		inverse.index = first.index;
 	} else if (function.type == datalog_expression_root::FUNCTION_PRESENT_PARTICIPLE) {
 		if ((second.inf != INFLECTION_PRESENT_PARTICIPLE && second.inf != INFLECTION_ANY)
 		 || !intersect(inverse.index, first.index, second.index) || !intersect(inverse.concord, first.concord, second.concord))
@@ -10875,7 +10963,11 @@ bool invert(
 	case datalog_expression_root::FUNCTION_CONCORD_UNCOUNTABLE:
 	case datalog_expression_root::FUNCTION_CONCORD_NON_SINGULAR:
 	case datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL:
+	case datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL_KEEP_SINGULAR:
 	case datalog_expression_root::FUNCTION_CONCORD_ALL:
+	case datalog_expression_root::FUNCTION_KEEP_CONCORD_SINGULAR:
+	case datalog_expression_root::FUNCTION_KEEP_CONCORD_PLURAL:
+	case datalog_expression_root::FUNCTION_KEEP_CONCORD_UNCOUNTABLE:
 	case datalog_expression_root::FUNCTION_KEEP_SINGULAR:
 	case datalog_expression_root::FUNCTION_KEEP_PLURAL:
 	case datalog_expression_root::FUNCTION_KEEP_UNCOUNTABLE:
@@ -11185,13 +11277,17 @@ bool invert(
 			return init(inverse.root, first.root);
 		}
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY:
-	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR:
+	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_CONCORD_SINGULAR:
 		if (second.root.type == DATALOG_TUPLE) {
 			if (second.root.tuple.elements.length > 0) return false;
 		} else if (second.root.type != DATALOG_ANY && second.root.type != DATALOG_NON_EMPTY) return false;
 
 		if (first.root.type == DATALOG_ANY || first.root.type == DATALOG_NON_EMPTY) {
 			return init_tuple(inverse.root, POSITION_EXACT, 1);
+		} else if (first.root.type == DATALOG_EMPTY) {
+			inverse.root.type = DATALOG_EMPTY;
+			inverse.root.reference_count = 1;
+			return true;
 		} else if (first.root.type != DATALOG_TUPLE || first.root.tuple.elements.length > 0) {
 			return false;
 		} else {
@@ -11340,6 +11436,13 @@ bool invert(
 		free(inverter.inverse);
 		return false;
 	}
+
+	unsigned int head = get_head(inverter.inverse->root);
+	if (head != 1 && head != DATALOG_LABEL_EMPTY && head != DATALOG_LABEL_WILDCARD) {
+		free(*inverter.inverse);
+		free(inverter.inverse);
+		return false;
+	}
 	return true;
 }
 
@@ -11418,7 +11521,11 @@ inline void get_selected(const datalog_expression_root::function& f,
 	case datalog_expression_root::FUNCTION_CONCORD_UNCOUNTABLE:
 	case datalog_expression_root::FUNCTION_CONCORD_NON_SINGULAR:
 	case datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL:
+	case datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL_KEEP_SINGULAR:
 	case datalog_expression_root::FUNCTION_CONCORD_ALL:
+	case datalog_expression_root::FUNCTION_KEEP_CONCORD_SINGULAR:
+	case datalog_expression_root::FUNCTION_KEEP_CONCORD_PLURAL:
+	case datalog_expression_root::FUNCTION_KEEP_CONCORD_UNCOUNTABLE:
 	case datalog_expression_root::FUNCTION_KEEP_SINGULAR:
 	case datalog_expression_root::FUNCTION_KEEP_PLURAL:
 	case datalog_expression_root::FUNCTION_KEEP_UNCOUNTABLE:
@@ -11483,7 +11590,7 @@ inline void get_selected(const datalog_expression_root::function& f,
 	case datalog_expression_root::FUNCTION_KEEP_FEATURES:
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE:
 	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY:
-	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_SINGULAR:
+	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_CONCORD_SINGULAR:
 	case datalog_expression_root::FUNCTION_KEEP_NULL:
 		num_conjuncts = 0; break;
 
@@ -11926,6 +12033,7 @@ private:
 
 /* forward declarations */
 
+template<bool Complete>
 bool build_context(
 		const datalog_tuple& tuple,
 		const datalog_ontology& T,
@@ -12008,7 +12116,7 @@ inline bool build_context(
 	return true;
 }
 
-template<bool Complete>
+template<bool Complete, bool Flippable>
 bool build_context(
 		const datalog_predicate& pred,
 		const datalog_ontology& T,
@@ -12017,7 +12125,11 @@ bool build_context(
 	if (pred.function == PREDICATE_CONST) {
 		if (pred.args[0] == NULL)
 			return true; /* 'delete_args' allows this to be empty during parsing */
-		else if (pred.args[1] == NULL || pred.args[0]->type != DATALOG_VARIABLE)
+		else if (pred.args[1] == NULL)
+			return false;
+		else if (!Complete && pred.args[0]->type == DATALOG_ANY)
+			return true;
+		else if (pred.args[0]->type != DATALOG_VARIABLE)
 			return false;
 
 		unsigned int arg_type;
@@ -12061,7 +12173,9 @@ bool build_context(
 			/* predicate arguments can be empty during parsing */
 			continue;
 		} else if (pred.args[i]->type == DATALOG_VARIABLE) {
-			if (!build_context(pred.args[i]->variable, signature.arg_types[i], T, context))
+			if (Flippable && i < 2)
+				build_context_any(pred.args[i]->variable, T, context);
+			else if (!build_context(pred.args[i]->variable, signature.arg_types[i], T, context))
 				return false;
 		} else if (pred.args[i]->type == DATALOG_INTEGER) {
 			if (!is_supertype(T, DATALOG_TYPE_INTEGER, signature.arg_types[i])
@@ -12084,6 +12198,7 @@ bool build_context(
 	return true;
 }
 
+template<bool Complete>
 bool build_context(
 		const datalog_function& func,
 		const datalog_ontology& T,
@@ -12107,11 +12222,11 @@ bool build_context(
 	}
 
 	if (func.arg->type == DATALOG_PREDICATE) {
-		return build_context<true>(func.arg->pred, T, context);
+		return build_context<Complete, false>(func.arg->pred, T, context);
 	} else if (func.arg->type == DATALOG_TUPLE) {
-		return build_context(func.arg->tuple, T, context);
+		return build_context<Complete, false>(func.arg->tuple, T, context);
 	} else if (func.arg->type == DATALOG_FUNCTION) {
-		return build_context(func.arg->func, T, context);
+		return build_context<Complete>(func.arg->func, T, context);
 	} else if (func.arg->type == DATALOG_ANY || func.arg->type == DATALOG_NON_EMPTY || func.arg->type == DATALOG_EMPTY) {
 		return true;
 	} else {
@@ -12121,18 +12236,21 @@ bool build_context(
 	}
 }
 
+template<bool Complete, bool Flippable>
 bool build_context(
 		const datalog_tuple& tuple,
 		const datalog_ontology& T,
 		array<unsigned int>& context)
 {
-	for (const datalog_expression* element : tuple.elements) {
+	for (unsigned int i = 0; i < tuple.elements.length; i++) {
+		const datalog_expression* element = tuple.elements[i];
 		switch (element->type) {
 		case DATALOG_PREDICATE:
-			if (!build_context<true>(element->pred, T, context)) return false;
+			if ((i == 0 && !build_context<Complete, Flippable>(element->pred, T, context))
+			 || (i == 1 && !build_context<Complete, false>(element->pred, T, context))) return false;
 			break;
 		case DATALOG_FUNCTION:
-			if (!build_context(element->func, T, context)) return false;
+			if (!build_context<Complete>(element->func, T, context)) return false;
 			break;
 		case DATALOG_ANY:
 		case DATALOG_NON_EMPTY:
@@ -12145,7 +12263,7 @@ bool build_context(
 	return true;
 }
 
-template<bool Complete>
+template<bool Complete, bool Flippable>
 bool type_check(
 		const datalog_predicate& pred,
 		const datalog_ontology& T,
@@ -12166,7 +12284,7 @@ bool type_check(
 			unsigned int predicate = pred.args[1]->pred.function;
 			if (predicate == DATALOG_LABEL_WILDCARD || predicate >= T.types.length || T.types[predicate].length <= 1)
 				return true;
-			return type_check<true>(pred.args[1]->pred, T, context, context[variable]);
+			return type_check<Complete, false>(pred.args[1]->pred, T, context, context[variable]);
 		} else if (pred.args[1]->type == DATALOG_CONSTANT) {
 			unsigned int predicate = pred.args[1]->constant.label;
 			if (predicate == DATALOG_LABEL_WILDCARD || predicate >= T.types.length || T.types[predicate].length <= 1)
@@ -12227,8 +12345,14 @@ bool type_check(
 
 			if (!is_supertype(T, arg_type, signature.arg_types[i])
 			 && !is_supertype(T, signature.arg_types[i], arg_type)) {
-				match = false;
-				break;
+				if (!Flippable || i >= 2 || pred.args[i]->type != DATALOG_VARIABLE) {
+					match = false;
+					break;
+				} else if (!is_supertype(T, arg_type, signature.arg_types[1 - i])
+						 && !is_supertype(T, signature.arg_types[1 - i], arg_type)) {
+					match = false;
+					break;
+				}
 			}
 		}
 		if (match) return true;
@@ -12238,6 +12362,7 @@ bool type_check(
 	return false;
 }
 
+template<bool Complete>
 bool type_check(
 		const datalog_function& func,
 		const datalog_ontology& T,
@@ -12281,11 +12406,11 @@ bool type_check(
 	}
 
 	if (func.arg->type == DATALOG_PREDICATE) {
-		return type_check<true>(func.arg->pred, T, context, DATALOG_TYPE_BOOLEAN);
+		return type_check<Complete, false>(func.arg->pred, T, context, DATALOG_TYPE_BOOLEAN);
 	} else if (func.arg->type == DATALOG_TUPLE) {
-		return type_check<true>(func.arg->tuple, T, context);
+		return type_check<Complete, false>(func.arg->tuple, T, context);
 	} else if (func.arg->type == DATALOG_FUNCTION) {
-		return type_check(func.arg->func, T, context);
+		return type_check<Complete>(func.arg->func, T, context);
 	} else if (func.arg->type == DATALOG_ANY || func.arg->type == DATALOG_NON_EMPTY || func.arg->type == DATALOG_EMPTY) {
 		return true;
 	} else {
@@ -12295,23 +12420,21 @@ bool type_check(
 	}
 }
 
-template<bool Complete>
+template<bool Complete, bool Flippable>
 bool type_check(
 		const datalog_tuple& tuple,
 		const datalog_ontology& T,
 		const array<unsigned int>& context)
 {
-	for (const datalog_expression* element : tuple.elements) {
+	for (unsigned int i = 0; i < tuple.elements.length; i++) {
+		const datalog_expression* element = tuple.elements[i];
 		switch (element->type) {
 		case DATALOG_PREDICATE:
-			if (!Complete && tuple.elements.length == 1) {
-				if (!type_check<false>(element->pred, T, context, DATALOG_TYPE_BOOLEAN)) return false;
-			} else {
-				if (!type_check<true>(element->pred, T, context, DATALOG_TYPE_BOOLEAN)) return false;
-			}
+			if ((i == 0 && !type_check<Complete, Flippable>(element->pred, T, context, DATALOG_TYPE_BOOLEAN))
+			 || (i == 1 && !type_check<Complete, false>(element->pred, T, context, DATALOG_TYPE_BOOLEAN))) return false;
 			break;
 		case DATALOG_FUNCTION:
-			if (!type_check(element->func, T, context)) return false;
+			if (!type_check<Complete>(element->func, T, context)) return false;
 			break;
 		case DATALOG_ANY:
 		case DATALOG_NON_EMPTY:
@@ -12333,14 +12456,14 @@ bool type_check(const datalog_ontology& T, const datalog_expression_root& e) {
 	 || e.root.type == DATALOG_INTEGER || e.root.type == DATALOG_STRING) {
 		return true;
 	} else if (e.root.type == DATALOG_TUPLE) {
-		return build_context(e.root.tuple, T, context)
-			&& type_check<Complete>(e.root.tuple, T, context);
+		return build_context<Complete, !Complete>(e.root.tuple, T, context)
+			&& type_check<Complete, !Complete>(e.root.tuple, T, context);
 	} else if (e.root.type == DATALOG_FUNCTION) {
-		return build_context(e.root.func, T, context)
-			&& type_check(e.root.func, T, context);
+		return build_context<Complete>(e.root.func, T, context)
+			&& type_check<Complete>(e.root.func, T, context);
 	} else if (e.root.type == DATALOG_PREDICATE) {
-		return build_context<Complete>(e.root.pred, T, context)
-			&& type_check<Complete>(e.root.pred, T, context, Complete ? DATALOG_TYPE_BOOLEAN : DATALOG_TYPE_ANY);
+		return build_context<Complete, !Complete>(e.root.pred, T, context)
+			&& type_check<Complete, !Complete>(e.root.pred, T, context, Complete ? DATALOG_TYPE_BOOLEAN : DATALOG_TYPE_ANY);
 	} else {
 		return false;
 	}
@@ -12588,6 +12711,7 @@ bool ontology_interpret(
 
 const fixed_array<token>& morphology_parse(unsigned int word);
 const fixed_array<unsigned int>& morphology_inflect(const token& tok);
+bool morphology_inflect(unsigned int root, part_of_speech pos, hash_set<unsigned int>& inflections);
 bool morphology_is_auxiliary_verb(unsigned int word);
 bool morphology_is_auxiliary_root(unsigned int root);
 
@@ -12646,22 +12770,19 @@ bool morphology_is_valid(
 {
 	if (pos == POS_OTHER) {
 		return true;
-	} else if (pos == POS_ADJECTIVE) {
+	} else if (pos == POS_ADJECTIVE || pos == POS_ADVERB) {
 		if (logical_form.concord == NUMBER_SINGULAR || logical_form.concord == NUMBER_PLURAL)
 			return false;
 
 		/* we don't model adjective morphology, for now */
 		/* adjective compounds are head-final (TODO: need a database of exceptions) */
 		unsigned int head_index = terminal.length - 1;
-		return morphology_inflect({terminal[head_index], NUMBER_ANY, INFLECTION_ADJECTIVE}).length > 0;
-	} else if (pos == POS_ADVERB) {
-		if (logical_form.concord == NUMBER_SINGULAR || logical_form.concord == NUMBER_PLURAL)
-			return false;
-
-		/* we don't model adjective morphology, for now */
-		/* adjective compounds are head-final (TODO: need a database of exceptions) */
-		unsigned int head_index = terminal.length - 1;
-		return morphology_inflect({terminal[head_index], NUMBER_ANY, INFLECTION_ADVERB}).length > 0;
+		const fixed_array<token>& result = morphology_parse(terminal[head_index]);
+		for (unsigned int i = 0; i < result.length; i++) {
+			if (result[i].get_part_of_speech() == pos)
+				return true;
+		}
+		return false;
 	}
 
 	unsigned int head_index;
@@ -12710,8 +12831,8 @@ bool morphology_is_valid(
 			if (morphology_inflect({terminal[head_index], NUMBER_PLURAL, INFLECTION_NOUN}).length > 0)
 				return true;
 		} if (has_intersection(intersection, NUMBER_UNCOUNTABLE)) {
-			if (morphology_inflect({terminal[head_index], NUMBER_UNCOUNTABLE, INFLECTION_NOUN}).length > 0)
-				return true;
+			/* simply return true, since this could be a proper noun */
+			return true;
 		}
 	}
 	return false;
@@ -12743,7 +12864,7 @@ bool morphology_parse(const sequence& words, part_of_speech pos,
 		/* noun compounds are head-final (TODO: need a database of exceptions) */
 		head_index = words.length - 1;
 	} else if (pos == POS_VERB) {
-		/* verb compounds (phrasal verbs) are head-final (TODO: need a database of exceptions) */
+		/* verb compounds (phrasal verbs) are head-initial (TODO: need a database of exceptions) */
 		head_index = 0;
 	} else {
 		fprintf(stderr, "morphology_parse ERROR: Unrecognized part of speech.\n");
@@ -12764,6 +12885,7 @@ bool morphology_parse(const sequence& words, part_of_speech pos,
 	}
 
 	sequence root(NULL, 0); root = words;
+	bool emitted_proper_noun = false;
 	datalog_expression_root marked_logical_form = logical_form;
 	const fixed_array<token>& result = morphology_parse(words[head_index]);
 	for (unsigned int i = 0; i < result.length; i++) {
@@ -12800,14 +12922,68 @@ bool morphology_parse(const sequence& words, part_of_speech pos,
 		}
 
 		root[head_index] = result[i].id;
+		emitted_proper_noun = emitted_proper_noun || (root[head_index] == words[head_index]
+				&& (logical_form.concord != NUMBER_ANY || marked_logical_form.concord == NUMBER_UNCOUNTABLE));
 		if (!emit_root(root, marked_logical_form)) {
 			free(marked_logical_form);
 			free(root); return false;
 		}
 	}
+	free(root);
+
+	/* the noun might be proper */
+	if (!emitted_proper_noun && pos == POS_NOUN && (intersection == NUMBER_UNCOUNTABLE
+		 || intersection == NUMBER_NON_SINGULAR || intersection == NUMBER_NON_PLURAL
+		 || intersection == NUMBER_ALL || intersection == NUMBER_ANY))
+	{
+		marked_logical_form.inf = INFLECTION_NONE;
+		if (logical_form.concord == NUMBER_ANY) {
+			marked_logical_form.concord = NUMBER_UNCOUNTABLE;
+		} else {
+			marked_logical_form.concord = logical_form.concord;
+		}
+
+		if (!emit_root(words, marked_logical_form)) {
+			free(marked_logical_form);
+			return false;
+		}
+	}
 
 	free(marked_logical_form);
-	free(root); return true;
+	return true;
+}
+
+inline bool morphology_get_inflections(
+		const sequence& tokens, part_of_speech pos,
+		hash_set<unsigned int>& inflections)
+{
+	unsigned int head_index;
+	if (pos == POS_NOUN) {
+		/* noun compounds are head-final (TODO: need a database of exceptions) */
+		head_index = tokens.length - 1;
+	} else if (pos == POS_VERB) {
+		/* verb compounds (phrasal verbs) are head-initial (TODO: need a database of exceptions) */
+		head_index = 0;
+	} else if (pos == POS_OTHER || pos == POS_ADJECTIVE || pos == POS_ADVERB) {
+		head_index = tokens.length; /* there is no head (we don't use the root for adjectives or adverbs in morphology_parse just yet) */
+	} else {
+		fprintf(stderr, "morphology_get_inflections ERROR: Unrecognized part of speech.\n");
+		return false;
+	}
+
+	/* first add all uninflected tokens */
+	if (!inflections.check_size(inflections.size + tokens.length))
+		return false;
+	for (unsigned int i = 0; i < tokens.length; i++)
+		if (i != head_index) inflections.add(tokens[i]);
+
+	/* this could be a proper noun */
+	if (pos == POS_NOUN && !inflections.add(tokens[head_index]))
+		return false;
+
+	/* add the inflected forms of the head token */
+	return head_index >= tokens.length
+		|| morphology_inflect(tokens[head_index], pos, inflections);
 }
 
 //inline bool morphology_inflect(sequence& terminal, part_of_speech pos,
@@ -12920,6 +13096,7 @@ inline bool yield(const rule<datalog_expression_root>& terminal,
 			fprintf(stderr, "yield ERROR: Invalid grammatical number for noun.\n");
 			return false;
 		}
+		sentence[length + head_index].inf = INFLECTION_NOUN;
 	} else if (pos == POS_VERB) {
 		unsigned int head_index = 0;
 		if (logical_form.inf == INFLECTION_NONE)

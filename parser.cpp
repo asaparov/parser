@@ -67,7 +67,7 @@ enum class prior_type {
 datalog_ontology ontology;
 morphology morph;
 bool enable_morphology = true;
-std::mutex console_lock;
+std::mutex console_lock, token_map_lock;
 prior_type prior_option;
 unsigned int UNKNOWN_COMMAND;
 
@@ -127,6 +127,17 @@ inline const fixed_array<unsigned int>& morphology_inflect(const token& tok) {
 		fprintf(stderr, "morphology_inflect WARNING: Morphology model is disabled by command-line flag.\n");
 #endif
 	return morph.inflect(tok);
+}
+
+inline bool morphology_inflect(
+		unsigned int root, part_of_speech pos,
+		hash_set<unsigned int>& inflections)
+{
+#if !defined(NDEBUG)
+	if (!enable_morphology)
+		fprintf(stderr, "morphology_inflect WARNING: Morphology model is disabled by command-line flag.\n");
+#endif
+	return morph.inflect(root, pos, inflections);
 }
 
 inline bool morphology_is_auxiliary_verb(unsigned int word) {
@@ -300,11 +311,51 @@ void remove_unknown(array<datalog_expression_root*>& data,
 	}
 }
 
+template<bool Inflect, typename Stream>
+void print_generated_derivation(hdp_grammar_type& G,
+		const datalog_expression_root& logical_form,
+		const syntax_node<datalog_expression_root>& derivation,
+		const string_map_scribe& terminal_printer,
+		Stream& out)
+{
+	unsigned int length = 0, capacity = 16;
+	token* tokens = (token*) malloc(sizeof(token) * capacity);
+
+	if (yield(G, derivation, 1, logical_form, terminal_printer, tokens, length, capacity)) {
+		print('"', out);
+		for (unsigned int i = 0; i < length; i++) {
+			if (i > 0) print(' ', out);
+			if (Inflect) {
+				const fixed_array<unsigned int>& inflected_words = morph.inflect(tokens[i]);
+				if (inflected_words.length > 0)
+					print(inflected_words.elements[0], out, terminal_printer);
+				else print(tokens[i].id, out, terminal_printer);
+			} else {
+				unsigned int index = 0;
+				print(tokens[i].id, out, terminal_printer);
+				if (tokens[i].inf != INFLECTION_NONE && tokens[i].inf != INFLECTION_ADJECTIVE) {
+					if (index == 0) print('[', out);
+					else print(',', out);
+					print(tokens[i].inf, out); index++;
+				} if (tokens[i].number != NUMBER_NONE) {
+					if (index == 0) print('[', out);
+					else print(',', out);
+					print(tokens[i].number, out); index++;
+				}
+				if (index != 0) print(']', out);
+			}
+		}
+		print("\"\n", out);
+	}
+	free(tokens);
+}
+
 void parse(const hdp_grammar_type& G_src,
 		const sequence* sentences,
 		unsigned int sentence_count,
 		const datalog_expression_root* const* logical_forms,
 		const hash_set<unsigned int>* known_tokens,
+		hash_map<string, unsigned int>& token_map,
 		const string_map_scribe& terminal_printer,
 		const string_map_scribe& nonterminal_printer, FILE* out,
 		std::atomic_uint& unanswered,
@@ -320,13 +371,12 @@ void parse(const hdp_grammar_type& G_src,
 		unsigned int id = counter++;
 		if (id >= sentence_count)
 			break;
-id = 148;
-if (counter == 2) break;
 
 		bool skip = false;
 		console_lock.lock();
 		snprintf(prefix, array_length(prefix), "(%u) ", id);
-		fprintf(out, "%sParsing sentence %u...\n", prefix, id); fflush(out);
+		fprintf(out, "%sParsing sentence %u: \"", prefix, id);
+		print(sentences[id], out, terminal_printer); print("\"\n", out); fflush(out);
 		for (unsigned int j = 0; known_tokens != NULL && j < sentences[id].length; j++) {
 			int value;
 			unsigned int token = sentences[id].tokens[j];
@@ -347,54 +397,118 @@ if (counter == 2) break;
 		logical_form.index = NUMBER_ALL;
 		logical_form.concord = NUMBER_NONE;
 		logical_form.inf = INFLECTION_NONE;
-		syntax_node<datalog_expression_root>& parsed_syntax =
-			*((syntax_node<datalog_expression_root>*) alloca(sizeof(syntax_node<datalog_expression_root>)));
+		static constexpr unsigned int K = 8;
+		syntax_node<datalog_expression_root>* parsed_syntax =
+				(syntax_node<datalog_expression_root>*) alloca(K * sizeof(syntax_node<datalog_expression_root>));
+		datalog_expression_root* logical_form_output =
+				(datalog_expression_root*) alloca(K * sizeof(datalog_expression_root));
 		auto sentence = tokenized_sentence<datalog_expression_root>(sentences[id]);
 
+		unsigned int derivation_count;
 		double true_log_likelihood = 1.0, true_log_prior = 1.0;
-		datalog_expression_root true_logical_form = *logical_forms[id];
 minimum_priority = 0.0;
-if (is_unknown(true_logical_form)) continue;
-debug_flag = true;
-		if (!is_unknown(true_logical_form)
-		 && parse<false>(parsed_syntax, true_logical_form, G, sentence, terminal_printer.map, time_limit)) {
-debug2 = true;
-			print(true_logical_form, out, terminal_printer); print("\n", out);
-			print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
-			true_log_likelihood = log_probability(G, parsed_syntax, true_logical_form, terminal_printer.map);
-			true_log_prior = log_probability<true>(true_logical_form);
-debug2 = false;
+//if (is_unknown(true_logical_form)) continue;
+//debug_flag = true;
+		/* first parse with the true logical form to find a lower bound on the log probability (and debug) */
+		if (!is_unknown(*logical_forms[id]) && parse<false, true, 1>(parsed_syntax, derivation_count,
+				*logical_forms[id], logical_form_output, G, sentence, terminal_printer.map, time_limit))
+		{
+//debug2 = true;
+//			print(logical_form_output[0], out, terminal_printer); print("\n", out);
+//			print(parsed_syntax[0], out, nonterminal_printer, terminal_printer); print("\n", out);
+			true_log_likelihood = log_probability(G, parsed_syntax[0], *logical_forms[id], terminal_printer.map);
+			true_log_prior = log_probability<true>(*logical_forms[id]);
+//debug2 = false;
 			datalog_expression_root logical_form_set;
 			logical_form_set.index = NUMBER_ALL;
 			logical_form_set.concord = NUMBER_NONE;
 			logical_form_set.inf = INFLECTION_NONE;
-			fprintf(out, "%sParse log probability: %lf (prior: %lf)\n", prefix, true_log_likelihood, true_log_prior);
-			is_parseable(parsed_syntax, true_logical_form, G, logical_form_set, nonterminal_printer, terminal_printer, terminal_printer.map);
-			free(parsed_syntax);
+//			fprintf(out, "%sParse log probability: %lf (prior: %lf)\n", prefix, true_log_likelihood, true_log_prior);
+			is_parseable(parsed_syntax[0], *logical_forms[id], G, logical_form_set, nonterminal_printer, terminal_printer, terminal_printer.map);
+			free(parsed_syntax[0]);
+			free(logical_form_output[0]);
 			free(logical_form_set);
 minimum_priority = exp(true_log_likelihood + true_log_prior - 1.0e-12);
 		} else {
 			fprintf(out, "%sWARNING: Unable to parse sentence %u with the true logical form.\n", prefix, id);
 minimum_priority = 0.0;
 		}
-		if (parse<false>(parsed_syntax, logical_form, G, sentence, terminal_printer.map, time_limit)) {
+
+		/* perform parsing over the full search space */
+		if (parse<false, false, K>(parsed_syntax, derivation_count, logical_form,
+				logical_form_output, G, sentence, terminal_printer.map, time_limit))
+		{
 			console_lock.lock();
-			if (!equivalent(logical_form, *logical_forms[id])) {
+			if (!equivalent(logical_form_output[0], *logical_forms[id])) {
 				fprintf(out, "%sTrue logical form:      ", prefix); print(*logical_forms[id], out, terminal_printer); print('\n', out);
-				fprintf(out, "%sPredicted logical form: ", prefix); print(logical_form, out, terminal_printer); print('\n', out);
-debug2 = true;
-				print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
-				double predicted_log_likelihood = log_probability(G, parsed_syntax, logical_form, terminal_printer.map);
-				double predicted_log_prior = log_probability<true>(logical_form);
-debug2 = false;
-				fprintf(out, "%sParse log probability: %lf (prior: %lf)\n",
-						prefix, predicted_log_likelihood, predicted_log_prior);
+				fprintf(out, "%sPredicted logical form: ", prefix); print(logical_form_output[0], out, terminal_printer); print('\n', out);
+//debug2 = true;
+//				print(parsed_syntax[0], out, nonterminal_printer, terminal_printer); print("\n", out);
+				double predicted_log_likelihood = log_probability(G, parsed_syntax[0], logical_form_output[0], terminal_printer.map);
+				double predicted_log_prior = log_probability<true>(logical_form_output[0]);
+//debug2 = false;
+//				fprintf(out, "%sParse log probability: %lf (prior: %lf)\n",
+//						prefix, predicted_log_likelihood, predicted_log_prior);
 				if (true_log_likelihood != 1.0 && !std::isinf(predicted_log_likelihood)
 				 && true_log_likelihood + true_log_prior > predicted_log_likelihood + predicted_log_prior)
 					fprintf(out, "%sWARNING: The predicted derivation has lower probability than the true derivation.\n", prefix);
 				incorrect++;
 			}
-			free(logical_form); free(parsed_syntax);
+
+			/* remove duplicate output logical forms */
+			unsigned int next = 1;
+			for (unsigned int i = 1; i < derivation_count; i++) {
+				bool match = false;
+				for (unsigned int j = 0; j < next; j++) {
+					if (logical_form_output[i] == logical_form_output[j]) {
+						match = true;
+						break;
+					}
+				}
+
+				if (match) {
+					free(logical_form_output[i]);
+					free(parsed_syntax[i]);
+				} else {
+					if (next != i) {
+						move(logical_form_output[i], logical_form_output[next]);
+						move(parsed_syntax[i], parsed_syntax[next]);
+					}
+					next++;
+				}
+			}
+			derivation_count = next;
+
+			/* print the top k <= K logical forms and their most likely generated sentences */
+			for (unsigned int i = 0; i < derivation_count; i++) {
+				fprintf(out, "%srank-%u logical form:       ", prefix, i + 1); print(logical_form_output[i], out, terminal_printer); print('\n', out);
+				fprintf(out, "%srank-%u generated sentence: ", prefix, i + 1);
+
+				unsigned int generated_derivation_count;
+				syntax_node<datalog_expression_root>& generated_derivation =
+						*((syntax_node<datalog_expression_root>*) alloca(sizeof(syntax_node<datalog_expression_root>)));
+				token_map_lock.lock();
+				if (generate<1>(&generated_derivation, generated_derivation_count,
+						logical_form_output[i], G, token_map, time_limit))
+				{
+					const string** name_ids = invert(token_map);
+					string_map_scribe new_terminal_printer = { name_ids, token_map.table.size + 1 };
+					token_map_lock.unlock();
+					print_generated_derivation<true>(G, logical_form_output[i],
+							generated_derivation, new_terminal_printer, out);
+//fprintf(out, "%srank-%u generated sentence: ", prefix, i + 1);
+//print_generated_derivation<false>(G, logical_form_output[i],
+//		generated_derivation, new_terminal_printer, out);
+//print(generated_derivation, out, nonterminal_printer, terminal_printer); print("\n", out);
+					free(generated_derivation); free(name_ids);
+				} else {
+					token_map_lock.unlock();
+					fprintf(out, "[ERROR: Unable to generate derivation]\n");
+				}
+
+				free(logical_form_output[i]);
+				free(parsed_syntax[i]);
+			}
 		} else {
 			console_lock.lock();
 			fprintf(out, "%sParser did not output a logical form.\n", prefix);
@@ -568,26 +682,23 @@ debug_nonterminal_printer = &nonterminal_printer;
 			continue;
 		} else if (N.rule_distribution.type != PRETERMINAL) continue;
 
+		part_of_speech pos = N.rule_distribution.get_part_of_speech();
 		for (const auto& entry : N.rule_distribution.h.pi.rules) {
 			const rule<datalog_expression_root>& r = entry.key;
-			for (unsigned int i = 0; i < r.length; i++) {
-				if (!known_tokens.add(r.nonterminals[i])) {
-					if (extra_filepath != NULL) cleanup(extra_data, extra_sentences, extra_logical_forms, extra_data.length);
-					cleanup(train_data, train_sentences, train_logical_forms, train_data.length, syntax);
-					cleanup(test_data, test_sentences, test_logical_forms, test_data.length);
-					free(name_ids); free(nonterminal_name_ids); free(G); return false;
-				}
+			if (!morphology_get_inflections({r.nonterminals, r.length}, pos, known_tokens)) {
+				if (extra_filepath != NULL) cleanup(extra_data, extra_sentences, extra_logical_forms, extra_data.length);
+				cleanup(train_data, train_sentences, train_logical_forms, train_data.length, syntax);
+				cleanup(test_data, test_sentences, test_logical_forms, test_data.length);
+				free(name_ids); free(nonterminal_name_ids); free(G); return false;
 			}
 		}
 		for (const auto& entry : N.rule_distribution.observations.counts) {
 			const rule<datalog_expression_root>& r = entry.key;
-			for (unsigned int i = 0; i < r.length; i++) {
-				if (!known_tokens.add(r.nonterminals[i])) {
-					if (extra_filepath != NULL) cleanup(extra_data, extra_sentences, extra_logical_forms, extra_data.length);
-					cleanup(train_data, train_sentences, train_logical_forms, train_data.length, syntax);
-					cleanup(test_data, test_sentences, test_logical_forms, test_data.length);
-					free(name_ids); free(nonterminal_name_ids); free(G); return false;
-				}
+			if (!morphology_get_inflections({r.nonterminals, r.length}, pos, known_tokens)) {
+				if (extra_filepath != NULL) cleanup(extra_data, extra_sentences, extra_logical_forms, extra_data.length);
+				cleanup(train_data, train_sentences, train_logical_forms, train_data.length, syntax);
+				cleanup(test_data, test_sentences, test_logical_forms, test_data.length);
+				free(name_ids); free(nonterminal_name_ids); free(G); return false;
 			}
 		}
 	}
@@ -599,7 +710,7 @@ debug_nonterminal_printer = &nonterminal_printer;
 	std::thread* threads = new std::thread[thread_count];
 	auto dispatch = [&]() {
 		parse(G, test_sentences, test_data.length, test_logical_forms, has_string_nonterminal ? NULL : &known_tokens,
-				terminal_printer, nonterminal_printer, out, unanswered, incorrect, counter, time_limit);
+				names, terminal_printer, nonterminal_printer, out, unanswered, incorrect, counter, time_limit);
 	};
 	timer stopwatch;
 	for (unsigned int i = 0; i < thread_count; i++)
@@ -635,11 +746,12 @@ while (false) {
 				tokens.add(names.get("?"));
 			}
 
+			unsigned int derivation_count;
 			datalog_expression_root logical_form;
 			syntax_node<datalog_expression_root>& parsed_syntax =
 				*((syntax_node<datalog_expression_root>*) alloca(sizeof(syntax_node<datalog_expression_root>)));
 			auto sentence = tokenized_sentence<datalog_expression_root>(sequence(tokens.data, tokens.length));
-			if (parse<false>(parsed_syntax, logical_form, G, sentence, name_ids, time_limit)) {
+			if (parse<false, true, 1>(&parsed_syntax, derivation_count, logical_form, &logical_form, G, sentence, name_ids, time_limit)) {
 				print(logical_form, out, terminal_printer); print('\n', out);
 				print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
 

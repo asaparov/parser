@@ -95,7 +95,7 @@ struct inmind_prior
 				malloc(sizeof(cache<uniform_distribution<double>, constant<unsigned int>, unsigned int, double>) * ARG_COUNT);
 		arg_root_probabilities = (array_map<unsigned int, array<unsigned int>*>*)
 				malloc(sizeof(array_map<unsigned int, array<unsigned int>*>) * ARG_COUNT);
-		unseen_arg_root_probabilities = (array<unsigned int>**) malloc(sizeof(array<unsigned int>*) * ARG_COUNT);
+		unseen_arg_root_probabilities = (array<unsigned int>**) calloc(ARG_COUNT, sizeof(array<unsigned int>*));
 
 		arg_posterior_cache = (hash_map<pair<datalog_literal, datalog_literal>, double>*)
 				malloc(sizeof(hash_map<pair<datalog_literal, datalog_literal>, double>) * ARG_COUNT);
@@ -617,9 +617,11 @@ fprintf(stderr, "\") = %lf\n", instance_length_log_probability);
 		core::free(arg_posterior_cache);
 		delete[] arg_hdp_lock;
 
-		for (unsigned int i = 0; i < text_observations.table.size + 1; i++)
-			cleanup_root_probabilities(string_root_probabilities[i], string_sampler.posterior.length);
-		core::free(string_root_probabilities);
+		if (string_root_probabilities != NULL) {
+			for (unsigned int i = 0; i < text_observations.table.size + 1; i++)
+				cleanup_root_probabilities(string_root_probabilities[i], string_sampler.posterior.length);
+			core::free(string_root_probabilities);
+		}
 	}
 };
 

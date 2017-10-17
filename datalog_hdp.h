@@ -23,6 +23,8 @@ constexpr unsigned int ARG_POSITION_FIRST_PARENT = 4;
 constexpr unsigned int ARG_POSITION_SECOND_PARENT = 5;
 constexpr unsigned int ARG_POSITION_INTEGER = 6;
 constexpr unsigned int NUM_ARG_POSITIONS = 6;
+constexpr unsigned int ARG_POSITION_FIRST_OR_SECOND = 7;
+constexpr unsigned int ARG_POSITION_FIRST_OR_SECOND_PARENT = 8;
 
 template<unsigned int ArgPosition>
 inline unsigned int parent_arg_position() {
@@ -39,6 +41,11 @@ inline unsigned int parent_arg_position<ARG_POSITION_FIRST>() {
 template<>
 inline unsigned int parent_arg_position<ARG_POSITION_SECOND>() {
 	return ARG_POSITION_SECOND_PARENT;
+}
+
+template<>
+inline unsigned int parent_arg_position<ARG_POSITION_FIRST_OR_SECOND>() {
+	return ARG_POSITION_FIRST_OR_SECOND_PARENT;
 }
 
 struct datalog_term {
@@ -113,10 +120,14 @@ inline bool print_arg_position(unsigned int position, Stream& out, Printer& prin
 		return print("(X,y)", out);
 	} else if (position == ARG_POSITION_SECOND) {
 		return print("(y,X)", out);
+	} else if (position == ARG_POSITION_FIRST_OR_SECOND) {
+		return print("(y,X) OR (X,y)", out);
 	} else if (position == ARG_POSITION_FIRST_PARENT) {
 		return print("(X,p)", out);
 	} else if (position == ARG_POSITION_SECOND_PARENT) {
 		return print("(p,X)", out);
+	} else if (position == ARG_POSITION_FIRST_OR_SECOND_PARENT) {
+		return print("(X,p) OR (p,X)", out);
 	} else if (position == ARG_POSITION_INTEGER) {
 		return print("(X,int)", out);
 	} else if (position == DATALOG_LABEL_EMPTY) {
@@ -405,7 +416,7 @@ struct datalog_prior
 			return 0.0;
 		} else if (example.root.type == DATALOG_TUPLE) {
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable); /* additional terms can be added before or after this tuple */
-			if (!compute_paths<CompleteContext>(example.root.tuple, paths, score, any_edge_insertable)) exit(EXIT_FAILURE);
+			if (!compute_paths<CompleteContext, !CompleteContext>(example.root.tuple, paths, score, any_edge_insertable)) exit(EXIT_FAILURE);
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable);
 		} else if (example.root.type == DATALOG_FUNCTION) {
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable); /* additional terms can be added before or after this function */
@@ -413,7 +424,7 @@ struct datalog_prior
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable);
 		} else if (example.root.type == DATALOG_PREDICATE) {
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable); /* additional terms can be added before or after this one */
-			if (!compute_paths<CompleteContext, false>(example.root.pred, paths, score, any_edge_insertable)) exit(EXIT_FAILURE);
+			if (!compute_paths<CompleteContext, !CompleteContext, false>(example.root.pred, paths, score, any_edge_insertable)) exit(EXIT_FAILURE);
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable);
 		} else if (example.root.type == DATALOG_CONSTANT || example.root.type == DATALOG_INTEGER || example.root.type == DATALOG_EMPTY) {
 			if (CompleteContext)
@@ -775,7 +786,7 @@ private:
 				return false;
 			}
 			head = func.vars[0];
-			if (!add_child_edge(head, func.function, paths, edge_observations, ARG_POSITION_FIRST)) return false;
+			if (head != 0 && !add_child_edge(head, func.function, paths, edge_observations, ARG_POSITION_FIRST)) return false;
 			break;
 
 		case PREDICATE_MOST:
@@ -898,6 +909,64 @@ private:
 		return score;
 	}
 
+	inline double max_edge_posterior_helper(
+			const datalog_term_set& observation,
+			const datalog_term_set& prev)
+	{
+		if (observation.edge.arg_position == ARG_POSITION_FIRST_OR_SECOND) {
+			return max(
+					max_edge_posterior_helper(
+						datalog_term_set(observation.edge.predicate, observation.excluded_predicates,
+						observation.excluded_predicate_count, ARG_POSITION_FIRST), prev),
+					max_edge_posterior_helper(
+						datalog_term_set(observation.edge.predicate, observation.excluded_predicates,
+						observation.excluded_predicate_count, ARG_POSITION_SECOND), prev));
+		} else if (observation.edge.arg_position == ARG_POSITION_FIRST_OR_SECOND_PARENT) {
+			return max(
+					max_edge_posterior_helper(
+						datalog_term_set(observation.edge.predicate, observation.excluded_predicates,
+						observation.excluded_predicate_count, ARG_POSITION_FIRST_PARENT), prev),
+					max_edge_posterior_helper(
+						datalog_term_set(observation.edge.predicate, observation.excluded_predicates,
+						observation.excluded_predicate_count, ARG_POSITION_SECOND_PARENT), prev));
+		} else if (prev.edge.arg_position == ARG_POSITION_FIRST_OR_SECOND) {
+			return max(
+					max_edge_posterior_helper(observation,
+						datalog_term_set(prev.edge.predicate, prev.excluded_predicates,
+						prev.excluded_predicate_count, ARG_POSITION_FIRST)),
+					max_edge_posterior_helper(observation,
+						datalog_term_set(prev.edge.predicate, prev.excluded_predicates,
+						prev.excluded_predicate_count, ARG_POSITION_SECOND)));
+		} else if (prev.edge.arg_position == ARG_POSITION_FIRST_OR_SECOND_PARENT) {
+			return max(
+					max_edge_posterior_helper(observation,
+						datalog_term_set(prev.edge.predicate, prev.excluded_predicates,
+						prev.excluded_predicate_count, ARG_POSITION_FIRST_PARENT)),
+					max_edge_posterior_helper(observation,
+						datalog_term_set(prev.edge.predicate, prev.excluded_predicates,
+						prev.excluded_predicate_count, ARG_POSITION_SECOND_PARENT)));
+		} else {
+			unsigned int path[] = { prev.edge.predicate, prev.edge.arg_position };
+			const unsigned int* excluded[] = { prev.excluded_predicates, prev.excluded_functions };
+			unsigned int excluded_counts[] = { prev.excluded_predicate_count, prev.excluded_function_count };
+
+			double posterior;
+			if (observation.edge.predicate == DATALOG_LABEL_WILDCARD || observation.edge.arg_position == DATALOG_LABEL_WILDCARD) {
+				posterior = max_edge_posterior({0, 0}, path, excluded, excluded_counts, unseen_edge_root_probabilities);
+				for (const auto& entry : edge_root_probabilities) {
+					if (!is_excluded(entry.key, observation))
+						posterior = max(posterior, max_edge_posterior(entry.key, path, excluded, excluded_counts, entry.value));
+				}
+			} else {
+				unsigned int index = edge_root_probabilities.index_of(observation.edge);
+				const array<unsigned int>* root_probabilities =
+						(index < edge_root_probabilities.size) ? edge_root_probabilities.values[index] : unseen_edge_root_probabilities;
+				posterior = max_edge_posterior(observation.edge, path, excluded, excluded_counts, root_probabilities);
+			}
+			return posterior;
+		}
+	}
+
 	inline double max_edge_posterior(
 			const datalog_term_set& observation,
 			const datalog_term_set& prev)
@@ -917,22 +986,7 @@ fprintf(stderr, ") = %lf\n", contains ? posterior : nan(""));
 }
 		if (contains) return posterior;
 
-		unsigned int path[] = { prev.edge.predicate, prev.edge.arg_position };
-		const unsigned int* excluded[] = { prev.excluded_predicates, prev.excluded_functions };
-		unsigned int excluded_counts[] = { prev.excluded_predicate_count, prev.excluded_function_count };
-
-		if (observation.edge.predicate == DATALOG_LABEL_WILDCARD || observation.edge.arg_position == DATALOG_LABEL_WILDCARD) {
-			posterior = max_edge_posterior({0, 0}, path, excluded, excluded_counts, unseen_edge_root_probabilities);
-			for (const auto& entry : edge_root_probabilities) {
-				if (!is_excluded(entry.key, observation))
-					posterior = max(posterior, max_edge_posterior(entry.key, path, excluded, excluded_counts, entry.value));
-			}
-		} else {
-			unsigned int index = edge_root_probabilities.index_of(observation.edge);
-			const array<unsigned int>* root_probabilities =
-					(index < edge_root_probabilities.size) ? edge_root_probabilities.values[index] : unseen_edge_root_probabilities;
-			posterior = max_edge_posterior(observation.edge, path, excluded, excluded_counts, root_probabilities);
-		}
+		posterior = max_edge_posterior_helper(observation, prev);
 
 		edge_hdp_lock.lock();
 		edge_posterior_cache.get({observation, prev}, contains, bucket);
@@ -1026,7 +1080,7 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 					score = max_edge_posterior(paths[variable - 1].first, new_edge);
 					if (paths[variable - 1].last.edge.predicate != 0 && !CompleteContext) {
 						score = max(score, max_edge_posterior(new_edge, paths[variable - 1].last));
-						if (ArgPosition == ARG_POSITION_FIRST || ArgPosition == ARG_POSITION_SECOND) {
+						if (ArgPosition == ARG_POSITION_FIRST || ArgPosition == ARG_POSITION_SECOND || ArgPosition == ARG_POSITION_FIRST_OR_SECOND) {
 							datalog_term_set new_parent_edge = datalog_term_set(predicate, excluded_predicates,
 									excluded_predicate_count, parent_arg_position<ArgPosition>());
 							score = max(score, max_edge_posterior(new_parent_edge, paths[variable - 1].last));
@@ -1047,7 +1101,7 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 			}
 			paths[variable - 1].has_first = true;
 		} else {
-			if (ArgPosition != ARG_POSITION_FIRST && ArgPosition != ARG_POSITION_SECOND) {
+			if (ArgPosition != ARG_POSITION_FIRST && ArgPosition != ARG_POSITION_SECOND && ArgPosition != ARG_POSITION_FIRST_OR_SECOND) {
 				log_probability = -std::numeric_limits<double>::infinity();
 				return true;
 			}
@@ -1094,12 +1148,12 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 		any_edge_insertable = true;
 	}
 
-	template<bool CompleteContext, bool IsBooleanValued = true>
+	template<bool CompleteContext, bool Flippable, bool IsBooleanValued = true>
 	bool compute_paths(const datalog_predicate& pred,
 			array<datalog_term_set_path>& paths,
 			double& log_probability, bool& any_edge_insertable)
 	{
-		if (IsBooleanValued && pred.function == DATALOG_LABEL_WILDCARD) {
+		if (IsBooleanValued && CompleteContext && pred.function == DATALOG_LABEL_WILDCARD) {
 			log_probability = -std::numeric_limits<double>::infinity();
 			return true;
 		}
@@ -1133,17 +1187,21 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 				if (second < first) {
 					/* second is a parent of first */
 					bool not_empty = false; //paths[first - 1].not_empty;
-					if (!add_parent_edge<CompleteContext, ARG_POSITION_FIRST>(first, pred.function, pred.excluded, pred.excluded_count, paths, log_probability, any_edge_insertable))
+					if (!add_parent_edge<CompleteContext, Flippable ? ARG_POSITION_FIRST_OR_SECOND : ARG_POSITION_FIRST>(
+								first, pred.function, pred.excluded, pred.excluded_count, paths, log_probability, any_edge_insertable))
 						return false;
 					if (not_empty) return true;
-					return add_child_edge(second, pred.function, pred.excluded, pred.excluded_count, paths, log_probability, any_edge_insertable, ARG_POSITION_SECOND);
+					return add_child_edge(second, pred.function, pred.excluded, pred.excluded_count, paths,
+							log_probability, any_edge_insertable, Flippable ? ARG_POSITION_FIRST_OR_SECOND : ARG_POSITION_SECOND);
 				} else if (second > first) {
 					/* first is a parent of second */
 					bool not_empty = false; //paths[second - 1].not_empty;
-					if (!add_parent_edge<CompleteContext, ARG_POSITION_SECOND>(second, pred.function, pred.excluded, pred.excluded_count, paths, log_probability, any_edge_insertable))
+					if (!add_parent_edge<CompleteContext, Flippable ? ARG_POSITION_FIRST_OR_SECOND : ARG_POSITION_SECOND>(
+								second, pred.function, pred.excluded, pred.excluded_count, paths, log_probability, any_edge_insertable))
 						return false;
 					if (not_empty) return true;
-					return add_child_edge(first, pred.function, pred.excluded, pred.excluded_count, paths, log_probability, any_edge_insertable, ARG_POSITION_FIRST);
+					return add_child_edge(first, pred.function, pred.excluded, pred.excluded_count, paths,
+							log_probability, any_edge_insertable, Flippable ? ARG_POSITION_FIRST_OR_SECOND : ARG_POSITION_FIRST);
 				} else {
 					fprintf(stderr, "datalog_prior.compute_paths ERROR: Found a reflexive binary edge.\n");
 					return false;
@@ -1308,11 +1366,11 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 
 		if (func.arg->type == DATALOG_PREDICATE) {
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable); /* additional terms can be added before or after this one */
-			if (!compute_paths<CompleteContext>(func.arg->pred, paths, log_probability, any_edge_insertable)) return false;
+			if (!compute_paths<CompleteContext, false>(func.arg->pred, paths, log_probability, any_edge_insertable)) return false;
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable);
 		} else if (func.arg->type == DATALOG_TUPLE) {
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable); /* additional terms can be added before or after this tuple */
-			if (!compute_paths<CompleteContext>(func.arg->tuple, paths, log_probability, any_edge_insertable)) return false;
+			if (!compute_paths<CompleteContext, false>(func.arg->tuple, paths, log_probability, any_edge_insertable)) return false;
 			if (!CompleteContext) set_any_edges(paths, any_edge_insertable);
 		} else if (func.arg->type == DATALOG_FUNCTION) {
 			bool child_edge_insertable = any_edge_insertable;
@@ -1339,7 +1397,7 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 				log_probability, any_edge_insertable, DATALOG_LABEL_EMPTY);
 	}
 
-	template<bool CompleteContext>
+	template<bool CompleteContext, bool Flippable>
 	bool compute_paths(const datalog_tuple& tuple,
 			array<datalog_term_set_path>& paths,
 			double& log_probability,
@@ -1353,7 +1411,8 @@ print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n",
 			for (unsigned int i = 0; i < tuple.elements.length; i++) {
 				switch (tuple.elements[i]->type) {
 				case DATALOG_PREDICATE:
-					if (!compute_paths<CompleteContext>(tuple.elements[i]->pred, paths, log_probability, any_edge_insertable)) return false;
+					if ((i == 0 && !compute_paths<CompleteContext, Flippable>(tuple.elements[i]->pred, paths, log_probability, any_edge_insertable))
+					 || (i != 0 && !compute_paths<CompleteContext, false>(tuple.elements[i]->pred, paths, log_probability, any_edge_insertable))) return false;
 					break;
 				case DATALOG_FUNCTION:
 					if (!compute_paths<true>(tuple.elements[i]->func, paths, log_probability, child_edge_insertable)) return false;
