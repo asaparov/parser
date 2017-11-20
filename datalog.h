@@ -11842,7 +11842,7 @@ bool right_separable(
 	for (unsigned int k = 0; k < array_length(args); k++)
 		args[k] = false;
 
-	separability result;
+	separability result = separability::UNSEPARABLE;
 	for (unsigned int i = rule_length; i > rule_position; i--) {
 		result = is_separable(functions[i - 1], num_conjuncts, position, args, function);
 		if (result == separability::ALL_UNSEPARABLE)
@@ -12764,8 +12764,9 @@ inline bool intersect_concord_index(grammatical_number& intersection,
 	return true;
 }
 
+template<typename PartOfSpeechType>
 bool morphology_is_valid(
-		const sequence& terminal, part_of_speech pos,
+		const sequence& terminal, PartOfSpeechType pos,
 		const datalog_expression_root& logical_form)
 {
 	if (pos == POS_OTHER) {
@@ -12838,8 +12839,8 @@ bool morphology_is_valid(
 	return false;
 }
 
-template<typename EmitRootFunction>
-bool morphology_parse(const sequence& words, part_of_speech pos,
+template<typename PartOfSpeechType, typename EmitRootFunction>
+bool morphology_parse(const sequence& words, PartOfSpeechType pos,
 		const datalog_expression_root& logical_form, EmitRootFunction emit_root)
 {
 	if (pos == POS_OTHER) {
@@ -12953,8 +12954,9 @@ bool morphology_parse(const sequence& words, part_of_speech pos,
 	return true;
 }
 
+template<typename PartOfSpeechType>
 inline bool morphology_get_inflections(
-		const sequence& tokens, part_of_speech pos,
+		const sequence& tokens, PartOfSpeechType pos,
 		hash_set<unsigned int>& inflections)
 {
 	unsigned int head_index;

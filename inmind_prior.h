@@ -142,8 +142,8 @@ struct inmind_prior
 			}
 		}
 
-		array_map<sequence, array_histogram<unsigned int>> field_lengths(8);
-		array_histogram<unsigned int> instance_lengths(8);
+		array_map<sequence, array_multiset<unsigned int>> field_lengths(8);
+		array_multiset<unsigned int> instance_lengths(8);
 		for (unsigned int i = 0; i < length; i++) {
 			if (!add_training_example(examples[i]->root, arg_observations, text_observations, field_lengths, instance_lengths))
 				return false;
@@ -245,8 +245,8 @@ private:
 			const datalog_expression& expression,
 			hash_set<unsigned int>* arg_observations,
 			hash_map<unsigned int, unsigned int>& text_observations,
-			array_map<sequence, array_histogram<unsigned int>>& field_lengths,
-			array_histogram<unsigned int>& instance_lengths)
+			array_map<sequence, array_multiset<unsigned int>>& field_lengths,
+			array_multiset<unsigned int>& instance_lengths)
 	{
 		if (expression.type != DATALOG_PREDICATE) {
 			fprintf(stderr, "inmind_prior.add_training_example ERROR: Logical form must be a predicate instance.\n");
@@ -268,8 +268,8 @@ private:
 			hash_set<unsigned int>* arg_observations,
 			hash_map<unsigned int, unsigned int>& text_observations,
 			sequence*& string, const sequence* field_name,
-			array_map<sequence, array_histogram<unsigned int>>& field_lengths,
-			array_histogram<unsigned int>& instance_lengths,
+			array_map<sequence, array_multiset<unsigned int>>& field_lengths,
+			array_multiset<unsigned int>& instance_lengths,
 			string_type type)
 	{
 		unsigned int field_source_arg = ARG_COUNT, instance_source_arg = ARG_COUNT, concept_source_arg = ARG_COUNT;

@@ -275,7 +275,7 @@ struct datalog_term_distribution {
 		else return -log_total_edges;
 	}
 
-	inline double log_probability(const array_histogram<datalog_term>& edges) const {
+	inline double log_probability(const array_multiset<datalog_term>& edges) const {
 		double sum = 0.0;
 		for (const auto& entry : edges.counts)
 			sum += log_probability(entry.key) * entry.value;
