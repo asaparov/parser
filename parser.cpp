@@ -397,7 +397,7 @@ void parse(const hdp_grammar_type& G_src,
 		logical_form.index = NUMBER_ALL;
 		logical_form.concord = NUMBER_NONE;
 		logical_form.inf = INFLECTION_NONE;
-		static constexpr unsigned int K = 8;
+		static constexpr unsigned int K = 1;
 		syntax_node<datalog_expression_root>* parsed_syntax =
 				(syntax_node<datalog_expression_root>*) alloca(K * sizeof(syntax_node<datalog_expression_root>));
 		datalog_expression_root* logical_form_output =
@@ -479,6 +479,7 @@ minimum_priority = 0.0;
 			}
 			derivation_count = next;
 
+#if defined(GENERATE_FROM_TOP_PARSES)
 			/* print the top k <= K logical forms and their most likely generated sentences */
 			for (unsigned int i = 0; i < derivation_count; i++) {
 				fprintf(out, "%srank-%u logical form:       ", prefix, i + 1); print(logical_form_output[i], out, terminal_printer); print('\n', out);
@@ -509,6 +510,7 @@ minimum_priority = 0.0;
 				free(logical_form_output[i]);
 				free(parsed_syntax[i]);
 			}
+#endif
 		} else {
 			console_lock.lock();
 			fprintf(out, "%sParser did not output a logical form.\n", prefix);
