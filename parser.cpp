@@ -809,6 +809,31 @@ bool get_predicates(const datalog_expression& exp, hash_set<unsigned int>& predi
 	return false;
 }
 
+bool add_lexicon_item(
+		hdp_grammar_type& G, const string& nonterminal_name,
+		const syntax_node<datalog_expression_root>& rule,
+		const datalog_expression_root& lexicon_logical_form)
+{
+	bool contains;
+	unsigned int nonterminal = G.nonterminal_names.get(nonterminal_name, contains);
+	if (!contains) {
+		print("add_lexicon_item ERROR: Unrecognized nonterminal: ", stderr);
+		print(nonterminal_name, stderr); print('\n', stderr);
+		return false;
+	}
+
+	const auto& N = G.nonterminals[nonterminal - 1];
+	if (!N.rule_distribution.has_terminal_rules() && rule.right.is_terminal()) {
+		print("add_lexicon_item ERROR: Attempted to add a terminal rule to a nonterminal without terminal rules.\n", stderr);
+		return false;
+	} else if (!N.rule_distribution.has_nonterminal_rules() && !rule.right.is_terminal()) {
+		print("add_lexicon_item ERROR: Attempted to add a non-terminal rule to a preterminal.\n", stderr);
+		return false;
+	}
+
+	return add_tree(nonterminal, rule, lexicon_logical_form, G);
+}
+
 bool sample(hash_map<string, unsigned int>& names,
 		format data_format, const char* data_filepath,
 		const char* lexicon_filepath, unsigned int iteration_count = 10,
@@ -855,10 +880,7 @@ debug_nonterminal_printer = &nonterminal_printer;
 	if (lexicon_filepath != NULL) {
 		for (unsigned int i = 0; i < lexicon_data.length; i++) {
 			syntax_node<datalog_expression_root> rule = syntax_node<datalog_expression_root>(lexicon_phrases[i]);
-
-			bool contains;
-			unsigned int nonterminal = G.nonterminal_names.get(*name_ids[lexicon_nonterminals[i]], contains);
-			if (!contains || !add_tree(nonterminal, rule, *lexicon_logical_forms[i], G)) {
+			if (!add_lexicon_item(G, *name_ids[lexicon_nonterminals[i]], rule, *lexicon_logical_forms[i])) {
 				fprintf(stderr, "ERROR: Unable to add lexicon item %u: ", i);
 				print(*lexicon_logical_forms[i], stderr, terminal_printer); print(" with lexeme '", stderr);
 				print(lexicon_phrases[i], stderr, terminal_printer); print("'.\n", stderr);
