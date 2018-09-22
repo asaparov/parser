@@ -8,7 +8,7 @@
 #ifndef LAMBDA_H_
 #define LAMBDA_H_
 
-#include "core/array.h"
+#include <core/array.h>
 
 #include <algorithm>
 
