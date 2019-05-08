@@ -10,7 +10,7 @@ If you use this code in your research, please cite:
 
 To use the code, simply download the files and build the desired program with either `make datalog_to_lambda` or `make parser`.
 
-This library depends on [core](https://github.com/asaparov/core), [math](https://github.com/asaparov/math), [hdp](https://github.com/asaparov/hdp), and [grammar](https://github.com/asaparov/grammar). The code makes use of `C++11` and is regularly tested with `gcc 8` but I have previously compiled it with `gcc 4.8`, `clang 4.0`, and `Microsoft Visual C++ 14.0 (2015)`. The code is intended to be platform-independent, so please create an issue if there are any compilation bugs.
+This library depends on [core](https://github.com/asaparov/core), [math](https://github.com/asaparov/math), [hdp](https://github.com/asaparov/hdp), and [grammar](https://github.com/asaparov/grammar). The code makes use of `C++11` and is regularly tested with `gcc 9` but I have previously compiled it with `gcc 4.8`, `clang 4.0`, and `Microsoft Visual C++ 14.0 (2015)`. The code is intended to be platform-independent, so please create an issue if there are any compilation bugs.
 
 ### Code structure
 
