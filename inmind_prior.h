@@ -390,11 +390,6 @@ private:
 		bool contains; unsigned int bucket;
 		double posterior = string_posterior_cache.get({observation, (unsigned int) type}, contains, bucket);
 		string_hdp_lock.unlock();
-if (debug2 && contains) {
-print("\tlog p(\"", stderr);
-print(observation, stderr, *debug_terminal_printer); print("\" | ", stderr);
-print(type, stderr); fprintf(stderr, ") = %lf\n", posterior);
-}
 		if (contains) return posterior;
 
 		unsigned int id = text_observations.get(observation, contains);
@@ -412,11 +407,6 @@ print(type, stderr); fprintf(stderr, ") = %lf\n", posterior);
 			string_posterior_cache.table.size++;
 		}
 		string_hdp_lock.unlock();
-if (debug2) {
-print("\tlog p(\"", stderr);
-print(observation, stderr, *debug_terminal_printer); print("\" | ", stderr);
-print(type, stderr); fprintf(stderr, ") = %lf\n", posterior);
-}
 		return posterior;
 	}
 
@@ -443,12 +433,6 @@ print(type, stderr); fprintf(stderr, ") = %lf\n", posterior);
 		bool contains; unsigned int bucket;
 		double posterior = arg_posterior_cache[arg_index].get({observation, parent}, contains, bucket);
 		arg_hdp_lock[arg_index].unlock();
-if (debug2 && contains) {
-print("\tlog p_", stderr); print(arg_index, stderr); print('(', stderr);
-print(observation.label, stderr, *debug_terminal_printer); print(" | ", stderr);
-print(parent.label, stderr, *debug_terminal_printer);
-fprintf(stderr, ") = %lf\n", posterior);
-}
 		if (contains) return posterior;
 
 		if (observation.label == DATALOG_LABEL_WILDCARD) {
@@ -477,12 +461,6 @@ fprintf(stderr, ") = %lf\n", posterior);
 			arg_posterior_cache[arg_index].table.size++;
 		}
 		arg_hdp_lock[arg_index].unlock();
-if (debug2) {
-print("\tlog p_", stderr); print(arg_index, stderr); print('(', stderr);
-print(observation.label, stderr, *debug_terminal_printer); print(" | ", stderr);
-print(parent.label, stderr, *debug_terminal_printer);
-fprintf(stderr, ") = %lf\n", posterior);
-}
 		return posterior;
 	}
 
@@ -536,11 +514,6 @@ fprintf(stderr, ") = %lf\n", posterior);
 								string->length, field_length_alpha, 1.0 / (1.0 + field_length_beta));
 					}
 					score += field_length_log_probability;
-if (debug2) {
-fprintf(stderr, "\tlog p(field length = %u | \"", string->length);
-print(*field_name, stderr, *debug_terminal_printer);
-fprintf(stderr, "\") = %lf\n", field_length_log_probability);
-}
 				}
 
 				if (type == string_type::INSTANCE) {
@@ -548,11 +521,6 @@ fprintf(stderr, "\") = %lf\n", field_length_log_probability);
 					double instance_length_log_probability = log_probability_negative_binomial(
 							string->length, instance_length_alpha + instance_sizes.key, 1.0 / (1.0 + p));
 					score += instance_length_log_probability;
-if (debug2) {
-print("\tlog p(instance = \"", stderr);
-print(*string, stderr, *debug_terminal_printer);
-fprintf(stderr, "\") = %lf\n", instance_length_log_probability);
-}
 				} if (type != string_type::ANY) {
 					for (unsigned int i = 0; i < string->length; i++)
 						score += max_string_posterior(string->tokens[i], type);

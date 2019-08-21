@@ -12,10 +12,6 @@
 
 #include "datalog.h"
 
-/* TODO: this is for debugging; remove it */
-extern bool debug2;
-extern string_map_scribe* debug_terminal_printer;
-
 constexpr unsigned int ARG_POSITION_UNARY = 1;
 constexpr unsigned int ARG_POSITION_FIRST = 2;
 constexpr unsigned int ARG_POSITION_SECOND = 3;
@@ -977,13 +973,6 @@ private:
 		bool contains; unsigned int bucket;
 		double posterior = edge_posterior_cache.get({observation, prev}, contains, bucket);
 		edge_hdp_lock.unlock();
-if (debug2) {
-print("\tlog p(", stderr); print(observation.edge.predicate, stderr, *debug_terminal_printer);
-print_arg_position(observation.edge.arg_position, stderr, *debug_terminal_printer); print(" | ", stderr);
-print(prev.edge.predicate, stderr, *debug_terminal_printer);
-print_arg_position(prev.edge.arg_position, stderr, *debug_terminal_printer);
-fprintf(stderr, ") = %lf\n", contains ? posterior : nan(""));
-}
 		if (contains) return posterior;
 
 		posterior = max_edge_posterior_helper(observation, prev);
@@ -1022,10 +1011,6 @@ fprintf(stderr, ") = %lf\n", contains ? posterior : nan(""));
 		bool contains; unsigned int bucket;
 		double& posterior = constant_posterior_cache.get({observation, prev}, contains, bucket);
 		constant_hdp_lock.unlock();
-if (debug2) {
-print("\tlog p(", stderr); print(observation.label, stderr, *debug_terminal_printer); print(" | ", stderr);
-print(prev.label, stderr, *debug_terminal_printer); fprintf(stderr, ") = %lf\n", contains ? posterior : nan(""));
-}
 		if (contains) return posterior;
 
 		if (observation.label == DATALOG_LABEL_WILDCARD) {

@@ -411,7 +411,7 @@ minimum_priority = 0.0;
 //debug_flag = true;
 		/* first parse with the true logical form to find a lower bound on the log probability (and debug) */
 		if (!is_unknown(*logical_forms[id]) && parse<false, true, 1>(parsed_syntax, derivation_count,
-				*logical_forms[id], logical_form_output, G, sentence, terminal_printer.map, time_limit))
+				*logical_forms[id], logical_form_output, G, sentence, morph, terminal_printer.map, time_limit))
 		{
 //debug2 = true;
 //			print(logical_form_output[0], out, terminal_printer); print("\n", out);
@@ -436,7 +436,7 @@ minimum_priority = 0.0;
 
 		/* perform parsing over the full search space */
 		if (parse<false, false, K>(parsed_syntax, derivation_count, logical_form,
-				logical_form_output, G, sentence, terminal_printer.map, time_limit))
+				logical_form_output, G, sentence, morph, terminal_printer.map, time_limit))
 		{
 			console_lock.lock();
 			if (!equivalent(logical_form_output[0], *logical_forms[id])) {
@@ -599,7 +599,7 @@ bool parse(
 	const string** name_ids = invert(names);
 	const string** nonterminal_name_ids = invert(G.nonterminal_names);
 	string_map_scribe terminal_printer = { name_ids, names.table.size + 1 };
-	string_map_scribe nonterminal_printer = { nonterminal_name_ids, names.table.size + 1 };
+	string_map_scribe nonterminal_printer = { nonterminal_name_ids, G.nonterminal_names.table.size + 1 };
 debug_terminal_printer = &terminal_printer;
 debug_nonterminal_printer = &nonterminal_printer;
 
@@ -753,7 +753,7 @@ while (false) {
 			syntax_node<datalog_expression_root>& parsed_syntax =
 				*((syntax_node<datalog_expression_root>*) alloca(sizeof(syntax_node<datalog_expression_root>)));
 			auto sentence = tokenized_sentence<datalog_expression_root>(sequence(tokens.data, tokens.length));
-			if (parse<false, true, 1>(&parsed_syntax, derivation_count, logical_form, &logical_form, G, sentence, name_ids, time_limit)) {
+			if (parse<false, true, 1>(&parsed_syntax, derivation_count, logical_form, &logical_form, G, sentence, morph, name_ids, time_limit)) {
 				print(logical_form, out, terminal_printer); print('\n', out);
 				print(parsed_syntax, out, nonterminal_printer, terminal_printer); print("\n", out);
 
@@ -855,6 +855,7 @@ bool sample(hash_map<string, unsigned int>& names,
 
 	hdp_grammar_type G;
 	if (!read_grammar(G, names, grammar_filepath)) {
+		fprintf(stderr, "Unable to read grammar at '%s'.\n", grammar_filepath);
 		cleanup(data, sentences, logical_forms, data.length);
 		if (lexicon_filepath != NULL) cleanup(lexicon_data, lexicon_phrases, lexicon_logical_forms, lexicon_nonterminals, lexicon_data.length);
 		return false;
@@ -872,7 +873,7 @@ bool sample(hash_map<string, unsigned int>& names,
 	const string** name_ids = invert(names);
 	const string** nonterminal_name_ids = invert(G.nonterminal_names);
 	string_map_scribe terminal_printer = { name_ids, names.table.size + 1 };
-	string_map_scribe nonterminal_printer = { nonterminal_name_ids, names.table.size + 1 };
+	string_map_scribe nonterminal_printer = { nonterminal_name_ids, G.nonterminal_names.table.size + 1 };
 debug_terminal_printer = &terminal_printer;
 debug_nonterminal_printer = &nonterminal_printer;
 
@@ -917,7 +918,7 @@ debug_nonterminal_printer = &nonterminal_printer;
 		auto sentence = tokenized_sentence<datalog_expression_root>(sentences[id]);
 		syntax[id] = (syntax_node<datalog_expression_root>*) malloc(sizeof(syntax_node<datalog_expression_root>));
 		if (syntax[id] == NULL
-		 || !sample(syntax[id], G, *logical_forms[id], sentence, name_ids) || syntax[id] == NULL) /* sample can set syntax[id] to null */
+		 || !sample(syntax[id], G, *logical_forms[id], sentence, morph, name_ids) || syntax[id] == NULL) /* sample can set syntax[id] to null */
 		// || !parse<false>(*syntax[id], *logical_forms[id], G, sentence, name_ids) || syntax[id] == NULL) /* sample can set syntax[id] to null */
 		{
 			fprintf(stderr, "sample ERROR: Unable to sample derivation for sentence %u: '", id);
@@ -951,7 +952,7 @@ debug_nonterminal_printer = &nonterminal_printer;
 		for (unsigned int i = 0; i < data.length; i++) {
 			//printf("[iteration %u] resampling sentence %u (ID: %u)\n", t, i, order[i]); fflush(stdout);
 			auto sentence = tokenized_sentence<datalog_expression_root>(sentences[order[i]]);
-			resample(syntax[order[i]], G, *logical_forms[order[i]], sentence, name_ids);
+			resample(syntax[order[i]], G, *logical_forms[order[i]], sentence, morph, name_ids);
 			//resample_locally(syntax[order[i]], G, logical_forms[order[i]], 2);
 			//reparse<false>(syntax[order[i]], G, *logical_forms[order[i]], sentence, name_ids);
 		}
@@ -1045,7 +1046,7 @@ bool generate(hash_map<string, unsigned int>& names,
 	const string** name_ids = invert(names);
 	const string** nonterminal_name_ids = invert(G.nonterminal_names);
 	string_map_scribe terminal_printer = { name_ids, names.table.size + 1 };
-	//string_map_scribe nonterminal_printer = { nonterminal_name_ids, names.table.size + 1 };
+	//string_map_scribe nonterminal_printer = { nonterminal_name_ids, G.nonterminal_names.table.size + 1 };
 
 	/* type-check the logical forms */
 	for (unsigned int i = 0; i < train_data.length; i++) {

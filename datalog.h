@@ -989,9 +989,7 @@ struct datalog_expression_root {
 		FUNCTION_FLIP_PREDICATE_PAST_PARTICIPLE				= 173,
 		FUNCTION_FLIP_PREDICATE_KEEP_PAST_PARTICIPLE		= 174,
 		FUNCTION_KEEP_FEATURES								= 175,
-		FUNCTION_DELETE_FEATURES							= 176,
-
-		FUNCTION_TERMINAL									= 177
+		FUNCTION_DELETE_FEATURES							= 176
 	};
 
 	struct function {
@@ -1012,32 +1010,1023 @@ struct datalog_expression_root {
 		}
 	};
 
-	struct invert_iterator {
-		datalog_expression_root* inverse;
+	static constexpr function default_function() {
+		return function(FUNCTION_NULL);
+	}
 
-		invert_iterator() { }
+	template<typename Stream>
+	static inline bool read(feature& f, Stream& stream) {
+		unsigned char c;
+		if (!core::read(c, stream)) return false;
+		f = static_cast<datalog_expression_root::feature>(c);
+		return true;
+	}
 
-		inline datalog_expression_root& get_next() {
-			return *inverse;
+	template<typename Stream>
+	static inline bool write(const feature& f, Stream& stream) {
+		return core::write((unsigned char) f, stream);
+	}
+
+	static bool interpret(feature& f, const string& name) {
+		if (name == "function") {
+			f = datalog_expression_root::FEATURE_FUNCTION;
+		} else if (name == "function_only") {
+			f = datalog_expression_root::FEATURE_FUNCTION_ONLY;
+		} else if (name == "function_answer") {
+			f = datalog_expression_root::FEATURE_FUNCTION_ANSWER;
+		} else if (name == "has_function") {
+			f = datalog_expression_root::FEATURE_HAS_FUNCTION;
+		} else if (name == "has_function_answer") {
+			f = datalog_expression_root::FEATURE_HAS_FUNCTION_ANSWER;
+		} else if (name == "has_function_not") {
+			f = datalog_expression_root::FEATURE_HAS_FUNCTION_NOT;
+		} else if (name == "has_function_count_not") {
+			f = datalog_expression_root::FEATURE_HAS_FUNCTION_COUNT_NOT;
+		} else if (name == "predicate") {
+			f = datalog_expression_root::FEATURE_PREDICATE;
+		} else if (name == "predicate_only") {
+			f = datalog_expression_root::FEATURE_PREDICATE_ONLY;
+		} else if (name == "first_predicate") {
+			f = datalog_expression_root::FEATURE_FIRST_PREDICATE;
+		} else if (name == "second_predicate") {
+			f = datalog_expression_root::FEATURE_SECOND_PREDICATE;
+		} else if (name == "third_predicate") {
+			f = datalog_expression_root::FEATURE_THIRD_PREDICATE;
+		} else if (name == "last_predicate") {
+			f = datalog_expression_root::FEATURE_LAST_PREDICATE;
+		} else if (name == "direction") {
+			f = datalog_expression_root::FEATURE_DIRECTION;
+		} else if (name == "direction_root") {
+			f = datalog_expression_root::FEATURE_DIRECTION_ROOT;
+		} else if (name == "constant") {
+			f = datalog_expression_root::FEATURE_CONSTANT;
+		} else if (name == "arity") {
+			f = datalog_expression_root::FEATURE_PREDICATE_ARITY;
+		} else if (name == "arg1") {
+			f = datalog_expression_root::FEATURE_ARG1;
+		} else if (name == "arg2") {
+			f = datalog_expression_root::FEATURE_ARG2;
+		} else if (name == "arg3") {
+			f = datalog_expression_root::FEATURE_ARG3;
+		} else if (name == "arg1_only") {
+			f = datalog_expression_root::FEATURE_ARG1_ONLY;
+		} else if (name == "arg2_only") {
+			f = datalog_expression_root::FEATURE_ARG2_ONLY;
+		} else if (name == "arg3_only") {
+			f = datalog_expression_root::FEATURE_ARG3_ONLY;
+		} else if (name == "arg1_string") {
+			f = datalog_expression_root::FEATURE_ARG1_STRING;
+		} else if (name == "arg2_arity") {
+			f = datalog_expression_root::FEATURE_ARG2_ARITY;
+		} else if (name == "number") {
+			f = datalog_expression_root::FEATURE_NUMBER;
+		} else if (name == "inflection") {
+			f = datalog_expression_root::FEATURE_INFLECTION;
+		} else {
+			core::print("parse ERROR: Unrecognized semantic feature name '", stderr);
+			core::print(name, stderr); core::print("'.\n", stderr);
+			return false;
 		}
+		return true;
+	}
 
-		inline const datalog_expression_root& get_next() const {
-			return *inverse;
+	template<typename Stream>
+	static bool print(const feature& f, Stream& out) {
+		switch (f) {
+		case datalog_expression_root::FEATURE_NULL:
+			return print("null", out);
+		case datalog_expression_root::FEATURE_FUNCTION:
+			return print("function", out);
+		case datalog_expression_root::FEATURE_FUNCTION_ONLY:
+			return print("function_only", out);
+		case datalog_expression_root::FEATURE_FUNCTION_ANSWER:
+			return print("function_answer", out);
+		case datalog_expression_root::FEATURE_HAS_FUNCTION:
+			return print("has_function", out);
+		case datalog_expression_root::FEATURE_HAS_FUNCTION_NOT:
+			return print("has_function_not", out);
+		case datalog_expression_root::FEATURE_HAS_FUNCTION_COUNT_NOT:
+			return print("has_function_count_not", out);
+		case datalog_expression_root::FEATURE_HAS_FUNCTION_ANSWER:
+			return print("has_function_answer", out);
+		case datalog_expression_root::FEATURE_PREDICATE:
+			return print("predicate", out);
+		case datalog_expression_root::FEATURE_PREDICATE_ONLY:
+			return print("predicate_only", out);
+		case datalog_expression_root::FEATURE_FIRST_PREDICATE:
+			return print("first_predicate", out);
+		case datalog_expression_root::FEATURE_SECOND_PREDICATE:
+			return print("second_predicate", out);
+		case datalog_expression_root::FEATURE_THIRD_PREDICATE:
+			return print("third_predicate", out);
+		case datalog_expression_root::FEATURE_LAST_PREDICATE:
+			return print("last_predicate", out);
+		case datalog_expression_root::FEATURE_DIRECTION:
+			return print("direction", out);
+		case datalog_expression_root::FEATURE_DIRECTION_ROOT:
+			return print("direction_root", out);
+		case datalog_expression_root::FEATURE_CONSTANT:
+			return print("constant", out);
+		case datalog_expression_root::FEATURE_PREDICATE_ARITY:
+			return print("arity", out);
+		case datalog_expression_root::FEATURE_ARG1:
+			return print("arg1", out);
+		case datalog_expression_root::FEATURE_ARG2:
+			return print("arg2", out);
+		case datalog_expression_root::FEATURE_ARG3:
+			return print("arg3", out);
+		case datalog_expression_root::FEATURE_ARG1_ONLY:
+			return print("arg1_only", out);
+		case datalog_expression_root::FEATURE_ARG2_ONLY:
+			return print("arg2_only", out);
+		case datalog_expression_root::FEATURE_ARG3_ONLY:
+			return print("arg3_only", out);
+		case datalog_expression_root::FEATURE_ARG1_STRING:
+			return print("arg1_string", out);
+		case datalog_expression_root::FEATURE_ARG2_ARITY:
+			return print("arg2_arity", out);
+		case datalog_expression_root::FEATURE_NUMBER:
+			return print("number", out);
+		case datalog_expression_root::FEATURE_INFLECTION:
+			return print("inflection", out);
 		}
+		fprintf(stderr, "print ERROR: Unrecognized semantic feature.\n");
+		return false;
+	}
 
-		static constexpr bool is_empty(const invert_iterator& inverter) {
+	template<typename Stream>
+	static inline bool read(function& f, Stream& stream) {
+		unsigned char c;
+		if (!core::read(c, stream)) return false;
+		f.type = static_cast<datalog_expression_root::function_type>(c);
+		return true;
+	}
+
+	template<typename Stream>
+	static inline bool write(const function& f, Stream& stream) {
+		return core::write((unsigned char) f.type, stream);
+	}
+
+	template<typename T, typename Stream>
+	static inline bool read(T* array, Stream& stream, unsigned int length) {
+		for (unsigned int i = 0; i < length; i++)
+			if (!read(array[i], stream)) return false;
+		return true;
+	}
+
+	template<typename T, typename Stream>
+	static inline bool write(const T* array, Stream& stream, unsigned int length) {
+		for (unsigned int i = 0; i < length; i++)
+			if (!write(array[i], stream)) return false;
+		return true;
+	}
+
+	static bool interpret(function& f, const string& name) {
+		if (name == "identity") {
+			f.type = datalog_expression_root::FUNCTION_IDENTITY;
+		} else if (name == "identity_coord") {
+			f.type = datalog_expression_root::FUNCTION_IDENTITY_COORD;
+		} else if (name == "null") {
+			f.type = datalog_expression_root::FUNCTION_NULL;
+		} else if (name == "select_left") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT;
+		} else if (name == "select_left_coord") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_COORD;
+		} else if (name == "select_left_delete_features") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FEATURES;
+		} else if (name == "select_left_concord_singular") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_CONCORD_SINGULAR;
+		} else if (name == "select_left_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DISJOINT;
+		} else if (name == "select_left_disjoint_coord") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DISJOINT_COORD;
+		} else if (name == "select_left2") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2;
+		} else if (name == "select_left2_delete_features") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_FEATURES;
+		} else if (name == "select_left2_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DISJOINT;
+		} else if (name == "select_left2_disjoint_concord_singular") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DISJOINT_CONCORD_SINGULAR;
+		} else if (name == "select_left2_disjoint_coord") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DISJOINT_COORD;
+		} else if (name == "select_left3_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT3_DISJOINT;
+		} else if (name == "select_left4_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT4_DISJOINT;
+		} else if (name == "select_left5_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT5_DISJOINT;
+		} else if (name == "select_left6_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT6_DISJOINT;
+		} else if (name == "select_left7_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT7_DISJOINT;
+		} else if (name == "select_left_delete_head") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD;
+		} else if (name == "select_left_delete_head_concord_singular") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD_CONCORD_SINGULAR;
+		} else if (name == "select_left_delete_head_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD_DISJOINT;
+		} else if (name == "select_left_delete_head_disjoint_coord") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD_DISJOINT_COORD;
+		} else if (name == "select_left_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_KEEP_FUNCTION;
+		} else if (name == "select_left_keep_function_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_KEEP_FUNCTION_DISJOINT;
+		} else if (name == "select_left2_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_KEEP_FUNCTION;
+		} else if (name == "select_left2_keep_function_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_KEEP_FUNCTION_DISJOINT;
+		} else if (name == "select_left3_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT3_KEEP_FUNCTION;
+		} else if (name == "select_left_delete_function") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FUNCTION;
+		} else if (name == "select_left_delete_function_features") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FUNCTION_FEATURES;
+		} else if (name == "select_left_delete_answer") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_ANSWER;
+		} else if (name == "select_left2_delete_answer") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_ANSWER;
+		} else if (name == "select_left3_delete_answer") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_ANSWER;
+		} else if (name == "select_left3_delete_answer_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_ANSWER_DISJOINT;
+		} else if (name == "select_left5_delete_answer_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT5_DELETE_ANSWER_DISJOINT;
+		} else if (name == "select_left_delete_answer_head") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_ANSWER_HEAD;
+		} else if (name == "select_left_delete_count_answer") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_COUNT_ANSWER;
+		} else if (name == "select_left2_delete_count_answer") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_COUNT_ANSWER;
+		} else if (name == "select_left3_delete_count_answer") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_COUNT_ANSWER;
+		} else if (name == "select_left_delete_function_answer") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FUNCTION_ANSWER;
+		} else if (name == "select_left2_delete_function_answer") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_FUNCTION_ANSWER;
+		} else if (name == "select_left3_delete_function_answer") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_FUNCTION_ANSWER;
+		} else if (name == "select_left_delete_not") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_NOT;
+		} else if (name == "select_left_delete_not_features") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_NOT_FEATURES;
+		} else if (name == "select_right") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT;
+		} else if (name == "select_right2") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT2;
+		} else if (name == "select_right2_singular") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT2_SINGULAR;
+		} else if (name == "select_right2_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT2_DISJOINT;
+		} else if (name == "select_right3_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT3_DISJOINT;
+		} else if (name == "select_right4_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT4_DISJOINT;
+		} else if (name == "select_right5_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT5_DISJOINT;
+		} else if (name == "select_right6_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT6_DISJOINT;
+		} else if (name == "select_right7_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT7_DISJOINT;
+		} else if (name == "select_right_delete_head") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT_DELETE_HEAD;
+		} else if (name == "select_right_delete_function") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT_DELETE_FUNCTION;
+		} else if (name == "select_right2_delete_answer") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT2_DELETE_ANSWER;
+		} else if (name == "select_function") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_FUNCTION;
+		} else if (name == "select_function_delete_features") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_FUNCTION_DELETE_FEATURES;
+		} else if (name == "select_function_delete_head") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_FUNCTION_DELETE_HEAD;
+		} else if (name == "select_function_delete_head_features") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_FUNCTION_DELETE_HEAD_FEATURES;
+		} else if (name == "delete_left") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT;
+		} else if (name == "delete_left_features") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_FEATURES;
+		} else if (name == "delete_left_coord") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_COORD;
+		} else if (name == "delete_left_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_DISJOINT;
+		} else if (name == "delete_left_disjoint_coord") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_DISJOINT_COORD;
+		} else if (name == "delete_left2") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2;
+		} else if (name == "delete_left2_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_DISJOINT;
+		} else if (name == "delete_left2_disjoint_coord") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_DISJOINT_COORD;
+		} else if (name == "delete_left2_disjoint_features") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_DISJOINT_FEATURES;
+		} else if (name == "delete_left3_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_DISJOINT;
+		} else if (name == "delete_left3_disjoint_features") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_DISJOINT_FEATURES;
+		} else if (name == "delete_left4_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT4_DISJOINT;
+		} else if (name == "delete_left5_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT5_DISJOINT;
+		} else if (name == "delete_left6_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT6_DISJOINT;
+		} else if (name == "delete_left7_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT7_DISJOINT;
+		} else if (name == "delete_left_head") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD;
+		} else if (name == "delete_left_head_features") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_FEATURES;
+		} else if (name == "delete_left2_head") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_HEAD;
+		} else if (name == "delete_left2_head_features") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_HEAD_FEATURES;
+		} else if (name == "delete_left_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION;
+		} else if (name == "delete_left_function_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION_DISJOINT;
+		} else if (name == "delete_left2_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_FUNCTION;
+		} else if (name == "delete_left2_function_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_FUNCTION_DISJOINT;
+		} else if (name == "delete_left_function_head") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION_HEAD;
+		} else if (name == "delete_left3_function_head") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_FUNCTION_HEAD;
+		} else if (name == "delete_left_keep_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_KEEP_ANSWER;
+		} else if (name == "delete_left_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_KEEP_FUNCTION;
+		} else if (name == "delete_left_features_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_FEATURES_KEEP_FUNCTION;
+		} else if (name == "delete_left_head_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_KEEP_FUNCTION;
+		} else if (name == "delete_left_head_features_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_FEATURES_KEEP_FUNCTION;
+		} else if (name == "delete_left_head_keep_not") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_KEEP_NOT;
+		} else if (name == "delete_left_head_features_keep_not") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_FEATURES_KEEP_NOT;
+		} else if (name == "delete_left_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER;
+		} else if (name == "delete_left2_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_ANSWER;
+		} else if (name == "delete_left3_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER;
+		} else if (name == "delete_left3_answer_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER_DISJOINT;
+		} else if (name == "delete_left5_answer_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT5_ANSWER_DISJOINT;
+		} else if (name == "delete_left_answer_head") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER_HEAD;
+		} else if (name == "delete_left_count_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_COUNT_ANSWER;
+		} else if (name == "delete_left2_count_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_COUNT_ANSWER;
+		} else if (name == "delete_left3_count_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_COUNT_ANSWER;
+		} else if (name == "delete_left_function_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION_ANSWER;
+		} else if (name == "delete_left2_function_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_FUNCTION_ANSWER;
+		} else if (name == "delete_left3_function_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_FUNCTION_ANSWER;
+		} else if (name == "delete_left_answer_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER_KEEP_FUNCTION;
+		} else if (name == "delete_left_answer_head_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER_HEAD_KEEP_FUNCTION;
+		} else if (name == "delete_left2_answer_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_ANSWER_KEEP_FUNCTION;
+		} else if (name == "delete_left2_answer_head_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_ANSWER_HEAD_KEEP_FUNCTION;
+		} else if (name == "delete_left3_answer_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER_KEEP_FUNCTION;
+		} else if (name == "delete_left3_answer_head_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER_HEAD_KEEP_FUNCTION;
+		} else if (name == "delete_right") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT;
+		} else if (name == "delete_right2") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT2;
+		} else if (name == "delete_right2_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT2_DISJOINT;
+		} else if (name == "delete_right3_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT3_DISJOINT;
+		} else if (name == "delete_right4_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT4_DISJOINT;
+		} else if (name == "delete_right5_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT5_DISJOINT;
+		} else if (name == "delete_right6_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT6_DISJOINT;
+		} else if (name == "delete_right7_disjoint") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT7_DISJOINT;
+		} else if (name == "delete_right_head") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT_HEAD;
+		} else if (name == "delete_right_head_keep_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT_HEAD_KEEP_FUNCTION;
+		} else if (name == "delete_right2_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT2_ANSWER;
+		} else if (name == "delete_function") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_FUNCTION;
+		} else if (name == "delete_function_head") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_FUNCTION_HEAD;
+		} else if (name == "delete_function_features") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_FUNCTION_FEATURES;
+		} else if (name == "delete_count") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_COUNT;
+		} else if (name == "delete_count_head") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_COUNT_HEAD;
+		} else if (name == "delete_count_head_concord_plural") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_COUNT_HEAD_CONCORD_PLURAL;
+		} else if (name == "delete_count_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_COUNT_ANSWER;
+		} else if (name == "delete_not") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_NOT;
+		} else if (name == "delete_not_features") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_NOT_FEATURES;
+		} else if (name == "delete_not_infinitive") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_NOT_INFINITIVE;
+		} else if (name == "delete_left_not_head") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_NOT_HEAD;
+		} else if (name == "delete_left_not_head_features") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_NOT_HEAD_FEATURES;
+		} else if (name == "delete_answer") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_ANSWER;
+		} else if (name == "delete_answer_has_loc") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_ANSWER_HAS_LOC;
+		} else if (name == "select_arg1") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG1;
+		} else if (name == "select_arg1_singular") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR;
+		} else if (name == "select_arg1_plural") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_PLURAL;
+		} else if (name == "select_arg1_only") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY;
+		} else if (name == "select_arg1_delete_features") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_DELETE_FEATURES;
+		} else if (name == "select_arg1_only_delete_features") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY_DELETE_FEATURES;
+		} else if (name == "select_arg2") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG2;
+		} else if (name == "select_arg2_only") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY;
+		} else if (name == "select_arg2_delete_features") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG2_DELETE_FEATURES;
+		} else if (name == "select_arg2_only_delete_features") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY_DELETE_FEATURES;
+		} else if (name == "select_arg3") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG3;
+		} else if (name == "select_arg3_only") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY;
+		} else if (name == "select_arg3_delete_features") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES;
+		} else if (name == "select_arg3_only_delete_features") {
+			f.type = datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY_DELETE_FEATURES;
+		} else if (name == "delete_arg1") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_ARG1;
+		} else if (name == "delete_arg1_singular") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_ARG1_SINGULAR;
+		} else if (name == "delete_arg1_plural") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_ARG1_PLURAL;
+		} else if (name == "delete_arg1_features") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_ARG1_FEATURES;
+		} else if (name == "delete_arg2") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_ARG2;
+		} else if (name == "delete_arg2_features") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_ARG2_FEATURES;
+		} else if (name == "delete_arg3") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_ARG3;
+		} else if (name == "delete_args") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_ARGS;
+		} else if (name == "delete_args_concord_singular") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_ARGS_CONCORD_SINGULAR;
+		} else if (name == "delete_args_keep_plural") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_ARGS_KEEP_PLURAL;
+		} else if (name == "head_arg1_select_arg2") {
+			f.type = datalog_expression_root::FUNCTION_HEAD_ARG1_SELECT_ARG2;
+		} else if (name == "head_arg1_select_arg2_only") {
+			f.type = datalog_expression_root::FUNCTION_HEAD_ARG1_SELECT_ARG2_ONLY;
+		} else if (name == "empty_tuple") {
+			f.type = datalog_expression_root::FUNCTION_EMPTY_TUPLE;
+		} else if (name == "empty_tuple_only") {
+			f.type = datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY;
+		} else if (name == "empty_tuple_only_keep_concord_singular") {
+			f.type = datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_CONCORD_SINGULAR;
+		} else if (name == "keep_null") {
+			f.type = datalog_expression_root::FUNCTION_KEEP_NULL;
+		} else if (name == "empty_arg2") {
+			f.type = datalog_expression_root::FUNCTION_EMPTY_ARG2;
+		} else if (name == "empty_args") {
+			f.type = datalog_expression_root::FUNCTION_EMPTY_ARGS;
+		} else if (name == "arg2_zero_arity") {
+			f.type = datalog_expression_root::FUNCTION_ARG2_ZERO_ARITY;
+		} else if (name == "loc") {
+			f.type = datalog_expression_root::FUNCTION_LOC;
+		} else if (name == "two_predicates") {
+			f.type = datalog_expression_root::FUNCTION_TWO_PREDICATES;
+		} else if (name == "singular") {
+			f.type = datalog_expression_root::FUNCTION_SINGULAR;
+		} else if (name == "plural") {
+			f.type = datalog_expression_root::FUNCTION_PLURAL;
+		} else if (name == "uncountable") {
+			f.type = datalog_expression_root::FUNCTION_UNCOUNTABLE;
+		} else if (name == "concord_singular") {
+			f.type = datalog_expression_root::FUNCTION_CONCORD_SINGULAR;
+		} else if (name == "concord_plural") {
+			f.type = datalog_expression_root::FUNCTION_CONCORD_PLURAL;
+		} else if (name == "concord_uncountable") {
+			f.type = datalog_expression_root::FUNCTION_CONCORD_UNCOUNTABLE;
+		} else if (name == "concord_non_singular") {
+			f.type = datalog_expression_root::FUNCTION_CONCORD_NON_SINGULAR;
+		} else if (name == "concord_non_plural") {
+			f.type = datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL;
+		} else if (name == "concord_non_plural_keep_singular") {
+			f.type = datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL_KEEP_SINGULAR;
+		} else if (name == "concord_all") {
+			f.type = datalog_expression_root::FUNCTION_CONCORD_ALL;
+		} else if (name == "keep_concord_singular") {
+			f.type = datalog_expression_root::FUNCTION_KEEP_CONCORD_SINGULAR;
+		} else if (name == "keep_concord_plural") {
+			f.type = datalog_expression_root::FUNCTION_KEEP_CONCORD_PLURAL;
+		} else if (name == "keep_concord_uncountable") {
+			f.type = datalog_expression_root::FUNCTION_KEEP_CONCORD_UNCOUNTABLE;
+		} else if (name == "delete_not_concord_singular") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_NOT_CONCORD_SINGULAR;
+		} else if (name == "delete_not_concord_plural") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_NOT_CONCORD_PLURAL;
+		} else if (name == "keep_singular") {
+			f.type = datalog_expression_root::FUNCTION_KEEP_SINGULAR;
+		} else if (name == "keep_plural") {
+			f.type = datalog_expression_root::FUNCTION_KEEP_PLURAL;
+		} else if (name == "keep_uncountable") {
+			f.type = datalog_expression_root::FUNCTION_KEEP_UNCOUNTABLE;
+		} else if (name == "infinitive") {
+			f.type = datalog_expression_root::FUNCTION_INFINITIVE;
+		} else if (name == "present_participle") {
+			f.type = datalog_expression_root::FUNCTION_PRESENT_PARTICIPLE;
+		} else if (name == "past_participle") {
+			f.type = datalog_expression_root::FUNCTION_PAST_PARTICIPLE;
+		} else if (name == "keep_present_participle") {
+			f.type = datalog_expression_root::FUNCTION_KEEP_PRESENT_PARTICIPLE;
+		} else if (name == "keep_past_participle") {
+			f.type = datalog_expression_root::FUNCTION_KEEP_PAST_PARTICIPLE;
+		} else if (name == "flip_predicate") {
+			f.type = datalog_expression_root::FUNCTION_FLIP_PREDICATE;
+		} else if (name == "flip_predicate_past_participle") {
+			f.type = datalog_expression_root::FUNCTION_FLIP_PREDICATE_PAST_PARTICIPLE;
+		} else if (name == "flip_predicate_keep_past_participle") {
+			f.type = datalog_expression_root::FUNCTION_FLIP_PREDICATE_KEEP_PAST_PARTICIPLE;
+		} else if (name == "keep_features") {
+			f.type = datalog_expression_root::FUNCTION_KEEP_FEATURES;
+		} else if (name == "delete_features") {
+			f.type = datalog_expression_root::FUNCTION_DELETE_FEATURES;
+		} else {
+			fprintf(stderr, "parse ERROR: Unrecognized semantic transformation function name.\n");
+			return false;
+		}
+		return true;
+	}
+
+	template<typename Stream>
+	static bool print(const function& f, Stream& out) {
+		switch (f.type) {
+		case datalog_expression_root::FUNCTION_EMPTY:
+			return core::print("empty", out);
+		case datalog_expression_root::FUNCTION_IDENTITY:
+			return core::print("identity", out);
+		case datalog_expression_root::FUNCTION_IDENTITY_COORD:
+			return core::print("identity_coord", out);
+		case datalog_expression_root::FUNCTION_NULL:
+			return core::print("null", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT:
+			return core::print("select_left", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_COORD:
+			return core::print("select_left_coord", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FEATURES:
+			return core::print("select_left_delete_features", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_CONCORD_SINGULAR:
+			return core::print("select_left_concord_singular", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DISJOINT:
+			return core::print("select_left_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DISJOINT_COORD:
+			return core::print("select_left_disjoint_coord", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT2:
+			return core::print("select_left2", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_FEATURES:
+			return core::print("select_left2_delete_features", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT2_DISJOINT:
+			return core::print("select_left2_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT2_DISJOINT_CONCORD_SINGULAR:
+			return core::print("select_left2_disjoint_concord_singular", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT2_DISJOINT_COORD:
+			return core::print("select_left2_disjoint_coord", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT3_DISJOINT:
+			return core::print("select_left3_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT4_DISJOINT:
+			return core::print("select_left4_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT5_DISJOINT:
+			return core::print("select_left5_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT6_DISJOINT:
+			return core::print("select_left6_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT7_DISJOINT:
+			return core::print("select_left7_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD:
+			return core::print("select_left_delete_head", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD_CONCORD_SINGULAR:
+			return core::print("select_left_delete_head_concord_singular", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD_DISJOINT:
+			return core::print("select_left_delete_head_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD_DISJOINT_COORD:
+			return core::print("select_left_delete_head_disjoint_coord", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_KEEP_FUNCTION:
+			return core::print("select_left_keep_function", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_KEEP_FUNCTION_DISJOINT:
+			return core::print("select_left_keep_function_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT2_KEEP_FUNCTION:
+			return core::print("select_left2_keep_function", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT2_KEEP_FUNCTION_DISJOINT:
+			return core::print("select_left2_keep_function_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT3_KEEP_FUNCTION:
+			return core::print("select_left3_keep_function", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FUNCTION:
+			return core::print("select_left_delete_function", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FUNCTION_FEATURES:
+			return core::print("select_left_delete_function_features", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_ANSWER:
+			return core::print("select_left_delete_answer", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_ANSWER:
+			return core::print("select_left2_delete_answer", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_ANSWER:
+			return core::print("select_left3_delete_answer", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_ANSWER_DISJOINT:
+			return core::print("select_left3_delete_answer_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT5_DELETE_ANSWER_DISJOINT:
+			return core::print("select_left5_delete_answer_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_ANSWER_HEAD:
+			return core::print("select_left_delete_answer_head", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_COUNT_ANSWER:
+			return core::print("select_left_delete_count_answer", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_COUNT_ANSWER:
+			return core::print("select_left2_delete_count_answer", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_COUNT_ANSWER:
+			return core::print("select_left3_delete_count_answer", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FUNCTION_ANSWER:
+			return core::print("select_left_delete_function_answer", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_FUNCTION_ANSWER:
+			return core::print("select_left2_delete_function_answer", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_FUNCTION_ANSWER:
+			return core::print("select_left3_delete_function_answer", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_NOT:
+			return core::print("select_left_delete_not", out);
+		case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_NOT_FEATURES:
+			return core::print("select_left_delete_not_features", out);
+		case datalog_expression_root::FUNCTION_SELECT_RIGHT:
+			return core::print("select_right", out);
+		case datalog_expression_root::FUNCTION_SELECT_RIGHT2:
+			return core::print("select_right2", out);
+		case datalog_expression_root::FUNCTION_SELECT_RIGHT2_SINGULAR:
+			return core::print("select_right2_singular", out);
+		case datalog_expression_root::FUNCTION_SELECT_RIGHT2_DISJOINT:
+			return core::print("select_right2_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_RIGHT3_DISJOINT:
+			return core::print("select_right3_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_RIGHT4_DISJOINT:
+			return core::print("select_right4_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_RIGHT5_DISJOINT:
+			return core::print("select_right5_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_RIGHT6_DISJOINT:
+			return core::print("select_right6_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_RIGHT7_DISJOINT:
+			return core::print("select_right7_disjoint", out);
+		case datalog_expression_root::FUNCTION_SELECT_RIGHT_DELETE_HEAD:
+			return core::print("select_right_delete_head", out);
+		case datalog_expression_root::FUNCTION_SELECT_RIGHT_DELETE_FUNCTION:
+			return core::print("select_right_delete_function", out);
+		case datalog_expression_root::FUNCTION_SELECT_RIGHT2_DELETE_ANSWER:
+			return core::print("select_right2_delete_answer", out);
+		case datalog_expression_root::FUNCTION_SELECT_FUNCTION:
+			return core::print("select_function", out);
+		case datalog_expression_root::FUNCTION_SELECT_FUNCTION_DELETE_FEATURES:
+			return core::print("select_function_delete_features", out);
+		case datalog_expression_root::FUNCTION_SELECT_FUNCTION_DELETE_HEAD:
+			return core::print("select_function_delete_head", out);
+		case datalog_expression_root::FUNCTION_SELECT_FUNCTION_DELETE_HEAD_FEATURES:
+			return core::print("select_function_delete_head_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT:
+			return core::print("delete_left", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_COORD:
+			return core::print("delete_left_coord", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_FEATURES:
+			return core::print("delete_left_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_DISJOINT:
+			return core::print("delete_left_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_DISJOINT_COORD:
+			return core::print("delete_left_disjoint_coord", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2:
+			return core::print("delete_left2", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2_DISJOINT:
+			return core::print("delete_left2_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2_DISJOINT_COORD:
+			return core::print("delete_left2_disjoint_coord", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2_DISJOINT_FEATURES:
+			return core::print("delete_left2_disjoint_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT3_DISJOINT:
+			return core::print("delete_left3_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT3_DISJOINT_FEATURES:
+			return core::print("delete_left3_disjoint_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT4_DISJOINT:
+			return core::print("delete_left4_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT5_DISJOINT:
+			return core::print("delete_left5_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT6_DISJOINT:
+			return core::print("delete_left6_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT7_DISJOINT:
+			return core::print("delete_left7_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD:
+			return core::print("delete_left_head", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_FEATURES:
+			return core::print("delete_left_head_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2_HEAD:
+			return core::print("delete_left2_head", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2_HEAD_FEATURES:
+			return core::print("delete_left2_head_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION:
+			return core::print("delete_left_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION_DISJOINT:
+			return core::print("delete_left_function_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2_FUNCTION:
+			return core::print("delete_left2_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2_FUNCTION_DISJOINT:
+			return core::print("delete_left2_function_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION_HEAD:
+			return core::print("delete_left_function_head", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT3_FUNCTION_HEAD:
+			return core::print("delete_left3_function_head", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_KEEP_ANSWER:
+			return core::print("delete_left_keep_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_KEEP_FUNCTION:
+			return core::print("delete_left_keep_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_FEATURES_KEEP_FUNCTION:
+			return core::print("delete_left_features_keep_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_KEEP_FUNCTION:
+			return core::print("delete_left_head_keep_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_FEATURES_KEEP_FUNCTION:
+			return core::print("delete_left_head_features_keep_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_KEEP_NOT:
+			return core::print("delete_left_head_keep_not", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_FEATURES_KEEP_NOT:
+			return core::print("delete_left_head_features_keep_not", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER:
+			return core::print("delete_left_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2_ANSWER:
+			return core::print("delete_left2_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER:
+			return core::print("delete_left3_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER_DISJOINT:
+			return core::print("delete_left3_answer_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT5_ANSWER_DISJOINT:
+			return core::print("delete_left5_answer_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER_HEAD:
+			return core::print("delete_left_answer_head", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_COUNT_ANSWER:
+			return core::print("delete_left_count_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2_COUNT_ANSWER:
+			return core::print("delete_left2_count_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT3_COUNT_ANSWER:
+			return core::print("delete_left3_count_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION_ANSWER:
+			return core::print("delete_left_function_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2_FUNCTION_ANSWER:
+			return core::print("delete_left2_function_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT3_FUNCTION_ANSWER:
+			return core::print("delete_left3_function_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER_KEEP_FUNCTION:
+			return core::print("delete_left_answer_keep_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER_HEAD_KEEP_FUNCTION:
+			return core::print("delete_left_answer_head_keep_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2_ANSWER_KEEP_FUNCTION:
+			return core::print("delete_left2_answer_keep_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT2_ANSWER_HEAD_KEEP_FUNCTION:
+			return core::print("delete_left2_answer_head_keep_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER_KEEP_FUNCTION:
+			return core::print("delete_left3_answer_keep_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER_HEAD_KEEP_FUNCTION:
+			return core::print("delete_left3_answer_head_keep_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_RIGHT:
+			return core::print("delete_right", out);
+		case datalog_expression_root::FUNCTION_DELETE_RIGHT2:
+			return core::print("delete_right2", out);
+		case datalog_expression_root::FUNCTION_DELETE_RIGHT2_DISJOINT:
+			return core::print("delete_right2_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_RIGHT3_DISJOINT:
+			return core::print("delete_right3_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_RIGHT4_DISJOINT:
+			return core::print("delete_right4_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_RIGHT5_DISJOINT:
+			return core::print("delete_right5_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_RIGHT6_DISJOINT:
+			return core::print("delete_right6_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_RIGHT7_DISJOINT:
+			return core::print("delete_right7_disjoint", out);
+		case datalog_expression_root::FUNCTION_DELETE_RIGHT_HEAD:
+			return core::print("delete_right_head", out);
+		case datalog_expression_root::FUNCTION_DELETE_RIGHT_HEAD_KEEP_FUNCTION:
+			return core::print("delete_right_head_keep_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_RIGHT2_ANSWER:
+			return core::print("delete_right2_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_COUNT:
+			return core::print("delete_count", out);
+		case datalog_expression_root::FUNCTION_DELETE_COUNT_HEAD:
+			return core::print("delete_count_head", out);
+		case datalog_expression_root::FUNCTION_DELETE_COUNT_HEAD_CONCORD_PLURAL:
+			return core::print("delete_count_head_concord_plural", out);
+		case datalog_expression_root::FUNCTION_DELETE_COUNT_ANSWER:
+			return core::print("delete_count_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_NOT:
+			return core::print("delete_not", out);
+		case datalog_expression_root::FUNCTION_DELETE_NOT_FEATURES:
+			return core::print("delete_not_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_NOT_INFINITIVE:
+			return core::print("delete_not_infinitive", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_NOT_HEAD:
+			return core::print("delete_left_not_head", out);
+		case datalog_expression_root::FUNCTION_DELETE_LEFT_NOT_HEAD_FEATURES:
+			return core::print("delete_left_not_head_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_FUNCTION:
+			return core::print("delete_function", out);
+		case datalog_expression_root::FUNCTION_DELETE_FUNCTION_HEAD:
+			return core::print("delete_function_head", out);
+		case datalog_expression_root::FUNCTION_DELETE_FUNCTION_FEATURES:
+			return core::print("delete_function_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_ANSWER:
+			return core::print("delete_answer", out);
+		case datalog_expression_root::FUNCTION_DELETE_ANSWER_HAS_LOC:
+			return core::print("delete_answer_has_loc", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG1:
+			return core::print("select_arg1", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR:
+			return core::print("select_arg1_singular", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG1_PLURAL:
+			return core::print("select_arg1_plural", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY:
+			return core::print("select_arg1_only", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG1_DELETE_FEATURES:
+			return core::print("select_arg1_delete_features", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY_DELETE_FEATURES:
+			return core::print("select_arg1_only_delete_features", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG2:
+			return core::print("select_arg2", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY:
+			return core::print("select_arg2_only", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG2_DELETE_FEATURES:
+			return core::print("select_arg2_delete_features", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY_DELETE_FEATURES:
+			return core::print("select_arg2_only_delete_features", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG3:
+			return core::print("select_arg3", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY:
+			return core::print("select_arg3_only", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES:
+			return core::print("select_arg3_delete_features", out);
+		case datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY_DELETE_FEATURES:
+			return core::print("select_arg3_only_delete_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_ARG1:
+			return core::print("delete_arg1", out);
+		case datalog_expression_root::FUNCTION_DELETE_ARG1_SINGULAR:
+			return core::print("delete_arg1_singular", out);
+		case datalog_expression_root::FUNCTION_DELETE_ARG1_PLURAL:
+			return core::print("delete_arg1_plural", out);
+		case datalog_expression_root::FUNCTION_DELETE_ARG1_FEATURES:
+			return core::print("delete_arg1_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_ARG2:
+			return core::print("delete_arg2", out);
+		case datalog_expression_root::FUNCTION_DELETE_ARG2_FEATURES:
+			return core::print("delete_arg2_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_ARG3:
+			return core::print("delete_arg3", out);
+		case datalog_expression_root::FUNCTION_DELETE_ARGS:
+			return core::print("delete_args", out);
+		case datalog_expression_root::FUNCTION_DELETE_ARGS_CONCORD_SINGULAR:
+			return core::print("delete_args_concord_singular", out);
+		case datalog_expression_root::FUNCTION_DELETE_ARGS_KEEP_PLURAL:
+			return core::print("delete_args_keep_plural", out);
+		case datalog_expression_root::FUNCTION_HEAD_ARG1_SELECT_ARG2:
+			return core::print("head_arg1_select_arg2", out);
+		case datalog_expression_root::FUNCTION_HEAD_ARG1_SELECT_ARG2_ONLY:
+			return core::print("head_arg1_select_arg2_only", out);
+		case datalog_expression_root::FUNCTION_EMPTY_TUPLE:
+			return core::print("empty_tuple", out);
+		case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY:
+			return core::print("empty_tuple_only", out);
+		case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_CONCORD_SINGULAR:
+			return core::print("empty_tuple_only_keep_concord_singular", out);
+		case datalog_expression_root::FUNCTION_KEEP_NULL:
+			return core::print("keep_null", out);
+		case datalog_expression_root::FUNCTION_EMPTY_ARG2:
+			return core::print("empty_arg2", out);
+		case datalog_expression_root::FUNCTION_EMPTY_ARGS:
+			return core::print("empty_args", out);
+		case datalog_expression_root::FUNCTION_ARG2_ZERO_ARITY:
+			return core::print("arg2_zero_arity", out);
+		case datalog_expression_root::FUNCTION_LOC:
+			return core::print("loc", out);
+		case datalog_expression_root::FUNCTION_TWO_PREDICATES:
+			return core::print("two_predicates", out);
+		case datalog_expression_root::FUNCTION_SINGULAR:
+			return core::print("singular", out);
+		case datalog_expression_root::FUNCTION_PLURAL:
+			return core::print("plural", out);
+		case datalog_expression_root::FUNCTION_UNCOUNTABLE:
+			return core::print("uncountable", out);
+		case datalog_expression_root::FUNCTION_CONCORD_SINGULAR:
+			return core::print("concord_singular", out);
+		case datalog_expression_root::FUNCTION_CONCORD_PLURAL:
+			return core::print("concord_plural", out);
+		case datalog_expression_root::FUNCTION_CONCORD_UNCOUNTABLE:
+			return core::print("concord_uncountable", out);
+		case datalog_expression_root::FUNCTION_CONCORD_NON_SINGULAR:
+			return core::print("concord_non_singular", out);
+		case datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL:
+			return core::print("concord_non_plural", out);
+		case datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL_KEEP_SINGULAR:
+			return core::print("concord_non_plural_keep_singular", out);
+		case datalog_expression_root::FUNCTION_CONCORD_ALL:
+			return core::print("concord_all", out);
+		case datalog_expression_root::FUNCTION_KEEP_CONCORD_SINGULAR:
+			return core::print("keep_concord_singular", out);
+		case datalog_expression_root::FUNCTION_KEEP_CONCORD_PLURAL:
+			return core::print("keep_concord_plural", out);
+		case datalog_expression_root::FUNCTION_KEEP_CONCORD_UNCOUNTABLE:
+			return core::print("keep_concord_uncountable", out);
+		case datalog_expression_root::FUNCTION_DELETE_NOT_CONCORD_SINGULAR:
+			return core::print("delete_not_concord_singular", out);
+		case datalog_expression_root::FUNCTION_DELETE_NOT_CONCORD_PLURAL:
+			return core::print("delete_not_concord_plural", out);
+		case datalog_expression_root::FUNCTION_KEEP_SINGULAR:
+			return core::print("keep_singular", out);
+		case datalog_expression_root::FUNCTION_KEEP_PLURAL:
+			return core::print("keep_plural", out);
+		case datalog_expression_root::FUNCTION_KEEP_UNCOUNTABLE:
+			return core::print("keep_uncountable", out);
+		case datalog_expression_root::FUNCTION_INFINITIVE:
+			return core::print("infinitive", out);
+		case datalog_expression_root::FUNCTION_PRESENT_PARTICIPLE:
+			return core::print("present_participle", out);
+		case datalog_expression_root::FUNCTION_PAST_PARTICIPLE:
+			return core::print("past_participle", out);
+		case datalog_expression_root::FUNCTION_KEEP_PRESENT_PARTICIPLE:
+			return core::print("keep_present_participle", out);
+		case datalog_expression_root::FUNCTION_KEEP_PAST_PARTICIPLE:
+			return core::print("keep_past_participle", out);
+		case datalog_expression_root::FUNCTION_FLIP_PREDICATE:
+			return core::print("flip_predicate", out);
+		case datalog_expression_root::FUNCTION_FLIP_PREDICATE_PAST_PARTICIPLE:
+			return core::print("flip_predicate_past_participle", out);
+		case datalog_expression_root::FUNCTION_FLIP_PREDICATE_KEEP_PAST_PARTICIPLE:
+			return core::print("flip_predicate_keep_past_participle", out);
+		case datalog_expression_root::FUNCTION_KEEP_FEATURES:
+			return core::print("keep_features", out);
+		case datalog_expression_root::FUNCTION_DELETE_FEATURES:
+			return core::print("delete_features", out);
+		}
+		fprintf(stderr, "print ERROR: Unrecognized semantic transformation function.\n");
+		return false;
+	}
+
+	static bool is_feature_pruneable(feature f) {
+		switch (f) {
+		case datalog_expression_root::FEATURE_SECOND_PREDICATE:
+		case datalog_expression_root::FEATURE_THIRD_PREDICATE:
+		case datalog_expression_root::FEATURE_LAST_PREDICATE:
+		case datalog_expression_root::FEATURE_DIRECTION:
+		case datalog_expression_root::FEATURE_DIRECTION_ROOT:
+		case datalog_expression_root::FEATURE_ARG1:
+		case datalog_expression_root::FEATURE_ARG1_ONLY:
+		case datalog_expression_root::FEATURE_ARG1_STRING:
+		case datalog_expression_root::FEATURE_ARG2:
+		case datalog_expression_root::FEATURE_ARG2_ONLY:
+		case datalog_expression_root::FEATURE_ARG3:
+		case datalog_expression_root::FEATURE_ARG3_ONLY:
+		case datalog_expression_root::FEATURE_NUMBER:
+		case datalog_expression_root::FEATURE_INFLECTION:
+			return false;
+		case datalog_expression_root::FEATURE_FIRST_PREDICATE:
+		case datalog_expression_root::FEATURE_FUNCTION:
+		case datalog_expression_root::FEATURE_FUNCTION_ONLY:
+		case datalog_expression_root::FEATURE_FUNCTION_ANSWER:
+		case datalog_expression_root::FEATURE_HAS_FUNCTION:
+		case datalog_expression_root::FEATURE_HAS_FUNCTION_NOT:
+		case datalog_expression_root::FEATURE_HAS_FUNCTION_COUNT_NOT:
+		case datalog_expression_root::FEATURE_HAS_FUNCTION_ANSWER:
+		case datalog_expression_root::FEATURE_PREDICATE_ARITY:
+		case datalog_expression_root::FEATURE_ARG2_ARITY:
+		case datalog_expression_root::FEATURE_PREDICATE:
+		case datalog_expression_root::FEATURE_PREDICATE_ONLY:
+		case datalog_expression_root::FEATURE_CONSTANT:
 			return true;
+		case datalog_expression_root::FEATURE_NULL:
+			break;
 		}
-
-		static inline void free(invert_iterator& inverter) {
-			core::free(*inverter.inverse);
-			if (inverter.inverse->root.reference_count == 0)
-				core::free(inverter.inverse);
-		}
-	};
-
-	static constexpr function terminal_function() {
-		return FUNCTION_TERMINAL;
+		fprintf(stderr, "datalog_expression_root.is_feature_pruneable ERROR: Unrecognized semantic feature.\n");
+		exit(EXIT_FAILURE);
 	}
 };
 
@@ -2395,971 +3384,6 @@ inline bool equivalent(const datalog_expression_root& first, const datalog_expre
 }
 
 template<typename Stream>
-inline bool read(datalog_expression_root::feature& feature, Stream& stream) {
-	unsigned char c;
-	if (!read(c, stream)) return false;
-	feature = static_cast<datalog_expression_root::feature>(c);
-	return true;
-}
-
-template<typename Stream>
-inline bool write(const datalog_expression_root::feature& feature, Stream& stream) {
-	return write((unsigned char) feature, stream);
-}
-
-bool parse(datalog_expression_root::feature& f, const string& name) {
-	if (name == "function") {
-		f = datalog_expression_root::FEATURE_FUNCTION;
-	} else if (name == "function_only") {
-		f = datalog_expression_root::FEATURE_FUNCTION_ONLY;
-	} else if (name == "function_answer") {
-		f = datalog_expression_root::FEATURE_FUNCTION_ANSWER;
-	} else if (name == "has_function") {
-		f = datalog_expression_root::FEATURE_HAS_FUNCTION;
-	} else if (name == "has_function_answer") {
-		f = datalog_expression_root::FEATURE_HAS_FUNCTION_ANSWER;
-	} else if (name == "has_function_not") {
-		f = datalog_expression_root::FEATURE_HAS_FUNCTION_NOT;
-	} else if (name == "has_function_count_not") {
-		f = datalog_expression_root::FEATURE_HAS_FUNCTION_COUNT_NOT;
-	} else if (name == "predicate") {
-		f = datalog_expression_root::FEATURE_PREDICATE;
-	} else if (name == "predicate_only") {
-		f = datalog_expression_root::FEATURE_PREDICATE_ONLY;
-	} else if (name == "first_predicate") {
-		f = datalog_expression_root::FEATURE_FIRST_PREDICATE;
-	} else if (name == "second_predicate") {
-		f = datalog_expression_root::FEATURE_SECOND_PREDICATE;
-	} else if (name == "third_predicate") {
-		f = datalog_expression_root::FEATURE_THIRD_PREDICATE;
-	} else if (name == "last_predicate") {
-		f = datalog_expression_root::FEATURE_LAST_PREDICATE;
-	} else if (name == "direction") {
-		f = datalog_expression_root::FEATURE_DIRECTION;
-	} else if (name == "direction_root") {
-		f = datalog_expression_root::FEATURE_DIRECTION_ROOT;
-	} else if (name == "constant") {
-		f = datalog_expression_root::FEATURE_CONSTANT;
-	} else if (name == "arity") {
-		f = datalog_expression_root::FEATURE_PREDICATE_ARITY;
-	} else if (name == "arg1") {
-		f = datalog_expression_root::FEATURE_ARG1;
-	} else if (name == "arg2") {
-		f = datalog_expression_root::FEATURE_ARG2;
-	} else if (name == "arg3") {
-		f = datalog_expression_root::FEATURE_ARG3;
-	} else if (name == "arg1_only") {
-		f = datalog_expression_root::FEATURE_ARG1_ONLY;
-	} else if (name == "arg2_only") {
-		f = datalog_expression_root::FEATURE_ARG2_ONLY;
-	} else if (name == "arg3_only") {
-		f = datalog_expression_root::FEATURE_ARG3_ONLY;
-	} else if (name == "arg1_string") {
-		f = datalog_expression_root::FEATURE_ARG1_STRING;
-	} else if (name == "arg2_arity") {
-		f = datalog_expression_root::FEATURE_ARG2_ARITY;
-	} else if (name == "number") {
-		f = datalog_expression_root::FEATURE_NUMBER;
-	} else if (name == "inflection") {
-		f = datalog_expression_root::FEATURE_INFLECTION;
-	} else {
-		print("parse ERROR: Unrecognized semantic feature name '", stderr);
-		print(name, stderr); print("'.\n", stderr);
-		return false;
-	}
-	return true;
-}
-
-template<typename Stream>
-bool print(const datalog_expression_root::feature& f, Stream& out) {
-	switch (f) {
-	case datalog_expression_root::FEATURE_NULL:
-		return print("null", out);
-	case datalog_expression_root::FEATURE_FUNCTION:
-		return print("function", out);
-	case datalog_expression_root::FEATURE_FUNCTION_ONLY:
-		return print("function_only", out);
-	case datalog_expression_root::FEATURE_FUNCTION_ANSWER:
-		return print("function_answer", out);
-	case datalog_expression_root::FEATURE_HAS_FUNCTION:
-		return print("has_function", out);
-	case datalog_expression_root::FEATURE_HAS_FUNCTION_NOT:
-		return print("has_function_not", out);
-	case datalog_expression_root::FEATURE_HAS_FUNCTION_COUNT_NOT:
-		return print("has_function_count_not", out);
-	case datalog_expression_root::FEATURE_HAS_FUNCTION_ANSWER:
-		return print("has_function_answer", out);
-	case datalog_expression_root::FEATURE_PREDICATE:
-		return print("predicate", out);
-	case datalog_expression_root::FEATURE_PREDICATE_ONLY:
-		return print("predicate_only", out);
-	case datalog_expression_root::FEATURE_FIRST_PREDICATE:
-		return print("first_predicate", out);
-	case datalog_expression_root::FEATURE_SECOND_PREDICATE:
-		return print("second_predicate", out);
-	case datalog_expression_root::FEATURE_THIRD_PREDICATE:
-		return print("third_predicate", out);
-	case datalog_expression_root::FEATURE_LAST_PREDICATE:
-		return print("last_predicate", out);
-	case datalog_expression_root::FEATURE_DIRECTION:
-		return print("direction", out);
-	case datalog_expression_root::FEATURE_DIRECTION_ROOT:
-		return print("direction_root", out);
-	case datalog_expression_root::FEATURE_CONSTANT:
-		return print("constant", out);
-	case datalog_expression_root::FEATURE_PREDICATE_ARITY:
-		return print("arity", out);
-	case datalog_expression_root::FEATURE_ARG1:
-		return print("arg1", out);
-	case datalog_expression_root::FEATURE_ARG2:
-		return print("arg2", out);
-	case datalog_expression_root::FEATURE_ARG3:
-		return print("arg3", out);
-	case datalog_expression_root::FEATURE_ARG1_ONLY:
-		return print("arg1_only", out);
-	case datalog_expression_root::FEATURE_ARG2_ONLY:
-		return print("arg2_only", out);
-	case datalog_expression_root::FEATURE_ARG3_ONLY:
-		return print("arg3_only", out);
-	case datalog_expression_root::FEATURE_ARG1_STRING:
-		return print("arg1_string", out);
-	case datalog_expression_root::FEATURE_ARG2_ARITY:
-		return print("arg2_arity", out);
-	case datalog_expression_root::FEATURE_NUMBER:
-		return print("number", out);
-	case datalog_expression_root::FEATURE_INFLECTION:
-		return print("inflection", out);
-	}
-	fprintf(stderr, "print ERROR: Unrecognized semantic feature.\n");
-	return false;
-}
-
-template<typename Stream>
-inline bool read(datalog_expression_root::function& function, Stream& stream) {
-	unsigned char c;
-	if (!read(c, stream)) return false;
-	function.type = static_cast<datalog_expression_root::function_type>(c);
-	return true;
-}
-
-template<typename Stream>
-inline bool write(const datalog_expression_root::function& function, Stream& stream) {
-	return write((unsigned char) function.type, stream);
-}
-
-bool parse(datalog_expression_root::function& f, const string& name) {
-	if (name == "identity") {
-		f.type = datalog_expression_root::FUNCTION_IDENTITY;
-	} else if (name == "identity_coord") {
-		f.type = datalog_expression_root::FUNCTION_IDENTITY_COORD;
-	} else if (name == "null") {
-		f.type = datalog_expression_root::FUNCTION_NULL;
-	} else if (name == "select_left") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT;
-	} else if (name == "select_left_coord") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_COORD;
-	} else if (name == "select_left_delete_features") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FEATURES;
-	} else if (name == "select_left_concord_singular") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_CONCORD_SINGULAR;
-	} else if (name == "select_left_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DISJOINT;
-	} else if (name == "select_left_disjoint_coord") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DISJOINT_COORD;
-	} else if (name == "select_left2") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2;
-	} else if (name == "select_left2_delete_features") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_FEATURES;
-	} else if (name == "select_left2_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DISJOINT;
-	} else if (name == "select_left2_disjoint_concord_singular") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DISJOINT_CONCORD_SINGULAR;
-	} else if (name == "select_left2_disjoint_coord") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DISJOINT_COORD;
-	} else if (name == "select_left3_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT3_DISJOINT;
-	} else if (name == "select_left4_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT4_DISJOINT;
-	} else if (name == "select_left5_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT5_DISJOINT;
-	} else if (name == "select_left6_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT6_DISJOINT;
-	} else if (name == "select_left7_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT7_DISJOINT;
-	} else if (name == "select_left_delete_head") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD;
-	} else if (name == "select_left_delete_head_concord_singular") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD_CONCORD_SINGULAR;
-	} else if (name == "select_left_delete_head_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD_DISJOINT;
-	} else if (name == "select_left_delete_head_disjoint_coord") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD_DISJOINT_COORD;
-	} else if (name == "select_left_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_KEEP_FUNCTION;
-	} else if (name == "select_left_keep_function_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_KEEP_FUNCTION_DISJOINT;
-	} else if (name == "select_left2_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_KEEP_FUNCTION;
-	} else if (name == "select_left2_keep_function_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_KEEP_FUNCTION_DISJOINT;
-	} else if (name == "select_left3_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT3_KEEP_FUNCTION;
-	} else if (name == "select_left_delete_function") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FUNCTION;
-	} else if (name == "select_left_delete_function_features") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FUNCTION_FEATURES;
-	} else if (name == "select_left_delete_answer") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_ANSWER;
-	} else if (name == "select_left2_delete_answer") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_ANSWER;
-	} else if (name == "select_left3_delete_answer") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_ANSWER;
-	} else if (name == "select_left3_delete_answer_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_ANSWER_DISJOINT;
-	} else if (name == "select_left5_delete_answer_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT5_DELETE_ANSWER_DISJOINT;
-	} else if (name == "select_left_delete_answer_head") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_ANSWER_HEAD;
-	} else if (name == "select_left_delete_count_answer") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_COUNT_ANSWER;
-	} else if (name == "select_left2_delete_count_answer") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_COUNT_ANSWER;
-	} else if (name == "select_left3_delete_count_answer") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_COUNT_ANSWER;
-	} else if (name == "select_left_delete_function_answer") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FUNCTION_ANSWER;
-	} else if (name == "select_left2_delete_function_answer") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_FUNCTION_ANSWER;
-	} else if (name == "select_left3_delete_function_answer") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_FUNCTION_ANSWER;
-	} else if (name == "select_left_delete_not") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_NOT;
-	} else if (name == "select_left_delete_not_features") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_NOT_FEATURES;
-	} else if (name == "select_right") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT;
-	} else if (name == "select_right2") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT2;
-	} else if (name == "select_right2_singular") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT2_SINGULAR;
-	} else if (name == "select_right2_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT2_DISJOINT;
-	} else if (name == "select_right3_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT3_DISJOINT;
-	} else if (name == "select_right4_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT4_DISJOINT;
-	} else if (name == "select_right5_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT5_DISJOINT;
-	} else if (name == "select_right6_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT6_DISJOINT;
-	} else if (name == "select_right7_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT7_DISJOINT;
-	} else if (name == "select_right_delete_head") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT_DELETE_HEAD;
-	} else if (name == "select_right_delete_function") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT_DELETE_FUNCTION;
-	} else if (name == "select_right2_delete_answer") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_RIGHT2_DELETE_ANSWER;
-	} else if (name == "select_function") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_FUNCTION;
-	} else if (name == "select_function_delete_features") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_FUNCTION_DELETE_FEATURES;
-	} else if (name == "select_function_delete_head") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_FUNCTION_DELETE_HEAD;
-	} else if (name == "select_function_delete_head_features") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_FUNCTION_DELETE_HEAD_FEATURES;
-	} else if (name == "delete_left") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT;
-	} else if (name == "delete_left_features") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_FEATURES;
-	} else if (name == "delete_left_coord") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_COORD;
-	} else if (name == "delete_left_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_DISJOINT;
-	} else if (name == "delete_left_disjoint_coord") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_DISJOINT_COORD;
-	} else if (name == "delete_left2") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2;
-	} else if (name == "delete_left2_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_DISJOINT;
-	} else if (name == "delete_left2_disjoint_coord") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_DISJOINT_COORD;
-	} else if (name == "delete_left2_disjoint_features") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_DISJOINT_FEATURES;
-	} else if (name == "delete_left3_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_DISJOINT;
-	} else if (name == "delete_left3_disjoint_features") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_DISJOINT_FEATURES;
-	} else if (name == "delete_left4_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT4_DISJOINT;
-	} else if (name == "delete_left5_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT5_DISJOINT;
-	} else if (name == "delete_left6_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT6_DISJOINT;
-	} else if (name == "delete_left7_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT7_DISJOINT;
-	} else if (name == "delete_left_head") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD;
-	} else if (name == "delete_left_head_features") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_FEATURES;
-	} else if (name == "delete_left2_head") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_HEAD;
-	} else if (name == "delete_left2_head_features") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_HEAD_FEATURES;
-	} else if (name == "delete_left_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION;
-	} else if (name == "delete_left_function_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION_DISJOINT;
-	} else if (name == "delete_left2_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_FUNCTION;
-	} else if (name == "delete_left2_function_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_FUNCTION_DISJOINT;
-	} else if (name == "delete_left_function_head") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION_HEAD;
-	} else if (name == "delete_left3_function_head") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_FUNCTION_HEAD;
-	} else if (name == "delete_left_keep_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_KEEP_ANSWER;
-	} else if (name == "delete_left_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_KEEP_FUNCTION;
-	} else if (name == "delete_left_features_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_FEATURES_KEEP_FUNCTION;
-	} else if (name == "delete_left_head_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_KEEP_FUNCTION;
-	} else if (name == "delete_left_head_features_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_FEATURES_KEEP_FUNCTION;
-	} else if (name == "delete_left_head_keep_not") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_KEEP_NOT;
-	} else if (name == "delete_left_head_features_keep_not") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_FEATURES_KEEP_NOT;
-	} else if (name == "delete_left_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER;
-	} else if (name == "delete_left2_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_ANSWER;
-	} else if (name == "delete_left3_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER;
-	} else if (name == "delete_left3_answer_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER_DISJOINT;
-	} else if (name == "delete_left5_answer_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT5_ANSWER_DISJOINT;
-	} else if (name == "delete_left_answer_head") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER_HEAD;
-	} else if (name == "delete_left_count_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_COUNT_ANSWER;
-	} else if (name == "delete_left2_count_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_COUNT_ANSWER;
-	} else if (name == "delete_left3_count_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_COUNT_ANSWER;
-	} else if (name == "delete_left_function_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION_ANSWER;
-	} else if (name == "delete_left2_function_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_FUNCTION_ANSWER;
-	} else if (name == "delete_left3_function_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_FUNCTION_ANSWER;
-	} else if (name == "delete_left_answer_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER_KEEP_FUNCTION;
-	} else if (name == "delete_left_answer_head_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER_HEAD_KEEP_FUNCTION;
-	} else if (name == "delete_left2_answer_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_ANSWER_KEEP_FUNCTION;
-	} else if (name == "delete_left2_answer_head_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT2_ANSWER_HEAD_KEEP_FUNCTION;
-	} else if (name == "delete_left3_answer_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER_KEEP_FUNCTION;
-	} else if (name == "delete_left3_answer_head_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER_HEAD_KEEP_FUNCTION;
-	} else if (name == "delete_right") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT;
-	} else if (name == "delete_right2") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT2;
-	} else if (name == "delete_right2_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT2_DISJOINT;
-	} else if (name == "delete_right3_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT3_DISJOINT;
-	} else if (name == "delete_right4_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT4_DISJOINT;
-	} else if (name == "delete_right5_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT5_DISJOINT;
-	} else if (name == "delete_right6_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT6_DISJOINT;
-	} else if (name == "delete_right7_disjoint") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT7_DISJOINT;
-	} else if (name == "delete_right_head") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT_HEAD;
-	} else if (name == "delete_right_head_keep_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT_HEAD_KEEP_FUNCTION;
-	} else if (name == "delete_right2_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_RIGHT2_ANSWER;
-	} else if (name == "delete_function") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_FUNCTION;
-	} else if (name == "delete_function_head") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_FUNCTION_HEAD;
-	} else if (name == "delete_function_features") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_FUNCTION_FEATURES;
-	} else if (name == "delete_count") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_COUNT;
-	} else if (name == "delete_count_head") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_COUNT_HEAD;
-	} else if (name == "delete_count_head_concord_plural") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_COUNT_HEAD_CONCORD_PLURAL;
-	} else if (name == "delete_count_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_COUNT_ANSWER;
-	} else if (name == "delete_not") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_NOT;
-	} else if (name == "delete_not_features") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_NOT_FEATURES;
-	} else if (name == "delete_not_infinitive") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_NOT_INFINITIVE;
-	} else if (name == "delete_left_not_head") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_NOT_HEAD;
-	} else if (name == "delete_left_not_head_features") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_LEFT_NOT_HEAD_FEATURES;
-	} else if (name == "delete_answer") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_ANSWER;
-	} else if (name == "delete_answer_has_loc") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_ANSWER_HAS_LOC;
-	} else if (name == "select_arg1") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG1;
-	} else if (name == "select_arg1_singular") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR;
-	} else if (name == "select_arg1_plural") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_PLURAL;
-	} else if (name == "select_arg1_only") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY;
-	} else if (name == "select_arg1_delete_features") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_DELETE_FEATURES;
-	} else if (name == "select_arg1_only_delete_features") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY_DELETE_FEATURES;
-	} else if (name == "select_arg2") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG2;
-	} else if (name == "select_arg2_only") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY;
-	} else if (name == "select_arg2_delete_features") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG2_DELETE_FEATURES;
-	} else if (name == "select_arg2_only_delete_features") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY_DELETE_FEATURES;
-	} else if (name == "select_arg3") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG3;
-	} else if (name == "select_arg3_only") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY;
-	} else if (name == "select_arg3_delete_features") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES;
-	} else if (name == "select_arg3_only_delete_features") {
-		f.type = datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY_DELETE_FEATURES;
-	} else if (name == "delete_arg1") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_ARG1;
-	} else if (name == "delete_arg1_singular") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_ARG1_SINGULAR;
-	} else if (name == "delete_arg1_plural") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_ARG1_PLURAL;
-	} else if (name == "delete_arg1_features") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_ARG1_FEATURES;
-	} else if (name == "delete_arg2") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_ARG2;
-	} else if (name == "delete_arg2_features") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_ARG2_FEATURES;
-	} else if (name == "delete_arg3") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_ARG3;
-	} else if (name == "delete_args") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_ARGS;
-	} else if (name == "delete_args_concord_singular") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_ARGS_CONCORD_SINGULAR;
-	} else if (name == "delete_args_keep_plural") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_ARGS_KEEP_PLURAL;
-	} else if (name == "head_arg1_select_arg2") {
-		f.type = datalog_expression_root::FUNCTION_HEAD_ARG1_SELECT_ARG2;
-	} else if (name == "head_arg1_select_arg2_only") {
-		f.type = datalog_expression_root::FUNCTION_HEAD_ARG1_SELECT_ARG2_ONLY;
-	} else if (name == "empty_tuple") {
-		f.type = datalog_expression_root::FUNCTION_EMPTY_TUPLE;
-	} else if (name == "empty_tuple_only") {
-		f.type = datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY;
-	} else if (name == "empty_tuple_only_keep_concord_singular") {
-		f.type = datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_CONCORD_SINGULAR;
-	} else if (name == "keep_null") {
-		f.type = datalog_expression_root::FUNCTION_KEEP_NULL;
-	} else if (name == "empty_arg2") {
-		f.type = datalog_expression_root::FUNCTION_EMPTY_ARG2;
-	} else if (name == "empty_args") {
-		f.type = datalog_expression_root::FUNCTION_EMPTY_ARGS;
-	} else if (name == "arg2_zero_arity") {
-		f.type = datalog_expression_root::FUNCTION_ARG2_ZERO_ARITY;
-	} else if (name == "loc") {
-		f.type = datalog_expression_root::FUNCTION_LOC;
-	} else if (name == "two_predicates") {
-		f.type = datalog_expression_root::FUNCTION_TWO_PREDICATES;
-	} else if (name == "singular") {
-		f.type = datalog_expression_root::FUNCTION_SINGULAR;
-	} else if (name == "plural") {
-		f.type = datalog_expression_root::FUNCTION_PLURAL;
-	} else if (name == "uncountable") {
-		f.type = datalog_expression_root::FUNCTION_UNCOUNTABLE;
-	} else if (name == "concord_singular") {
-		f.type = datalog_expression_root::FUNCTION_CONCORD_SINGULAR;
-	} else if (name == "concord_plural") {
-		f.type = datalog_expression_root::FUNCTION_CONCORD_PLURAL;
-	} else if (name == "concord_uncountable") {
-		f.type = datalog_expression_root::FUNCTION_CONCORD_UNCOUNTABLE;
-	} else if (name == "concord_non_singular") {
-		f.type = datalog_expression_root::FUNCTION_CONCORD_NON_SINGULAR;
-	} else if (name == "concord_non_plural") {
-		f.type = datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL;
-	} else if (name == "concord_non_plural_keep_singular") {
-		f.type = datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL_KEEP_SINGULAR;
-	} else if (name == "concord_all") {
-		f.type = datalog_expression_root::FUNCTION_CONCORD_ALL;
-	} else if (name == "keep_concord_singular") {
-		f.type = datalog_expression_root::FUNCTION_KEEP_CONCORD_SINGULAR;
-	} else if (name == "keep_concord_plural") {
-		f.type = datalog_expression_root::FUNCTION_KEEP_CONCORD_PLURAL;
-	} else if (name == "keep_concord_uncountable") {
-		f.type = datalog_expression_root::FUNCTION_KEEP_CONCORD_UNCOUNTABLE;
-	} else if (name == "delete_not_concord_singular") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_NOT_CONCORD_SINGULAR;
-	} else if (name == "delete_not_concord_plural") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_NOT_CONCORD_PLURAL;
-	} else if (name == "keep_singular") {
-		f.type = datalog_expression_root::FUNCTION_KEEP_SINGULAR;
-	} else if (name == "keep_plural") {
-		f.type = datalog_expression_root::FUNCTION_KEEP_PLURAL;
-	} else if (name == "keep_uncountable") {
-		f.type = datalog_expression_root::FUNCTION_KEEP_UNCOUNTABLE;
-	} else if (name == "infinitive") {
-		f.type = datalog_expression_root::FUNCTION_INFINITIVE;
-	} else if (name == "present_participle") {
-		f.type = datalog_expression_root::FUNCTION_PRESENT_PARTICIPLE;
-	} else if (name == "past_participle") {
-		f.type = datalog_expression_root::FUNCTION_PAST_PARTICIPLE;
-	} else if (name == "keep_present_participle") {
-		f.type = datalog_expression_root::FUNCTION_KEEP_PRESENT_PARTICIPLE;
-	} else if (name == "keep_past_participle") {
-		f.type = datalog_expression_root::FUNCTION_KEEP_PAST_PARTICIPLE;
-	} else if (name == "flip_predicate") {
-		f.type = datalog_expression_root::FUNCTION_FLIP_PREDICATE;
-	} else if (name == "flip_predicate_past_participle") {
-		f.type = datalog_expression_root::FUNCTION_FLIP_PREDICATE_PAST_PARTICIPLE;
-	} else if (name == "flip_predicate_keep_past_participle") {
-		f.type = datalog_expression_root::FUNCTION_FLIP_PREDICATE_KEEP_PAST_PARTICIPLE;
-	} else if (name == "keep_features") {
-		f.type = datalog_expression_root::FUNCTION_KEEP_FEATURES;
-	} else if (name == "delete_features") {
-		f.type = datalog_expression_root::FUNCTION_DELETE_FEATURES;
-	} else {
-		fprintf(stderr, "parse ERROR: Unrecognized semantic transformation function name.\n");
-		return false;
-	}
-	return true;
-}
-
-template<typename Stream>
-bool print(const datalog_expression_root::function& f, Stream& out) {
-	switch (f.type) {
-	case datalog_expression_root::FUNCTION_EMPTY:
-		return print("empty", out);
-	case datalog_expression_root::FUNCTION_IDENTITY:
-		return print("identity", out);
-	case datalog_expression_root::FUNCTION_IDENTITY_COORD:
-		return print("identity_coord", out);
-	case datalog_expression_root::FUNCTION_NULL:
-		return print("null", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT:
-		return print("select_left", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_COORD:
-		return print("select_left_coord", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FEATURES:
-		return print("select_left_delete_features", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_CONCORD_SINGULAR:
-		return print("select_left_concord_singular", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DISJOINT:
-		return print("select_left_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DISJOINT_COORD:
-		return print("select_left_disjoint_coord", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT2:
-		return print("select_left2", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_FEATURES:
-		return print("select_left2_delete_features", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT2_DISJOINT:
-		return print("select_left2_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT2_DISJOINT_CONCORD_SINGULAR:
-		return print("select_left2_disjoint_concord_singular", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT2_DISJOINT_COORD:
-		return print("select_left2_disjoint_coord", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT3_DISJOINT:
-		return print("select_left3_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT4_DISJOINT:
-		return print("select_left4_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT5_DISJOINT:
-		return print("select_left5_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT6_DISJOINT:
-		return print("select_left6_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT7_DISJOINT:
-		return print("select_left7_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD:
-		return print("select_left_delete_head", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD_CONCORD_SINGULAR:
-		return print("select_left_delete_head_concord_singular", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD_DISJOINT:
-		return print("select_left_delete_head_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_HEAD_DISJOINT_COORD:
-		return print("select_left_delete_head_disjoint_coord", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_KEEP_FUNCTION:
-		return print("select_left_keep_function", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_KEEP_FUNCTION_DISJOINT:
-		return print("select_left_keep_function_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT2_KEEP_FUNCTION:
-		return print("select_left2_keep_function", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT2_KEEP_FUNCTION_DISJOINT:
-		return print("select_left2_keep_function_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT3_KEEP_FUNCTION:
-		return print("select_left3_keep_function", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FUNCTION:
-		return print("select_left_delete_function", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FUNCTION_FEATURES:
-		return print("select_left_delete_function_features", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_ANSWER:
-		return print("select_left_delete_answer", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_ANSWER:
-		return print("select_left2_delete_answer", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_ANSWER:
-		return print("select_left3_delete_answer", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_ANSWER_DISJOINT:
-		return print("select_left3_delete_answer_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT5_DELETE_ANSWER_DISJOINT:
-		return print("select_left5_delete_answer_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_ANSWER_HEAD:
-		return print("select_left_delete_answer_head", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_COUNT_ANSWER:
-		return print("select_left_delete_count_answer", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_COUNT_ANSWER:
-		return print("select_left2_delete_count_answer", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_COUNT_ANSWER:
-		return print("select_left3_delete_count_answer", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FUNCTION_ANSWER:
-		return print("select_left_delete_function_answer", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT2_DELETE_FUNCTION_ANSWER:
-		return print("select_left2_delete_function_answer", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT3_DELETE_FUNCTION_ANSWER:
-		return print("select_left3_delete_function_answer", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_NOT:
-		return print("select_left_delete_not", out);
-	case datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_NOT_FEATURES:
-		return print("select_left_delete_not_features", out);
-	case datalog_expression_root::FUNCTION_SELECT_RIGHT:
-		return print("select_right", out);
-	case datalog_expression_root::FUNCTION_SELECT_RIGHT2:
-		return print("select_right2", out);
-	case datalog_expression_root::FUNCTION_SELECT_RIGHT2_SINGULAR:
-		return print("select_right2_singular", out);
-	case datalog_expression_root::FUNCTION_SELECT_RIGHT2_DISJOINT:
-		return print("select_right2_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_RIGHT3_DISJOINT:
-		return print("select_right3_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_RIGHT4_DISJOINT:
-		return print("select_right4_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_RIGHT5_DISJOINT:
-		return print("select_right5_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_RIGHT6_DISJOINT:
-		return print("select_right6_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_RIGHT7_DISJOINT:
-		return print("select_right7_disjoint", out);
-	case datalog_expression_root::FUNCTION_SELECT_RIGHT_DELETE_HEAD:
-		return print("select_right_delete_head", out);
-	case datalog_expression_root::FUNCTION_SELECT_RIGHT_DELETE_FUNCTION:
-		return print("select_right_delete_function", out);
-	case datalog_expression_root::FUNCTION_SELECT_RIGHT2_DELETE_ANSWER:
-		return print("select_right2_delete_answer", out);
-	case datalog_expression_root::FUNCTION_SELECT_FUNCTION:
-		return print("select_function", out);
-	case datalog_expression_root::FUNCTION_SELECT_FUNCTION_DELETE_FEATURES:
-		return print("select_function_delete_features", out);
-	case datalog_expression_root::FUNCTION_SELECT_FUNCTION_DELETE_HEAD:
-		return print("select_function_delete_head", out);
-	case datalog_expression_root::FUNCTION_SELECT_FUNCTION_DELETE_HEAD_FEATURES:
-		return print("select_function_delete_head_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT:
-		return print("delete_left", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_COORD:
-		return print("delete_left_coord", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_FEATURES:
-		return print("delete_left_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_DISJOINT:
-		return print("delete_left_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_DISJOINT_COORD:
-		return print("delete_left_disjoint_coord", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2:
-		return print("delete_left2", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2_DISJOINT:
-		return print("delete_left2_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2_DISJOINT_COORD:
-		return print("delete_left2_disjoint_coord", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2_DISJOINT_FEATURES:
-		return print("delete_left2_disjoint_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT3_DISJOINT:
-		return print("delete_left3_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT3_DISJOINT_FEATURES:
-		return print("delete_left3_disjoint_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT4_DISJOINT:
-		return print("delete_left4_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT5_DISJOINT:
-		return print("delete_left5_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT6_DISJOINT:
-		return print("delete_left6_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT7_DISJOINT:
-		return print("delete_left7_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD:
-		return print("delete_left_head", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_FEATURES:
-		return print("delete_left_head_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2_HEAD:
-		return print("delete_left2_head", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2_HEAD_FEATURES:
-		return print("delete_left2_head_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION:
-		return print("delete_left_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION_DISJOINT:
-		return print("delete_left_function_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2_FUNCTION:
-		return print("delete_left2_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2_FUNCTION_DISJOINT:
-		return print("delete_left2_function_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION_HEAD:
-		return print("delete_left_function_head", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT3_FUNCTION_HEAD:
-		return print("delete_left3_function_head", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_KEEP_ANSWER:
-		return print("delete_left_keep_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_KEEP_FUNCTION:
-		return print("delete_left_keep_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_FEATURES_KEEP_FUNCTION:
-		return print("delete_left_features_keep_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_KEEP_FUNCTION:
-		return print("delete_left_head_keep_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_FEATURES_KEEP_FUNCTION:
-		return print("delete_left_head_features_keep_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_KEEP_NOT:
-		return print("delete_left_head_keep_not", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_HEAD_FEATURES_KEEP_NOT:
-		return print("delete_left_head_features_keep_not", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER:
-		return print("delete_left_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2_ANSWER:
-		return print("delete_left2_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER:
-		return print("delete_left3_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER_DISJOINT:
-		return print("delete_left3_answer_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT5_ANSWER_DISJOINT:
-		return print("delete_left5_answer_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER_HEAD:
-		return print("delete_left_answer_head", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_COUNT_ANSWER:
-		return print("delete_left_count_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2_COUNT_ANSWER:
-		return print("delete_left2_count_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT3_COUNT_ANSWER:
-		return print("delete_left3_count_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_FUNCTION_ANSWER:
-		return print("delete_left_function_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2_FUNCTION_ANSWER:
-		return print("delete_left2_function_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT3_FUNCTION_ANSWER:
-		return print("delete_left3_function_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER_KEEP_FUNCTION:
-		return print("delete_left_answer_keep_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_ANSWER_HEAD_KEEP_FUNCTION:
-		return print("delete_left_answer_head_keep_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2_ANSWER_KEEP_FUNCTION:
-		return print("delete_left2_answer_keep_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT2_ANSWER_HEAD_KEEP_FUNCTION:
-		return print("delete_left2_answer_head_keep_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER_KEEP_FUNCTION:
-		return print("delete_left3_answer_keep_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT3_ANSWER_HEAD_KEEP_FUNCTION:
-		return print("delete_left3_answer_head_keep_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_RIGHT:
-		return print("delete_right", out);
-	case datalog_expression_root::FUNCTION_DELETE_RIGHT2:
-		return print("delete_right2", out);
-	case datalog_expression_root::FUNCTION_DELETE_RIGHT2_DISJOINT:
-		return print("delete_right2_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_RIGHT3_DISJOINT:
-		return print("delete_right3_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_RIGHT4_DISJOINT:
-		return print("delete_right4_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_RIGHT5_DISJOINT:
-		return print("delete_right5_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_RIGHT6_DISJOINT:
-		return print("delete_right6_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_RIGHT7_DISJOINT:
-		return print("delete_right7_disjoint", out);
-	case datalog_expression_root::FUNCTION_DELETE_RIGHT_HEAD:
-		return print("delete_right_head", out);
-	case datalog_expression_root::FUNCTION_DELETE_RIGHT_HEAD_KEEP_FUNCTION:
-		return print("delete_right_head_keep_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_RIGHT2_ANSWER:
-		return print("delete_right2_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_COUNT:
-		return print("delete_count", out);
-	case datalog_expression_root::FUNCTION_DELETE_COUNT_HEAD:
-		return print("delete_count_head", out);
-	case datalog_expression_root::FUNCTION_DELETE_COUNT_HEAD_CONCORD_PLURAL:
-		return print("delete_count_head_concord_plural", out);
-	case datalog_expression_root::FUNCTION_DELETE_COUNT_ANSWER:
-		return print("delete_count_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_NOT:
-		return print("delete_not", out);
-	case datalog_expression_root::FUNCTION_DELETE_NOT_FEATURES:
-		return print("delete_not_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_NOT_INFINITIVE:
-		return print("delete_not_infinitive", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_NOT_HEAD:
-		return print("delete_left_not_head", out);
-	case datalog_expression_root::FUNCTION_DELETE_LEFT_NOT_HEAD_FEATURES:
-		return print("delete_left_not_head_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_FUNCTION:
-		return print("delete_function", out);
-	case datalog_expression_root::FUNCTION_DELETE_FUNCTION_HEAD:
-		return print("delete_function_head", out);
-	case datalog_expression_root::FUNCTION_DELETE_FUNCTION_FEATURES:
-		return print("delete_function_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_ANSWER:
-		return print("delete_answer", out);
-	case datalog_expression_root::FUNCTION_DELETE_ANSWER_HAS_LOC:
-		return print("delete_answer_has_loc", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG1:
-		return print("select_arg1", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG1_SINGULAR:
-		return print("select_arg1_singular", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG1_PLURAL:
-		return print("select_arg1_plural", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY:
-		return print("select_arg1_only", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG1_DELETE_FEATURES:
-		return print("select_arg1_delete_features", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG1_ONLY_DELETE_FEATURES:
-		return print("select_arg1_only_delete_features", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG2:
-		return print("select_arg2", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY:
-		return print("select_arg2_only", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG2_DELETE_FEATURES:
-		return print("select_arg2_delete_features", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG2_ONLY_DELETE_FEATURES:
-		return print("select_arg2_only_delete_features", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG3:
-		return print("select_arg3", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY:
-		return print("select_arg3_only", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG3_DELETE_FEATURES:
-		return print("select_arg3_delete_features", out);
-	case datalog_expression_root::FUNCTION_SELECT_ARG3_ONLY_DELETE_FEATURES:
-		return print("select_arg3_only_delete_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_ARG1:
-		return print("delete_arg1", out);
-	case datalog_expression_root::FUNCTION_DELETE_ARG1_SINGULAR:
-		return print("delete_arg1_singular", out);
-	case datalog_expression_root::FUNCTION_DELETE_ARG1_PLURAL:
-		return print("delete_arg1_plural", out);
-	case datalog_expression_root::FUNCTION_DELETE_ARG1_FEATURES:
-		return print("delete_arg1_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_ARG2:
-		return print("delete_arg2", out);
-	case datalog_expression_root::FUNCTION_DELETE_ARG2_FEATURES:
-		return print("delete_arg2_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_ARG3:
-		return print("delete_arg3", out);
-	case datalog_expression_root::FUNCTION_DELETE_ARGS:
-		return print("delete_args", out);
-	case datalog_expression_root::FUNCTION_DELETE_ARGS_CONCORD_SINGULAR:
-		return print("delete_args_concord_singular", out);
-	case datalog_expression_root::FUNCTION_DELETE_ARGS_KEEP_PLURAL:
-		return print("delete_args_keep_plural", out);
-	case datalog_expression_root::FUNCTION_HEAD_ARG1_SELECT_ARG2:
-		return print("head_arg1_select_arg2", out);
-	case datalog_expression_root::FUNCTION_HEAD_ARG1_SELECT_ARG2_ONLY:
-		return print("head_arg1_select_arg2_only", out);
-	case datalog_expression_root::FUNCTION_EMPTY_TUPLE:
-		return print("empty_tuple", out);
-	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY:
-		return print("empty_tuple_only", out);
-	case datalog_expression_root::FUNCTION_EMPTY_TUPLE_ONLY_KEEP_CONCORD_SINGULAR:
-		return print("empty_tuple_only_keep_concord_singular", out);
-	case datalog_expression_root::FUNCTION_KEEP_NULL:
-		return print("keep_null", out);
-	case datalog_expression_root::FUNCTION_EMPTY_ARG2:
-		return print("empty_arg2", out);
-	case datalog_expression_root::FUNCTION_EMPTY_ARGS:
-		return print("empty_args", out);
-	case datalog_expression_root::FUNCTION_ARG2_ZERO_ARITY:
-		return print("arg2_zero_arity", out);
-	case datalog_expression_root::FUNCTION_LOC:
-		return print("loc", out);
-	case datalog_expression_root::FUNCTION_TWO_PREDICATES:
-		return print("two_predicates", out);
-	case datalog_expression_root::FUNCTION_SINGULAR:
-		return print("singular", out);
-	case datalog_expression_root::FUNCTION_PLURAL:
-		return print("plural", out);
-	case datalog_expression_root::FUNCTION_UNCOUNTABLE:
-		return print("uncountable", out);
-	case datalog_expression_root::FUNCTION_CONCORD_SINGULAR:
-		return print("concord_singular", out);
-	case datalog_expression_root::FUNCTION_CONCORD_PLURAL:
-		return print("concord_plural", out);
-	case datalog_expression_root::FUNCTION_CONCORD_UNCOUNTABLE:
-		return print("concord_uncountable", out);
-	case datalog_expression_root::FUNCTION_CONCORD_NON_SINGULAR:
-		return print("concord_non_singular", out);
-	case datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL:
-		return print("concord_non_plural", out);
-	case datalog_expression_root::FUNCTION_CONCORD_NON_PLURAL_KEEP_SINGULAR:
-		return print("concord_non_plural_keep_singular", out);
-	case datalog_expression_root::FUNCTION_CONCORD_ALL:
-		return print("concord_all", out);
-	case datalog_expression_root::FUNCTION_KEEP_CONCORD_SINGULAR:
-		return print("keep_concord_singular", out);
-	case datalog_expression_root::FUNCTION_KEEP_CONCORD_PLURAL:
-		return print("keep_concord_plural", out);
-	case datalog_expression_root::FUNCTION_KEEP_CONCORD_UNCOUNTABLE:
-		return print("keep_concord_uncountable", out);
-	case datalog_expression_root::FUNCTION_DELETE_NOT_CONCORD_SINGULAR:
-		return print("delete_not_concord_singular", out);
-	case datalog_expression_root::FUNCTION_DELETE_NOT_CONCORD_PLURAL:
-		return print("delete_not_concord_plural", out);
-	case datalog_expression_root::FUNCTION_KEEP_SINGULAR:
-		return print("keep_singular", out);
-	case datalog_expression_root::FUNCTION_KEEP_PLURAL:
-		return print("keep_plural", out);
-	case datalog_expression_root::FUNCTION_KEEP_UNCOUNTABLE:
-		return print("keep_uncountable", out);
-	case datalog_expression_root::FUNCTION_INFINITIVE:
-		return print("infinitive", out);
-	case datalog_expression_root::FUNCTION_PRESENT_PARTICIPLE:
-		return print("present_participle", out);
-	case datalog_expression_root::FUNCTION_PAST_PARTICIPLE:
-		return print("past_participle", out);
-	case datalog_expression_root::FUNCTION_KEEP_PRESENT_PARTICIPLE:
-		return print("keep_present_participle", out);
-	case datalog_expression_root::FUNCTION_KEEP_PAST_PARTICIPLE:
-		return print("keep_past_participle", out);
-	case datalog_expression_root::FUNCTION_FLIP_PREDICATE:
-		return print("flip_predicate", out);
-	case datalog_expression_root::FUNCTION_FLIP_PREDICATE_PAST_PARTICIPLE:
-		return print("flip_predicate_past_participle", out);
-	case datalog_expression_root::FUNCTION_FLIP_PREDICATE_KEEP_PAST_PARTICIPLE:
-		return print("flip_predicate_keep_past_participle", out);
-	case datalog_expression_root::FUNCTION_KEEP_FEATURES:
-		return print("keep_features", out);
-	case datalog_expression_root::FUNCTION_DELETE_FEATURES:
-		return print("delete_features", out);
-	case datalog_expression_root::FUNCTION_TERMINAL:
-		return print("terminal", out);
-	}
-	fprintf(stderr, "print ERROR: Unrecognized semantic transformation function.\n");
-	return false;
-}
-
-template<typename Stream>
 inline bool print_variable(unsigned int variable, Stream& out) {
 	if (variable == 0) return print('0', out);
 	else return print((char) ('A' + variable - 1), out);
@@ -3487,11 +3511,6 @@ bool print(const datalog_expression_root& exp, Stream& out, Printer&&... printer
 		index++;
 	}
 	return (index == 0 || print(']', out));
-}
-
-template<typename Stream, typename... Printer>
-inline bool print(const datalog_expression_root::invert_iterator& inverter, Stream& out, Printer&&... printer) {
-	return print(*inverter.inverse, out, std::forward<Printer>(printer)...);
 }
 
 bool datalog_interpret_args(
@@ -4111,7 +4130,7 @@ bool initialize_tree(
 		}
 
 		datalog_expression_root child;
-		if (!apply(selected_rule.functions[k], logical_form, child)) {
+		if (!apply(selected_rule.transformations[k], logical_form, child)) {
 			free(*tree); free(tree);
 			tree = NULL; return false;
 		} if (!initialize_tree(G, tree->children[k], {sentence.tokens + prev, next - prev}, child, selected_rule.nonterminals[k])) {
@@ -5159,7 +5178,7 @@ inline bool flip_predicate(datalog_expression& exp) {
 
 bool apply(datalog_expression_root::function function, const datalog_expression_root& src, datalog_expression_root& dst)
 {
-	/* first invert the syntactic features */
+	/* first apply the syntactic features */
 	if (function.type == datalog_expression_root::FUNCTION_NULL
 	 || function.type == datalog_expression_root::FUNCTION_DELETE_FEATURES
 	 || function.type == datalog_expression_root::FUNCTION_SELECT_LEFT_DELETE_FEATURES
@@ -5792,7 +5811,6 @@ bool apply(datalog_expression_root::function function, const datalog_expression_
 		return true;
 
 	case datalog_expression_root::FUNCTION_EMPTY:
-	case datalog_expression_root::FUNCTION_TERMINAL:
 		break;
 	}
 	fprintf(stderr, "apply ERROR: Unrecognized transformation function.\n");
@@ -7725,44 +7743,6 @@ bool exclude_features(datalog_expression_root::feature feature,
 		break;
 	}
 	fprintf(stderr, "exclude_features ERROR: Unrecognized semantic feature.\n");
-	exit(EXIT_FAILURE);
-}
-
-bool feature_pruneable(datalog_expression_root::feature feature) {
-	switch (feature) {
-	case datalog_expression_root::FEATURE_SECOND_PREDICATE:
-	case datalog_expression_root::FEATURE_THIRD_PREDICATE:
-	case datalog_expression_root::FEATURE_LAST_PREDICATE:
-	case datalog_expression_root::FEATURE_DIRECTION:
-	case datalog_expression_root::FEATURE_DIRECTION_ROOT:
-	case datalog_expression_root::FEATURE_ARG1:
-	case datalog_expression_root::FEATURE_ARG1_ONLY:
-	case datalog_expression_root::FEATURE_ARG1_STRING:
-	case datalog_expression_root::FEATURE_ARG2:
-	case datalog_expression_root::FEATURE_ARG2_ONLY:
-	case datalog_expression_root::FEATURE_ARG3:
-	case datalog_expression_root::FEATURE_ARG3_ONLY:
-	case datalog_expression_root::FEATURE_NUMBER:
-	case datalog_expression_root::FEATURE_INFLECTION:
-		return false;
-	case datalog_expression_root::FEATURE_FIRST_PREDICATE:
-	case datalog_expression_root::FEATURE_FUNCTION:
-	case datalog_expression_root::FEATURE_FUNCTION_ONLY:
-	case datalog_expression_root::FEATURE_FUNCTION_ANSWER:
-	case datalog_expression_root::FEATURE_HAS_FUNCTION:
-	case datalog_expression_root::FEATURE_HAS_FUNCTION_NOT:
-	case datalog_expression_root::FEATURE_HAS_FUNCTION_COUNT_NOT:
-	case datalog_expression_root::FEATURE_HAS_FUNCTION_ANSWER:
-	case datalog_expression_root::FEATURE_PREDICATE_ARITY:
-	case datalog_expression_root::FEATURE_ARG2_ARITY:
-	case datalog_expression_root::FEATURE_PREDICATE:
-	case datalog_expression_root::FEATURE_PREDICATE_ONLY:
-	case datalog_expression_root::FEATURE_CONSTANT:
-		return true;
-	case datalog_expression_root::FEATURE_NULL:
-		break;
-	}
-	fprintf(stderr, "feature_pruneable ERROR: Unrecognized semantic feature.\n");
 	exit(EXIT_FAILURE);
 }
 
@@ -11416,7 +11396,6 @@ bool invert(
 		return true;
 
 	case datalog_expression_root::FUNCTION_EMPTY:
-	case datalog_expression_root::FUNCTION_TERMINAL:
 		break;
 	}
 	fprintf(stderr, "invert ERROR: Unrecognized transformation function.\n");
@@ -11424,23 +11403,25 @@ bool invert(
 }
 
 bool invert(
-	datalog_expression_root::invert_iterator& inverter,
+	datalog_expression_root*& inverse,
+	unsigned int& inverse_count,
 	datalog_expression_root::function function,
-	const datalog_expression_root& first, const datalog_expression_root& second)
+	const datalog_expression_root& first,
+	const datalog_expression_root& second)
 {
-	inverter.inverse = (datalog_expression_root*) malloc(sizeof(datalog_expression_root));
-	if (inverter.inverse == NULL) {
+	inverse = (datalog_expression_root*) malloc(sizeof(datalog_expression_root));
+	if (inverse == NULL) {
 		fprintf(stderr, "invert ERROR: Out of memory.\n");
 		return false;
-	} else if (!invert(*inverter.inverse, function, first, second)) {
-		free(inverter.inverse);
+	} else if (!invert(*inverse, function, first, second)) {
+		free(inverse);
 		return false;
 	}
+	inverse_count = 1;
 
-	unsigned int head = get_head(inverter.inverse->root);
+	unsigned int head = get_head(inverse->root);
 	if (head != 1 && head != DATALOG_LABEL_EMPTY && head != DATALOG_LABEL_WILDCARD) {
-		free(*inverter.inverse);
-		free(inverter.inverse);
+		free(*inverse); free(inverse);
 		return false;
 	}
 	return true;
@@ -11498,15 +11479,10 @@ inline bool set_string(datalog_expression_root& exp, const datalog_expression_ro
 	return init(exp.root.str, value);
 }
 
-inline bool next(const datalog_expression_root::invert_iterator& inverter, datalog_expression_root& dst) {
-	dst = *inverter.inverse;
-	return true;
-}
-
-inline void operator ++ (datalog_expression_root::invert_iterator& inverter, int i) { }
-
-inline void get_selected(const datalog_expression_root::function& f,
-		int& num_conjuncts, bool* args, tuple_position& position, bool& function)
+inline void get_selected(
+		const datalog_expression_root::function& f,
+		int& num_conjuncts, bool* args,
+		tuple_position& position, bool& function)
 {
 	function = false;
 	switch (f.type) {
@@ -11767,7 +11743,6 @@ inline void get_selected(const datalog_expression_root::function& f,
 	case datalog_expression_root::FUNCTION_DELETE_ANSWER_HAS_LOC:
 		num_conjuncts = 0; break;
 	case datalog_expression_root::FUNCTION_EMPTY:
-	case datalog_expression_root::FUNCTION_TERMINAL:
 		fprintf(stderr, "get_selected ERROR: Invalid semantic transformation function types.\n");
 		exit(EXIT_FAILURE);
 	}
@@ -11780,17 +11755,20 @@ enum class separability {
 };
 
 inline separability is_separable(
-		const datalog_expression_root::function& transformation,
+		const transformation<datalog_expression_root>& transformation,
 		int& num_conjuncts, tuple_position& position,
 		bool (&args)[datalog_predicate::ARG_COUNT], bool& function)
 {
+	if (transformation.function_count != 1)
+		return separability::ALL_UNSEPARABLE;
+
 	int new_num_conjuncts = 0;
 	tuple_position new_position = POSITION_EXACT;
 	bool new_function = false;
 	bool new_args[datalog_predicate::ARG_COUNT];
 	for (unsigned int k = 0; k < array_length(new_args); k++)
 		new_args[k] = false;
-	get_selected(transformation, new_num_conjuncts, new_args, new_position, new_function);
+	get_selected(transformation.functions[0], new_num_conjuncts, new_args, new_position, new_function);
 
 	bool separable_i = true;
 	if (function && new_function) {
@@ -11832,27 +11810,8 @@ inline separability is_separable(
 	return separable_i ? separability::SEPARABLE : separability::UNSEPARABLE;
 }
 
-bool right_separable(
-		const datalog_expression_root::function* functions,
-		unsigned int rule_length, unsigned int rule_position)
-{
-	int num_conjuncts = 0; bool function = false;
-	tuple_position position = POSITION_EXACT;
-	bool args[datalog_predicate::ARG_COUNT];
-	for (unsigned int k = 0; k < array_length(args); k++)
-		args[k] = false;
-
-	separability result = separability::UNSEPARABLE;
-	for (unsigned int i = rule_length; i > rule_position; i--) {
-		result = is_separable(functions[i - 1], num_conjuncts, position, args, function);
-		if (result == separability::ALL_UNSEPARABLE)
-			return false;
-	}
-	return (result == separability::SEPARABLE);
-}
-
 void is_separable(
-		const datalog_expression_root::function* functions,
+		const transformation<datalog_expression_root>* functions,
 		unsigned int rule_length, bool* separable)
 {
 	int num_conjuncts = 0; bool function = false;
@@ -12709,12 +12668,6 @@ bool ontology_interpret(
  * Code to perform morphological parsing and generation.
  */
 
-const fixed_array<token>& morphology_parse(unsigned int word);
-const fixed_array<unsigned int>& morphology_inflect(const token& tok);
-bool morphology_inflect(unsigned int root, part_of_speech pos, hash_set<unsigned int>& inflections);
-bool morphology_is_auxiliary_verb(unsigned int word);
-bool morphology_is_auxiliary_root(unsigned int root);
-
 inline bool intersect_concord_index(grammatical_number& intersection,
 		grammatical_number concord, grammatical_number index)
 {
@@ -12764,8 +12717,9 @@ inline bool intersect_concord_index(grammatical_number& intersection,
 	return true;
 }
 
-template<typename PartOfSpeechType>
+template<typename Morphology, typename PartOfSpeechType>
 bool morphology_is_valid(
+		const Morphology& morphology_parser,
 		const sequence& terminal, PartOfSpeechType pos,
 		const datalog_expression_root& logical_form)
 {
@@ -12778,7 +12732,7 @@ bool morphology_is_valid(
 		/* we don't model adjective morphology, for now */
 		/* adjective compounds are head-final (TODO: need a database of exceptions) */
 		unsigned int head_index = terminal.length - 1;
-		const fixed_array<token>& result = morphology_parse(terminal[head_index]);
+		const fixed_array<token>& result = morphology_parser.parse(terminal[head_index]);
 		for (unsigned int i = 0; i < result.length; i++) {
 			if (result[i].get_part_of_speech() == pos)
 				return true;
@@ -12807,7 +12761,7 @@ bool morphology_is_valid(
 		/* if the verb has multiple words, ensure none are auxiliary */
 		if (terminal.length > 1) {
 			for (unsigned int i = 0; i + 1 < terminal.length; i++)
-				if (morphology_is_auxiliary_root(terminal[i])) return false;
+				if (morphology_parser.is_auxiliary_root(terminal[i])) return false;
 		}
 	}
 
@@ -12815,21 +12769,21 @@ bool morphology_is_valid(
 		inflection inf = logical_form.inf;
 		if (inf == INFLECTION_NONE)
 			inf = INFLECTION_OTHER_VERB;
-		if (morphology_inflect({terminal[head_index], NUMBER_ANY, inf}).length > 0)
+		if (morphology_parser.inflect({terminal[head_index], NUMBER_ANY, inf}).length > 0)
 			return true;
 		if (has_intersection(logical_form.index, NUMBER_SINGULAR)) {
-			if (morphology_inflect({terminal[head_index], NUMBER_SINGULAR, inf}).length > 0)
+			if (morphology_parser.inflect({terminal[head_index], NUMBER_SINGULAR, inf}).length > 0)
 				return true;
 		} if (has_intersection(logical_form.index, NUMBER_PLURAL)) {
-			if (morphology_inflect({terminal[head_index], NUMBER_PLURAL, inf}).length > 0)
+			if (morphology_parser.inflect({terminal[head_index], NUMBER_PLURAL, inf}).length > 0)
 				return true;
 		}
 	} else if (pos == POS_NOUN) {
 		if (has_intersection(intersection, NUMBER_SINGULAR)) {
-			if (morphology_inflect({terminal[head_index], NUMBER_SINGULAR, INFLECTION_NOUN}).length > 0)
+			if (morphology_parser.inflect({terminal[head_index], NUMBER_SINGULAR, INFLECTION_NOUN}).length > 0)
 				return true;
 		} if (has_intersection(intersection, NUMBER_PLURAL)) {
-			if (morphology_inflect({terminal[head_index], NUMBER_PLURAL, INFLECTION_NOUN}).length > 0)
+			if (morphology_parser.inflect({terminal[head_index], NUMBER_PLURAL, INFLECTION_NOUN}).length > 0)
 				return true;
 		} if (has_intersection(intersection, NUMBER_UNCOUNTABLE)) {
 			/* simply return true, since this could be a proper noun */
@@ -12839,8 +12793,9 @@ bool morphology_is_valid(
 	return false;
 }
 
-template<typename PartOfSpeechType, typename EmitRootFunction>
-bool morphology_parse(const sequence& words, PartOfSpeechType pos,
+template<typename Morphology, typename PartOfSpeechType, typename EmitRootFunction>
+bool morphology_parse(
+		const Morphology& morphology_parser, const sequence& words, PartOfSpeechType pos,
 		const datalog_expression_root& logical_form, EmitRootFunction emit_root)
 {
 	if (pos == POS_OTHER) {
@@ -12852,7 +12807,7 @@ bool morphology_parse(const sequence& words, PartOfSpeechType pos,
 		/* we don't model adjective morphology, for now */
 		/* adjective compounds are head-final (TODO: need a database of exceptions) */
 		unsigned int head_index = words.length - 1;
-		const fixed_array<token>& result = morphology_parse(words[head_index]);
+		const fixed_array<token>& result = morphology_parser.parse(words[head_index]);
 		for (unsigned int i = 0; i < result.length; i++) {
 			if (result[i].get_part_of_speech() == pos)
 				return emit_root(words, logical_form);
@@ -12881,14 +12836,14 @@ bool morphology_parse(const sequence& words, PartOfSpeechType pos,
 		/* if the verb has multiple words, ensure none are auxiliary */
 		if (words.length > 1) {
 			for (unsigned int i = 0; i + 1 < words.length; i++)
-				if (morphology_is_auxiliary_verb(words[i])) return true;
+				if (morphology_parser.is_auxiliary_verb(words[i])) return true;
 		}
 	}
 
 	sequence root(NULL, 0); root = words;
 	bool emitted_proper_noun = false;
 	datalog_expression_root marked_logical_form = logical_form;
-	const fixed_array<token>& result = morphology_parse(words[head_index]);
+	const fixed_array<token>& result = morphology_parser.parse(words[head_index]);
 	for (unsigned int i = 0; i < result.length; i++) {
 		if (result[i].get_part_of_speech() != pos) continue;
 
