@@ -490,7 +490,7 @@ minimum_priority = 0.0;
 						*((syntax_node<datalog_expression_root>*) alloca(sizeof(syntax_node<datalog_expression_root>)));
 				token_map_lock.lock();
 				if (generate<1>(&generated_derivation, generated_derivation_count,
-						logical_form_output[i], G, token_map, time_limit))
+						logical_form_output[i], G, morph, token_map, time_limit))
 				{
 					const string** name_ids = invert(token_map);
 					string_map_scribe new_terminal_printer = { name_ids, token_map.table.size + 1 };

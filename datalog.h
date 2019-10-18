@@ -1094,61 +1094,61 @@ struct datalog_expression_root {
 	static bool print(const feature& f, Stream& out) {
 		switch (f) {
 		case datalog_expression_root::FEATURE_NULL:
-			return print("null", out);
+			return core::print("null", out);
 		case datalog_expression_root::FEATURE_FUNCTION:
-			return print("function", out);
+			return core::print("function", out);
 		case datalog_expression_root::FEATURE_FUNCTION_ONLY:
-			return print("function_only", out);
+			return core::print("function_only", out);
 		case datalog_expression_root::FEATURE_FUNCTION_ANSWER:
-			return print("function_answer", out);
+			return core::print("function_answer", out);
 		case datalog_expression_root::FEATURE_HAS_FUNCTION:
-			return print("has_function", out);
+			return core::print("has_function", out);
 		case datalog_expression_root::FEATURE_HAS_FUNCTION_NOT:
-			return print("has_function_not", out);
+			return core::print("has_function_not", out);
 		case datalog_expression_root::FEATURE_HAS_FUNCTION_COUNT_NOT:
-			return print("has_function_count_not", out);
+			return core::print("has_function_count_not", out);
 		case datalog_expression_root::FEATURE_HAS_FUNCTION_ANSWER:
-			return print("has_function_answer", out);
+			return core::print("has_function_answer", out);
 		case datalog_expression_root::FEATURE_PREDICATE:
-			return print("predicate", out);
+			return core::print("predicate", out);
 		case datalog_expression_root::FEATURE_PREDICATE_ONLY:
-			return print("predicate_only", out);
+			return core::print("predicate_only", out);
 		case datalog_expression_root::FEATURE_FIRST_PREDICATE:
-			return print("first_predicate", out);
+			return core::print("first_predicate", out);
 		case datalog_expression_root::FEATURE_SECOND_PREDICATE:
-			return print("second_predicate", out);
+			return core::print("second_predicate", out);
 		case datalog_expression_root::FEATURE_THIRD_PREDICATE:
-			return print("third_predicate", out);
+			return core::print("third_predicate", out);
 		case datalog_expression_root::FEATURE_LAST_PREDICATE:
-			return print("last_predicate", out);
+			return core::print("last_predicate", out);
 		case datalog_expression_root::FEATURE_DIRECTION:
-			return print("direction", out);
+			return core::print("direction", out);
 		case datalog_expression_root::FEATURE_DIRECTION_ROOT:
-			return print("direction_root", out);
+			return core::print("direction_root", out);
 		case datalog_expression_root::FEATURE_CONSTANT:
-			return print("constant", out);
+			return core::print("constant", out);
 		case datalog_expression_root::FEATURE_PREDICATE_ARITY:
-			return print("arity", out);
+			return core::print("arity", out);
 		case datalog_expression_root::FEATURE_ARG1:
-			return print("arg1", out);
+			return core::print("arg1", out);
 		case datalog_expression_root::FEATURE_ARG2:
-			return print("arg2", out);
+			return core::print("arg2", out);
 		case datalog_expression_root::FEATURE_ARG3:
-			return print("arg3", out);
+			return core::print("arg3", out);
 		case datalog_expression_root::FEATURE_ARG1_ONLY:
-			return print("arg1_only", out);
+			return core::print("arg1_only", out);
 		case datalog_expression_root::FEATURE_ARG2_ONLY:
-			return print("arg2_only", out);
+			return core::print("arg2_only", out);
 		case datalog_expression_root::FEATURE_ARG3_ONLY:
-			return print("arg3_only", out);
+			return core::print("arg3_only", out);
 		case datalog_expression_root::FEATURE_ARG1_STRING:
-			return print("arg1_string", out);
+			return core::print("arg1_string", out);
 		case datalog_expression_root::FEATURE_ARG2_ARITY:
-			return print("arg2_arity", out);
+			return core::print("arg2_arity", out);
 		case datalog_expression_root::FEATURE_NUMBER:
-			return print("number", out);
+			return core::print("number", out);
 		case datalog_expression_root::FEATURE_INFLECTION:
-			return print("inflection", out);
+			return core::print("inflection", out);
 		}
 		fprintf(stderr, "print ERROR: Unrecognized semantic feature.\n");
 		return false;
@@ -5344,6 +5344,7 @@ bool apply(datalog_expression_root::function function, const datalog_expression_
 		dst.inf = src.inf;
 	}
 
+	dst.root.reference_count = 1;
 	switch (function.type) {
 	case datalog_expression_root::FUNCTION_IDENTITY:
 	case datalog_expression_root::FUNCTION_DELETE_FEATURES:
@@ -5796,6 +5797,7 @@ bool apply(datalog_expression_root::function function, const datalog_expression_
 		if (!check_predicate_answer<PREDICATE_LOC>(src.root))
 			return false;
 		dst.root.type = DATALOG_EMPTY;
+		dst.root.reference_count = 1;
 		return true;
 	case datalog_expression_root::FUNCTION_TWO_PREDICATES:
 		return tuple_length<2>(src.root, dst.root);
@@ -11331,6 +11333,7 @@ bool invert(
 				return false;
 			inverse.root.pred.excluded_count = 1;
 			inverse.root.type = DATALOG_PREDICATE;
+			inverse.root.reference_count = 1;
 		} else if (inverse.root.type == DATALOG_PREDICATE) {
 			if (inverse.root.pred.function == DATALOG_LABEL_WILDCARD
 			 && !inverse.root.pred.exclude(&DATALOG_LABEL_EMPTY, 1))
@@ -12793,7 +12796,7 @@ bool morphology_is_valid(
 	return false;
 }
 
-template<typename Morphology, typename PartOfSpeechType, typename EmitRootFunction>
+template<bool First, typename Morphology, typename PartOfSpeechType, typename EmitRootFunction>
 bool morphology_parse(
 		const Morphology& morphology_parser, const sequence& words, PartOfSpeechType pos,
 		const datalog_expression_root& logical_form, EmitRootFunction emit_root)
