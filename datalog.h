@@ -5819,6 +5819,20 @@ bool apply(datalog_expression_root::function function, const datalog_expression_
 	return false;
 }
 
+inline bool copy_array(
+		const unsigned int* src, unsigned int src_length,
+		unsigned int*& dst, unsigned int& dst_length)
+{
+	dst = (unsigned int*) malloc(sizeof(unsigned int) * src_length);
+	if (dst == nullptr) {
+		fprintf(stderr, "copy_array ERROR: Out of memory.\n");
+		return false;
+	}
+	memcpy(dst, src, sizeof(unsigned int) * src_length);
+	dst_length = src_length;
+	return true;
+}
+
 template<bool HigherOrderOnly>
 inline bool get_function(const datalog_expression& src,
 		unsigned int& value, unsigned int*& excluded, unsigned int& excluded_count)
@@ -5840,8 +5854,8 @@ inline bool get_function(const datalog_expression& src,
 			}
 		}
 		value = src.func.function;
-		excluded = src.func.excluded;
-		excluded_count = src.func.excluded_count;
+		if (src.func.excluded_count != 0 && !copy_array(src.func.excluded, src.func.excluded_count, excluded, excluded_count))
+			return false;
 	} else if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
 		excluded_count = 0;
@@ -5917,12 +5931,12 @@ inline bool get_predicate(
 		unsigned int*& excluded, unsigned int& excluded_count)
 {
 	if (term.type == DATALOG_PREDICATE) {
-		excluded = term.pred.excluded;
-		excluded_count = term.func.excluded_count;
+		if (term.pred.excluded_count != 0 && !copy_array(term.pred.excluded, term.pred.excluded_count, excluded, excluded_count))
+			return false;
 		value = term.pred.function;
 	} else if (term.type == DATALOG_FUNCTION) {
-		excluded = term.func.excluded;
-		excluded_count = term.func.excluded_count;
+		if (term.func.excluded_count != 0 && !copy_array(term.func.excluded, term.func.excluded_count, excluded, excluded_count))
+			return false;
 		value = term.func.function;
 	} else if (term.type == DATALOG_ANY || term.type == DATALOG_NON_EMPTY) {
 		value = DATALOG_LABEL_WILDCARD;
@@ -5965,8 +5979,8 @@ bool get_predicate(
 			excluded_count = 0;
 			return true;
 		}
-		excluded = src.pred.excluded;
-		excluded_count = src.pred.excluded_count;
+		if (src.pred.excluded_count != 0 && !copy_array(src.pred.excluded, src.pred.excluded_count, excluded, excluded_count))
+			return false;
 		value = src.pred.function;
 	} else if (src.type == DATALOG_FUNCTION) {
 		if (!AllowFunction) return false;
@@ -6005,8 +6019,8 @@ bool get_right_predicate(
 			excluded_count = 0;
 			return true;
 		}
-		excluded = src.pred.excluded;
-		excluded_count = src.pred.excluded_count;
+		if (src.pred.excluded_count != 0 && !copy_array(src.pred.excluded, src.pred.excluded_count, excluded, excluded_count))
+			return false;
 		value = src.pred.function;
 	} else if (src.type == DATALOG_FUNCTION) {
 		return get_right_predicate<Index>(*src.func.arg, value, excluded, excluded_count);
@@ -6100,8 +6114,8 @@ inline bool get_constant(
 	} else if (src.type == DATALOG_PREDICATE) {
 		if (ConstantOnly) return false;
 		value = src.pred.function;
-		excluded_count = src.pred.excluded_count;
-		excluded = src.pred.excluded;
+		if (src.pred.excluded_count != 0 && !copy_array(src.pred.excluded, src.pred.excluded_count, excluded, excluded_count))
+			return false;
 	} else if (src.type == DATALOG_STRING && src.str.length > 0) {
 		if (ConstantOnly) return false;
 		value = DATALOG_STRING;
@@ -6112,8 +6126,8 @@ inline bool get_constant(
 		excluded_count = 0;
 	} else {
 		value = src.constant.label;
-		excluded_count = src.constant.excluded_count;
-		excluded = src.constant.excluded;
+		if (src.constant.excluded_count != 0 && !copy_array(src.constant.excluded, src.constant.excluded_count, excluded, excluded_count))
+			return false;
 	}
 	return true;
 }
@@ -6162,29 +6176,29 @@ inline bool get_predicate_arity(
 		if (min_arity == 0) {
 			if (max_arity == 0) value = ARITY_ZERO;
 			else if (max_arity == 1) {
-				excluded = excluded_arities_zero_one;
-				excluded_count = array_length(excluded_arities_zero_one);
+				if (!copy_array(excluded_arities_zero_one, array_length(excluded_arities_zero_one), excluded, excluded_count))
+					return false;
 			} else if (max_arity == 2) {
-				excluded = excluded_arities_zero_two;
-				excluded_count = array_length(excluded_arities_zero_two);
+				if (!copy_array(excluded_arities_zero_two, array_length(excluded_arities_zero_two), excluded, excluded_count))
+					return false;
 			} else if (max_arity == 3) {
-				excluded = excluded_arities_zero_three;
-				excluded_count = array_length(excluded_arities_zero_three);
+				if (!copy_array(excluded_arities_zero_three, array_length(excluded_arities_zero_three), excluded, excluded_count))
+					return false;
 			}
 		} else if (min_arity == 1) {
 			if (max_arity == 1) value = ARITY_ONE;
 			else if (max_arity == 2) {
-				excluded = excluded_arities_one_two;
-				excluded_count = array_length(excluded_arities_one_two);
+				if (!copy_array(excluded_arities_one_two, array_length(excluded_arities_one_two), excluded, excluded_count))
+					return false;
 			} else if (max_arity == 3) {
-				excluded = excluded_arities_one_three;
-				excluded_count = array_length(excluded_arities_one_three);
+				if (!copy_array(excluded_arities_one_three, array_length(excluded_arities_one_three), excluded, excluded_count))
+					return false;
 			}
 		} else if (min_arity == 2) {
 			if (max_arity == 2) value = ARITY_TWO;
 			else if (max_arity == 3) {
-				excluded = excluded_arities_two_three;
-				excluded_count = array_length(excluded_arities_two_three);
+				if (!copy_array(excluded_arities_two_three, array_length(excluded_arities_two_three), excluded, excluded_count))
+					return false;
 			}
 		} else if (min_arity == 3) {
 			if (max_arity == 3) value = ARITY_THREE;
@@ -6386,12 +6400,12 @@ bool get_feature(
 			excluded_count = 0;
 		} else if (src.concord == NUMBER_NON_SINGULAR) {
 			value = DATALOG_LABEL_WILDCARD;
-			excluded = NUMBERS_SINGULAR;
-			excluded_count = array_length(NUMBERS_SINGULAR);
+			if (!copy_array(NUMBERS_SINGULAR, array_length(NUMBERS_SINGULAR), excluded, excluded_count))
+				return false;
 		} else if (src.concord == NUMBER_NON_PLURAL) {
 			value = DATALOG_LABEL_WILDCARD;
-			excluded = NUMBERS_PLURAL;
-			excluded_count = array_length(NUMBERS_PLURAL);
+			if (!copy_array(NUMBERS_PLURAL, array_length(NUMBERS_PLURAL), excluded, excluded_count))
+				return false;
 		} else {
 			value = NUMBER_OFFSET + src.index - 1;
 		}
@@ -8140,6 +8154,25 @@ inline bool intersect(datalog_expression*& intersection,
 		free(intersection); return false;
 	}
 	return true;
+}
+
+inline bool is_subset(const datalog_expression_root& first, const datalog_expression_root& second)
+{
+	grammatical_number num;
+	if (!intersect(num, first.index, second.index)) return false;
+	if (num != first.index) return false;
+	if (!intersect(num, first.concord, second.concord)) return false;
+	if (num != first.concord) return false;
+
+	inflection inf;
+	if (!intersect(inf, first.inf, second.inf)) return false;
+	if (inf != first.inf) return false;
+
+	datalog_expression* intersection;
+	if (!intersect(intersection, &first.root, &second.root)) return false;
+	bool result = (intersection == &first.root || *intersection == first.root);
+	free(*intersection); if (intersection->reference_count == 0) free(intersection);
+	return result;
 }
 
 template<bool KeepHead, bool MergeVariables>
