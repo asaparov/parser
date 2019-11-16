@@ -4022,22 +4022,22 @@ template<typename Distribution>
 bool rule_matches(const grammar<datalog_expression_root, Distribution>& G,
 		const rule<datalog_expression_root>& r, const sequence& sentence)
 {
-	if (r.length > sentence.length)
+	if (r.nt.length > sentence.length)
 		return false;
 	unsigned int prev = 0;
-	for (unsigned int k = 0; k < r.length; k++) {
-		const auto& child_nonterminal = G.nonterminals[r.nonterminals[k] - 1];
+	for (unsigned int k = 0; k < r.nt.length; k++) {
+		const auto& child_nonterminal = G.nonterminals[r.nt.nonterminals[k] - 1];
 		const auto& rule_prior = child_nonterminal.rule_distribution.h.pi;
 		if (child_nonterminal.is_preterminal) {
 			/* find the earliest end position for this preterminal */
 			unsigned int earliest_start = prev;
 			unsigned int earliest_end = prev + 1;
-			unsigned int latest_end = sentence.length - r.length + k + 1;
+			unsigned int latest_end = sentence.length - r.nt.length + k + 1;
 
 			if (k == 0) {
 				if (!sentence_starts_with(rule_prior, sentence, earliest_end, latest_end, earliest_start, prev))
 					return false;
-			} else if (k + 1 == r.length) {
+			} else if (k + 1 == r.nt.length) {
 				if (!sentence_ends_with(rule_prior, sentence, latest_end, earliest_start, prev))
 					return false;
 			} else {
@@ -4105,16 +4105,16 @@ bool initialize_tree(
 		exit(EXIT_FAILURE);
 
 	unsigned int prev = 0;
-	for (unsigned int k = 0; k < selected_rule.length; k++) {
+	for (unsigned int k = 0; k < selected_rule.nt.length; k++) {
 		/* pick a random split point from {prev + 1, ..., n - K + k} */
 		unsigned int start, next;
-		if (k + 1 == selected_rule.length)
+		if (k + 1 == selected_rule.nt.length)
 			start = sentence.length;
 		else start = prev + 1;
-		const auto& child_nonterminal = G.nonterminals[selected_rule.nonterminals[k] - 1];
+		const auto& child_nonterminal = G.nonterminals[selected_rule.nt.nonterminals[k] - 1];
 		if (child_nonterminal.is_preterminal) {
 			array<unsigned int> available_next = array<unsigned int>(8);
-			for (unsigned int i = start; i < sentence.length - selected_rule.length + k + 2; i++) {
+			for (unsigned int i = start; i < sentence.length - selected_rule.nt.length + k + 2; i++) {
 				const auto& rule_prior = child_nonterminal.rule_distribution.h.pi;
 				rule<datalog_expression_root> r = rule<datalog_expression_root>({sentence.tokens + prev, i - prev});
 				if (rule_prior.probability(r) > 0.0 && !available_next.add(i))
@@ -4126,14 +4126,14 @@ bool initialize_tree(
 			}
 			next = sample_uniform(available_next);
 		} else {
-			next = sample_uniform(sentence.length - selected_rule.length + k - start + 2) + start;
+			next = sample_uniform(sentence.length - selected_rule.nt.length + k - start + 2) + start;
 		}
 
 		datalog_expression_root child;
-		if (!apply(selected_rule.transformations[k], logical_form, child)) {
+		if (!apply(selected_rule.nt.transformations[k], logical_form, child)) {
 			free(*tree); free(tree);
 			tree = NULL; return false;
-		} if (!initialize_tree(G, tree->children[k], {sentence.tokens + prev, next - prev}, child, selected_rule.nonterminals[k])) {
+		} if (!initialize_tree(G, tree->children[k], {sentence.tokens + prev, next - prev}, child, selected_rule.nt.nonterminals[k])) {
 			free(child);
 			free(*tree); free(tree);
 			tree = NULL; return false;
@@ -12835,7 +12835,7 @@ bool morphology_parse(
 		const datalog_expression_root& logical_form, EmitRootFunction emit_root)
 {
 	if (pos == POS_OTHER) {
-		return emit_root(words, logical_form);
+		return emit_root(words, {nullptr, 0}, logical_form);
 	} else if (pos == POS_ADJECTIVE || pos == POS_ADVERB) {
 		if (logical_form.concord == NUMBER_SINGULAR || logical_form.concord == NUMBER_PLURAL)
 			return false;
@@ -12846,7 +12846,7 @@ bool morphology_parse(
 		const fixed_array<token>& result = morphology_parser.parse(words[head_index]);
 		for (unsigned int i = 0; i < result.length; i++) {
 			if (result[i].get_part_of_speech() == pos)
-				return emit_root(words, logical_form);
+				return emit_root(words, {nullptr, 0}, logical_form);
 		}
 		return true;
 	}
@@ -12916,7 +12916,7 @@ bool morphology_parse(
 		root[head_index] = result[i].id;
 		emitted_proper_noun = emitted_proper_noun || (root[head_index] == words[head_index]
 				&& (logical_form.concord != NUMBER_ANY || marked_logical_form.concord == NUMBER_UNCOUNTABLE));
-		if (!emit_root(root, marked_logical_form)) {
+		if (!emit_root(root, words, marked_logical_form)) {
 			free(marked_logical_form);
 			free(root); return false;
 		}
@@ -12935,7 +12935,7 @@ bool morphology_parse(
 			marked_logical_form.concord = logical_form.concord;
 		}
 
-		if (!emit_root(words, marked_logical_form)) {
+		if (!emit_root(words, {nullptr, 0}, marked_logical_form)) {
 			free(marked_logical_form);
 			return false;
 		}
@@ -13072,16 +13072,16 @@ inline bool yield(const rule<datalog_expression_root>& terminal,
 		token*& sentence, unsigned int& length, unsigned int& capacity)
 {
 	part_of_speech pos = rule_distribution.get_part_of_speech();
-	if (!ensure_capacity(sentence, capacity, length + terminal.length))
+	if (!ensure_capacity(sentence, capacity, length + terminal.t.length))
 		return false;
-	for (unsigned int i = 0; i < terminal.length; i++) {
-		sentence[length + i].id = terminal.nonterminals[i];
+	for (unsigned int i = 0; i < terminal.t.length; i++) {
+		sentence[length + i].id = terminal.t.terminals[i];
 		sentence[length + i].number = NUMBER_NONE;
 		sentence[length + i].inf = INFLECTION_NONE;
 	}
 
 	if (pos == POS_NOUN) {
-		unsigned int head_index = terminal.length - 1;
+		unsigned int head_index = terminal.t.length - 1;
 		if (!intersect_concord_index(
 				sentence[length + head_index].number,
 				logical_form.concord, logical_form.index))
@@ -13097,17 +13097,17 @@ inline bool yield(const rule<datalog_expression_root>& terminal,
 		else sentence[length + head_index].inf = logical_form.inf;
 		sentence[length + head_index].number = logical_form.index;
 	} else if (pos == POS_ADJECTIVE) {
-		unsigned int head_index = terminal.length - 1;
+		unsigned int head_index = terminal.t.length - 1;
 		sentence[length + head_index].inf = INFLECTION_ADJECTIVE;
 	} else if (pos == POS_ADVERB) {
-		unsigned int head_index = terminal.length - 1;
+		unsigned int head_index = terminal.t.length - 1;
 		sentence[length + head_index].inf = INFLECTION_ADVERB;
 	} else if (pos != POS_OTHER) {
 		fprintf(stderr, "yield ERROR: Unrecognized part of speech.\n");
 		return false;
 	}
 
-	length += terminal.length;
+	length += terminal.t.length;
 	return true;
 }
 

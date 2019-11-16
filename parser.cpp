@@ -424,7 +424,7 @@ minimum_priority = 0.0;
 			logical_form_set.concord = NUMBER_NONE;
 			logical_form_set.inf = INFLECTION_NONE;
 //			fprintf(out, "%sParse log probability: %lf (prior: %lf)\n", prefix, true_log_likelihood, true_log_prior);
-			is_parseable(parsed_syntax[0], *logical_forms[id], G, logical_form_set, nonterminal_printer, terminal_printer, terminal_printer.map);
+			is_parseable(parsed_syntax[0], *logical_forms[id], G, morph, logical_form_set, nonterminal_printer, terminal_printer, terminal_printer.map);
 			free(parsed_syntax[0]);
 			free(logical_form_output[0]);
 			free(logical_form_set);
@@ -653,7 +653,7 @@ debug_nonterminal_printer = &nonterminal_printer;
 		logical_form_set.index = NUMBER_ALL;
 		logical_form_set.concord = NUMBER_NONE;
 		logical_form_set.inf = INFLECTION_NONE;
-		if (!is_parseable(*syntax[i], *train_logical_forms[i], G,
+		if (!is_parseable(*syntax[i], *train_logical_forms[i], G, morph,
 				logical_form_set, nonterminal_printer, terminal_printer, name_ids))
 		{
 			printf("Sentence %u is not parseable:\n", i);
@@ -687,7 +687,7 @@ debug_nonterminal_printer = &nonterminal_printer;
 		part_of_speech pos = N.rule_distribution.get_part_of_speech();
 		for (const auto& entry : N.rule_distribution.h.pi.rules) {
 			const rule<datalog_expression_root>& r = entry.key;
-			if (!morphology_get_inflections({r.nonterminals, r.length}, pos, known_tokens)) {
+			if (!morphology_get_inflections({r.t.terminals, r.t.length}, pos, known_tokens)) {
 				if (extra_filepath != NULL) cleanup(extra_data, extra_sentences, extra_logical_forms, extra_data.length);
 				cleanup(train_data, train_sentences, train_logical_forms, train_data.length, syntax);
 				cleanup(test_data, test_sentences, test_logical_forms, test_data.length);
@@ -696,7 +696,7 @@ debug_nonterminal_printer = &nonterminal_printer;
 		}
 		for (const auto& entry : N.rule_distribution.observations.counts) {
 			const rule<datalog_expression_root>& r = entry.key;
-			if (!morphology_get_inflections({r.nonterminals, r.length}, pos, known_tokens)) {
+			if (!morphology_get_inflections({r.t.terminals, r.t.length}, pos, known_tokens)) {
 				if (extra_filepath != NULL) cleanup(extra_data, extra_sentences, extra_logical_forms, extra_data.length);
 				cleanup(train_data, train_sentences, train_logical_forms, train_data.length, syntax);
 				cleanup(test_data, test_sentences, test_logical_forms, test_data.length);
