@@ -12835,7 +12835,7 @@ bool morphology_parse(
 		const datalog_expression_root& logical_form, EmitRootFunction emit_root)
 {
 	if (pos == POS_OTHER) {
-		return emit_root(words, {nullptr, 0}, logical_form);
+		return emit_root(words, logical_form);
 	} else if (pos == POS_ADJECTIVE || pos == POS_ADVERB) {
 		if (logical_form.concord == NUMBER_SINGULAR || logical_form.concord == NUMBER_PLURAL)
 			return false;
@@ -12846,7 +12846,7 @@ bool morphology_parse(
 		const fixed_array<token>& result = morphology_parser.parse(words[head_index]);
 		for (unsigned int i = 0; i < result.length; i++) {
 			if (result[i].get_part_of_speech() == pos)
-				return emit_root(words, {nullptr, 0}, logical_form);
+				return emit_root(words, logical_form);
 		}
 		return true;
 	}
@@ -12916,7 +12916,7 @@ bool morphology_parse(
 		root[head_index] = result[i].id;
 		emitted_proper_noun = emitted_proper_noun || (root[head_index] == words[head_index]
 				&& (logical_form.concord != NUMBER_ANY || marked_logical_form.concord == NUMBER_UNCOUNTABLE));
-		if (!emit_root(root, words, marked_logical_form)) {
+		if (!emit_root(root, marked_logical_form)) {
 			free(marked_logical_form);
 			free(root); return false;
 		}
@@ -12935,7 +12935,7 @@ bool morphology_parse(
 			marked_logical_form.concord = logical_form.concord;
 		}
 
-		if (!emit_root(words, {nullptr, 0}, marked_logical_form)) {
+		if (!emit_root(words, marked_logical_form)) {
 			free(marked_logical_form);
 			return false;
 		}
