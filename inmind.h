@@ -219,7 +219,7 @@ bool inmind_interpret_expression(
 		read_error("Expected a string or open parenthesis", tokens.last().end);
 		return false;
 	} else if (tokens[index].type == inmind_token_type::STRING) {
-		if (!tokenize(tokens[index].text, exp.str, names)) return false;
+		if (!init(exp.str, tokens[index].text)) return false;
 		exp.type = DATALOG_STRING;
 		exp.reference_count = 1;
 		index++; return true;

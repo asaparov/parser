@@ -132,7 +132,8 @@ struct inmind_prior
 
 	bool train(const datalog_expression_root* const* examples, unsigned int length,
 			const datalog_expression_root* const* constants, unsigned int constants_length,
-			unsigned int burn_in, unsigned int iterations, unsigned int skip)
+			unsigned int burn_in, unsigned int iterations, unsigned int skip,
+			hash_map<core::string, unsigned int>& names)
 	{
 		hash_set<unsigned int>* arg_observations = (hash_set<unsigned int>*) malloc(sizeof(hash_set<unsigned int>) * ARG_COUNT);
 		for (unsigned int i = 0; i < ARG_COUNT; i++) {
@@ -145,7 +146,7 @@ struct inmind_prior
 		array_map<sequence, array_multiset<unsigned int>> field_lengths(8);
 		array_multiset<unsigned int> instance_lengths(8);
 		for (unsigned int i = 0; i < length; i++) {
-			if (!add_training_example(examples[i]->root, arg_observations, text_observations, field_lengths, instance_lengths))
+			if (!add_training_example(examples[i]->root, arg_observations, text_observations, field_lengths, instance_lengths, names))
 				return false;
 		}
 		if (field_lengths.size > 1)
@@ -218,7 +219,7 @@ struct inmind_prior
 	}
 
 	template<bool CompleteContext>
-	inline double log_probability(const datalog_expression_root& example) {
+	inline double log_probability(const datalog_expression_root& example, hash_map<core::string, unsigned int>& names) {
 		if (example.root.type == DATALOG_ANY || example.root.type == DATALOG_NON_EMPTY) {
 			return 0.0;
 		} else if (example.root.type == DATALOG_EMPTY || example.root.type == DATALOG_STRING) {
@@ -236,8 +237,12 @@ struct inmind_prior
 					{DATALOG_EMPTY, NULL, 0});
 		}
 
-		sequence* string = NULL;
-		return score + log_probability<CompleteContext>(example.root.pred, string, NULL, CompleteContext ? string_type::VALUE : string_type::ANY);
+		sequence string = {NULL, 0};
+		sequence field_name = {NULL, 0};
+		double value = score + log_probability<CompleteContext>(example.root.pred, string, field_name, names, CompleteContext ? string_type::VALUE : string_type::ANY);
+		if (string.tokens != NULL)
+			core::free(string);
+		return value;
 	}
 
 private:
@@ -246,7 +251,8 @@ private:
 			hash_set<unsigned int>* arg_observations,
 			hash_map<unsigned int, unsigned int>& text_observations,
 			array_map<sequence, array_multiset<unsigned int>>& field_lengths,
-			array_multiset<unsigned int>& instance_lengths)
+			array_multiset<unsigned int>& instance_lengths,
+			hash_map<core::string, unsigned int>& names)
 	{
 		if (expression.type != DATALOG_PREDICATE) {
 			fprintf(stderr, "inmind_prior.add_training_example ERROR: Logical form must be a predicate instance.\n");
@@ -258,18 +264,23 @@ private:
 		 || !arg_observations[0].add(expression.pred.function))
 			return false;
 
-		sequence* string = NULL;
-		return add_node(expression.pred, arg_observations, text_observations,
-				string, NULL, field_lengths, instance_lengths, string_type::VALUE);
+		sequence string = {NULL, 0};
+		sequence field_name = {NULL, 0};
+		bool result = add_node(expression.pred, arg_observations, text_observations,
+				string, field_name, field_lengths, instance_lengths, names, string_type::VALUE);
+		if (string.tokens != NULL)
+			core::free(string);
+		return result;
 	}
 
 	inline bool add_node(
 			const datalog_predicate& pred,
 			hash_set<unsigned int>* arg_observations,
 			hash_map<unsigned int, unsigned int>& text_observations,
-			sequence*& string, const sequence* field_name,
+			sequence& string, const sequence& field_name,
 			array_map<sequence, array_multiset<unsigned int>>& field_lengths,
 			array_multiset<unsigned int>& instance_lengths,
+			hash_map<core::string, unsigned int>& names,
 			string_type type)
 	{
 		unsigned int field_source_arg = ARG_COUNT, instance_source_arg = ARG_COUNT, concept_source_arg = ARG_COUNT;
@@ -287,7 +298,9 @@ private:
 			}
 		}
 
-		const sequence* child_field_name = (field_source_arg < ARG_COUNT) ? NULL : field_name;
+		sequence child_field_name = {NULL, 0};
+		if (field_source_arg >= ARG_COUNT)
+			child_field_name = field_name;
 		for (unsigned int i = 0; i < ARG_COUNT; i++) {
 			unsigned int observation;
 			if (pred.args[i] == NULL) {
@@ -296,19 +309,29 @@ private:
 				observation = pred.args[i]->pred.function;
 			} else if (pred.args[i]->type == DATALOG_STRING) {
 				observation = pred.args[i]->type;
-				string = &pred.args[i]->str;
-				if (field_name != NULL
-				 && !field_lengths.get(*field_name).add(string->length))
-					return false;
 
+				array<unsigned int>& tokens = *((array<unsigned int>*) alloca(sizeof(array<unsigned int>)));
+				if (!array_init(tokens, 8)) {
+					return false;
+				} else if (!tokenize(pred.args[i]->str.data, pred.args[i]->str.length, tokens, names)) {
+					core::free(tokens); return false;
+				}
+				if (string.tokens != NULL)
+					core::free(string);
+				string.tokens = tokens.data;
+				string.length = tokens.length;
+
+				if (field_name.tokens != NULL
+				 && !field_lengths.get(field_name).add(string.length))
+					return false;
 				bool contains; unsigned int index;
 				unsigned int path[] = { (unsigned int) type };
-				if (!text_observations.check_size(text_observations.table.size + string->length))
+				if (!text_observations.check_size(text_observations.table.size + string.length))
 					return false;
-				for (unsigned int i = 0; i < string->length; i++) {
-					unsigned int& id = text_observations.get(string->tokens[i], contains, index);
+				for (unsigned int i = 0; i < string.length; i++) {
+					unsigned int& id = text_observations.get(string.tokens[i], contains, index);
 					if (!contains) {
-						text_observations.table.keys[index] = string->tokens[i];
+						text_observations.table.keys[index] = string.tokens[i];
 						text_observations.table.size++;
 						id = text_observations.table.size;
 					}
@@ -318,16 +341,16 @@ private:
 				case string_type::FIELD:
 					if (!field_lengths.ensure_capacity(field_lengths.size + 1))
 						return false;
-					index = field_lengths.index_of(*string);
+					index = field_lengths.index_of(string);
 					if (index == field_lengths.size) {
 						if (!init(field_lengths.values[index], 8))
 							return false;
-						field_lengths.keys[index] = *string;
+						field_lengths.keys[index] = string;
 						field_lengths.size++;
 					}
 					break;
 				case string_type::INSTANCE:
-					instance_lengths.add(string->length);
+					instance_lengths.add(string.length);
 					break;
 				case string_type::CONCEPT:
 				case string_type::VALUE:
@@ -354,17 +377,20 @@ private:
 				arg_type = string_type::CONCEPT;
 			}
 
-			sequence* child_string = NULL;
+			sequence child_string = {NULL, 0};
 			if (pred.args[i] != NULL && pred.args[i]->type == DATALOG_PREDICATE
 			 && !add_node(pred.args[i]->pred, arg_observations, text_observations,
-					 child_string, child_field_name, field_lengths, instance_lengths, arg_type))
+					 child_string, child_field_name, field_lengths, instance_lengths, names, arg_type))
 				return false;
 
 			if (i == field_source_arg) {
 				child_field_name = child_string;
-			} else if (string == NULL) {
+			} else if (string.tokens == NULL) {
 				string = child_string;
 			}
+
+			if (child_string.tokens != NULL)
+				core::free(child_string);
 		}
 		return true;
 	}
@@ -466,7 +492,9 @@ private:
 
 	template<bool CompleteContext>
 	inline double log_probability(const datalog_predicate& pred,
-			sequence*& string, const sequence* field_name, string_type type)
+			sequence& string, const sequence& field_name,
+			hash_map<core::string, unsigned int>& names,
+			string_type type)
 	{
 		unsigned int field_source_arg = ARG_COUNT, instance_source_arg = ARG_COUNT, concept_source_arg = ARG_COUNT;
 		for (unsigned int i = 0; i < field_sources.length; i++) {
@@ -487,7 +515,9 @@ private:
 			type = string_type::ANY;
 
 		double score = 0.0;
-		const sequence* child_field_name = (field_source_arg < ARG_COUNT) ? NULL : field_name;
+		sequence child_field_name = {NULL, 0};
+		if (field_source_arg >= ARG_COUNT)
+			child_field_name = field_name;
 		for (unsigned int i = 0; i < ARG_COUNT; i++) {
 			unsigned int observation; unsigned int* excluded = NULL; unsigned int excluded_count;
 			if (pred.args[i] == NULL) {
@@ -501,17 +531,28 @@ private:
 			} else if (pred.args[i]->type == DATALOG_STRING) {
 				observation = pred.args[i]->type;
 				excluded_count = 0;
-				string = &pred.args[i]->str;
-				if (field_name != NULL) {
-					unsigned int index = field_sizes.index_of(*field_name);
+
+				array<unsigned int>& tokens = *((array<unsigned int>*) alloca(sizeof(array<unsigned int>)));
+				if (!array_init(tokens, 8)) {
+					return false;
+				} else if (!tokenize(pred.args[i]->str.data, pred.args[i]->str.length, tokens, names)) {
+					core::free(tokens); return false;
+				}
+				if (string.tokens != NULL)
+					core::free(string);
+				string.tokens = tokens.data;
+				string.length = tokens.length;
+
+				if (field_name.tokens != NULL) {
+					unsigned int index = field_sizes.index_of(field_name);
 					double field_length_log_probability;
 					if (index < field_sizes.size) {
 						double p = field_length_beta + field_sizes.values[index].value;
 						field_length_log_probability = log_probability_negative_binomial(
-								string->length, field_length_alpha + field_sizes.values[index].key, 1.0 / (1.0 + p));
+								string.length, field_length_alpha + field_sizes.values[index].key, 1.0 / (1.0 + p));
 					} else {
 						field_length_log_probability = log_probability_negative_binomial(
-								string->length, field_length_alpha, 1.0 / (1.0 + field_length_beta));
+								string.length, field_length_alpha, 1.0 / (1.0 + field_length_beta));
 					}
 					score += field_length_log_probability;
 				}
@@ -519,11 +560,11 @@ private:
 				if (type == string_type::INSTANCE) {
 					double p = instance_length_beta + instance_sizes.value;
 					double instance_length_log_probability = log_probability_negative_binomial(
-							string->length, instance_length_alpha + instance_sizes.key, 1.0 / (1.0 + p));
+							string.length, instance_length_alpha + instance_sizes.key, 1.0 / (1.0 + p));
 					score += instance_length_log_probability;
 				} if (type != string_type::ANY) {
-					for (unsigned int i = 0; i < string->length; i++)
-						score += max_string_posterior(string->tokens[i], type);
+					for (unsigned int i = 0; i < string.length; i++)
+						score += max_string_posterior(string.tokens[i], type);
 				}
 
 			} else if (pred.args[i]->type == DATALOG_ANY || pred.args[i]->type == DATALOG_NON_EMPTY) {
@@ -551,11 +592,13 @@ private:
 			if (pred.args[i] != NULL && pred.args[i]->type == DATALOG_PREDICATE
 			 && (CompleteContext || !can_be_empty(*pred.args[i]))) /* 'arg' features can make any argument NULL */
 			{
-				sequence* child_string = NULL;
-				score += log_probability<true>(pred.args[i]->pred, child_string, child_field_name, arg_type);
+				sequence child_string = {NULL, 0};
+				score += log_probability<true>(pred.args[i]->pred, child_string, child_field_name, names, arg_type);
 
-				if (i != field_source_arg && string == NULL)
+				if (i != field_source_arg && string.tokens == NULL)
 					string = child_string;
+				if (child_string.tokens != NULL)
+					core::free(child_string);
 			}
 		}
 		return score;

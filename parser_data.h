@@ -190,8 +190,18 @@ bool read_inmind_data(
 		 || utterance.pred.args[0]->type != DATALOG_STRING)
 			return false;
 
-		if (!init(sentences[i], utterance.pred.args[0]->str)
-		 || !init(logical_forms[i], logical_form.pred.args[0])) {
+		array<unsigned int>& tokens = *((array<unsigned int>*) alloca(sizeof(array<unsigned int>)));
+		if (!array_init(tokens, 8)) {
+			cleanup(data, sentences, logical_forms, i);
+			return false;
+		} else if (!tokenize(utterance.pred.args[0]->str.data, utterance.pred.args[0]->str.length, tokens, names)) {
+			cleanup(data, sentences, logical_forms, i);
+			free(tokens); return false;
+		}
+		sentences[i].tokens = tokens.data;
+		sentences[i].length = tokens.length;
+
+		if (!init(logical_forms[i], logical_form.pred.args[0])) {
 			cleanup(data, sentences, logical_forms, i); return false;
 		}
 

@@ -78,6 +78,7 @@ datalog_prior prior(32, 5, 128, edge_hdp_alpha, constant_hdp_alpha);
 double arg_hdp_alpha[] = { 1000.0, 0.0001 };
 double string_hdp_alpha[] = { 1000.0, 0.0001 };
 inmind_prior prior_inmind(2048, 2048, arg_hdp_alpha, string_hdp_alpha, 0.000001, 0.01, 1.0, 1.0, 10.0);
+hash_map<string, unsigned int>* string_map;
 
 thread_local bool debug_type_check = true;
 
@@ -105,7 +106,7 @@ inline double log_probability(const datalog_expression_root& exp) {
 	case prior_type::DATALOG:
 		return prior.log_probability<Complete>(exp);
 	case prior_type::INMIND:
-		return prior_inmind.log_probability<Complete>(exp);
+		return prior_inmind.log_probability<Complete>(exp, *string_map);
 	case prior_type::NONE:
 		return 0.0;
 	}
@@ -632,7 +633,7 @@ debug_nonterminal_printer = &nonterminal_printer;
 			prior_inmind.add_concept_source(names.get("createInstanceByConceptName"), 0);
 			prior_inmind.add_concept_source(names.get("addFieldToConcept"), 0);
 			prior_inmind.add_concept_source(names.get("defineConcept"), 0);
-			prior_inmind.train(train_logical_forms, train_data.length, kb_logical_forms, kb_data.length, 4, 10, 2);
+			prior_inmind.train(train_logical_forms, train_data.length, kb_logical_forms, kb_data.length, 4, 10, 2, names);
 			for (unsigned int i = 0; i < inmind_prior::ARG_COUNT; i++) {
 				print(prior_inmind.arg_sampler[i], out, terminal_printer, terminal_printer); print('\n', out);
 				print(prior_inmind.arg_hdp[i].alpha, 2, out); print('\n', out);
@@ -1269,6 +1270,7 @@ int main(int argc, const char** argv)
 
 	/* initialize the token map and morphology model */
 	hash_map<string, unsigned int> names(1024);
+	string_map = &names;
 	if (!populate_name_map(names) || !morph.initialize(names)
 	 || !get_token("unknownCommand", UNKNOWN_COMMAND, names)) {
 		for (auto entry : names) { free(entry.key); }

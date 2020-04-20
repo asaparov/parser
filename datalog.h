@@ -20,6 +20,7 @@ using namespace core;
 constexpr unsigned int DATALOG_LABEL_WILDCARD = UINT_MAX;
 constexpr unsigned int DATALOG_LABEL_EMPTY = UINT_MAX - 1;
 constexpr unsigned int DATALOG_LABEL_NOT = UINT_MAX - 2;
+constexpr char DATALOG_STRING_LABEL_WILDCARD = (char) -1;
 
 constexpr unsigned int PREDICATE_ANSWER = 1;
 constexpr unsigned int PREDICATE_COUNT = 2;
@@ -527,7 +528,7 @@ struct datalog_expression {
 		datalog_literal constant;
 		unsigned int variable;
 		int integer;
-		sequence str;
+		string str;
 	};
 
 	datalog_expression() : type(DATALOG_ANY), reference_count(1) { }
@@ -585,7 +586,7 @@ struct datalog_expression {
 			dst.integer = src.integer;
 			return;
 		case DATALOG_STRING:
-			sequence::move(src.str, dst.str);
+			string::move(src.str, dst.str);
 			return;
 		case DATALOG_EMPTY:
 		case DATALOG_ANY:
@@ -647,7 +648,7 @@ struct datalog_expression {
 		case DATALOG_INTEGER:
 			return 6 + 11 * default_hash(key.integer);
 		case DATALOG_STRING:
-			return 7 + 11 * sequence::hash(key.str);
+			return 7 + 11 * string::hash(key.str);
 		case DATALOG_EMPTY:
 			return 8;
 		case DATALOG_ANY:
@@ -780,10 +781,9 @@ struct datalog_expression_root {
 		FEATURE_ARG1_ONLY				= 21,
 		FEATURE_ARG2_ONLY				= 22,
 		FEATURE_ARG3_ONLY				= 23,
-		FEATURE_ARG1_STRING				= 24,
-		FEATURE_ARG2_ARITY				= 25,
-		FEATURE_NUMBER					= 26,
-		FEATURE_INFLECTION				= 27
+		FEATURE_ARG2_ARITY				= 24,
+		FEATURE_NUMBER					= 25,
+		FEATURE_INFLECTION				= 26
 	};
 
 	enum function_type {
@@ -1074,8 +1074,6 @@ struct datalog_expression_root {
 			f = datalog_expression_root::FEATURE_ARG2_ONLY;
 		} else if (name == "arg3_only") {
 			f = datalog_expression_root::FEATURE_ARG3_ONLY;
-		} else if (name == "arg1_string") {
-			f = datalog_expression_root::FEATURE_ARG1_STRING;
 		} else if (name == "arg2_arity") {
 			f = datalog_expression_root::FEATURE_ARG2_ARITY;
 		} else if (name == "number") {
@@ -1141,8 +1139,6 @@ struct datalog_expression_root {
 			return core::print("arg2_only", out);
 		case datalog_expression_root::FEATURE_ARG3_ONLY:
 			return core::print("arg3_only", out);
-		case datalog_expression_root::FEATURE_ARG1_STRING:
-			return core::print("arg1_string", out);
 		case datalog_expression_root::FEATURE_ARG2_ARITY:
 			return core::print("arg2_arity", out);
 		case datalog_expression_root::FEATURE_NUMBER:
@@ -2000,7 +1996,6 @@ struct datalog_expression_root {
 		case datalog_expression_root::FEATURE_DIRECTION_ROOT:
 		case datalog_expression_root::FEATURE_ARG1:
 		case datalog_expression_root::FEATURE_ARG1_ONLY:
-		case datalog_expression_root::FEATURE_ARG1_STRING:
 		case datalog_expression_root::FEATURE_ARG2:
 		case datalog_expression_root::FEATURE_ARG2_ONLY:
 		case datalog_expression_root::FEATURE_ARG3:
@@ -2667,7 +2662,7 @@ bool is_ambiguous(const datalog_expression& exp)
 	case DATALOG_EMPTY:
 		return false;
 	case DATALOG_STRING:
-		return exp.str.length == 1 && exp.str[0] == DATALOG_LABEL_WILDCARD;
+		return exp.str.length == 1 && exp.str[0] == DATALOG_STRING_LABEL_WILDCARD;
 	case DATALOG_ANY:
 	case DATALOG_NON_EMPTY:
 		return true;
@@ -3477,9 +3472,9 @@ bool print(const datalog_expression& exp, Stream& out, Printer&&... printer) {
 	case DATALOG_INTEGER:
 		return print(exp.integer, out);
 	case DATALOG_STRING:
-		if (exp.str.length == 1 && exp.str[0] == DATALOG_LABEL_WILDCARD)
+		if (exp.str.length == 1 && exp.str[0] == DATALOG_STRING_LABEL_WILDCARD)
 			return print("<any string>", out);
-		return print('"', out) && print(exp.str, out, std::forward<Printer>(printer)...) && print('"', out);
+		return print('"', out) && print(exp.str, out) && print('"', out);
 	case DATALOG_EMPTY:
 		return print("<empty>", out);
 	case DATALOG_ANY:
@@ -6245,41 +6240,6 @@ inline bool get_arg_constant(
 	return true;
 }
 
-inline bool get_string(
-		const datalog_expression& src, unsigned int& value,
-		unsigned int*& excluded, unsigned int& excluded_count)
-{
-	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
-		value = DATALOG_LABEL_WILDCARD;
-	} else if (src.type == DATALOG_STRING) {
-		if (src.str.length != 1) return false;
-		value = src.str.tokens[0];
-	} else {
-		return false;
-	}
-	excluded_count = 0;
-	return true;
-}
-
-template<unsigned int Index>
-inline bool get_arg_string(
-		const datalog_expression& src, unsigned int& value,
-		unsigned int*& excluded, unsigned int& excluded_count)
-{
-	if (src.type == DATALOG_ANY || src.type == DATALOG_NON_EMPTY) {
-		value = DATALOG_LABEL_WILDCARD;
-		excluded_count = 0;
-	} else if (src.type != DATALOG_PREDICATE) {
-		return false;
-	} else if (src.pred.args[Index] == NULL || src.pred.args[Index]->type == DATALOG_EMPTY) {
-		value = DATALOG_LABEL_EMPTY;
-		excluded_count = 0;
-	} else {
-		return get_string(*src.pred.args[Index], value, excluded, excluded_count);
-	}
-	return true;
-}
-
 template<unsigned int Index>
 inline bool get_arg_arity(
 		const datalog_expression& src, unsigned int& value,
@@ -6389,8 +6349,6 @@ bool get_feature(
 		return get_arg_constant<1, true>(src.root, value, excluded, excluded_count);
 	case datalog_expression_root::FEATURE_ARG3_ONLY:
 		return get_arg_constant<2, true>(src.root, value, excluded, excluded_count);
-	case datalog_expression_root::FEATURE_ARG1_STRING:
-		return get_arg_string<0>(src.root, value, excluded, excluded_count);
 	case datalog_expression_root::FEATURE_ARG2_ARITY:
 		return get_arg_arity<1>(src.root, value, excluded, excluded_count);
 
@@ -6568,7 +6526,7 @@ bool set_predicate(datalog_expression& exp, unsigned int predicate) {
 		exp.type = DATALOG_FUNCTION;
 	} else if (predicate == DATALOG_STRING) {
 		if (!init(exp.str, 1)) return false;
-		exp.str[0] = DATALOG_LABEL_WILDCARD;
+		exp.str[0] = DATALOG_STRING_LABEL_WILDCARD;
 		exp.type = DATALOG_STRING;
 	} else {
 		exp.pred.function = predicate;
@@ -7286,65 +7244,6 @@ inline bool set_arg_constant(datalog_expression& exp, unsigned int value) {
 	return true;
 }
 
-inline bool set_string(datalog_expression& exp, unsigned int value) {
-	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
-		exp.type = DATALOG_STRING;
-		if (!init(exp.str, 1)) return false;
-		exp.str.tokens[0] = value;
-	} else if (exp.type == DATALOG_STRING) {
-		return exp.str.length == 1 && exp.str.tokens[0] == value;
-	} else {
-		return false;
-	}
-	return true;
-}
-
-template<unsigned int Index>
-inline bool set_arg_string(datalog_expression& exp, unsigned int value) {
-	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
-		for (unsigned int i = 0; i < array_length(exp.pred.args); i++)
-			if (i != Index) exp.pred.args[i] = &DATALOG_ANY_TREE;
-		DATALOG_ANY_TREE.reference_count += (array_length(exp.pred.args) - 1);
-		exp.pred.function = DATALOG_LABEL_WILDCARD;
-		exp.pred.excluded_count = 0;
-		exp.type = DATALOG_PREDICATE;
-		if (value == DATALOG_LABEL_EMPTY) {
-			exp.pred.args[Index] = NULL;
-		} else {
-			if (!new_expression(exp.pred.args[Index])) exit(EXIT_FAILURE);
-			exp.pred.args[Index]->type = DATALOG_ANY;
-			exp.pred.args[Index]->reference_count = 1;
-			return set_string(*exp.pred.args[Index], value);
-		}
-	} else if (exp.type == DATALOG_PREDICATE) {
-		if (exp.pred.args[Index] == NULL)
-			return value == DATALOG_LABEL_EMPTY;
-
-		if (value == DATALOG_LABEL_EMPTY) {
-			if (exp.pred.args[Index]->type != DATALOG_ANY
-			 && exp.pred.args[Index]->type != DATALOG_EMPTY)
-				return false;
-			free(*exp.pred.args[Index]);
-			if (exp.pred.args[Index]->reference_count == 0)
-				free(exp.pred.args[Index]);
-			exp.pred.args[Index] = NULL;
-		} else {
-			datalog_expression* arg;
-			if (exp.pred.args[Index]->reference_count == 1) {
-				arg = exp.pred.args[Index];
-			} else {
-				if (!init(arg, *exp.pred.args[Index])) exit(EXIT_FAILURE);
-				free(*exp.pred.args[Index]);
-				exp.pred.args[Index] = arg;
-			}
-			return set_string(*arg, value);
-		}
-	} else {
-		return false;
-	}
-	return true;
-}
-
 template<unsigned int Index>
 inline bool set_arg_arity(datalog_expression& exp, unsigned int value) {
 	if (exp.type == DATALOG_ANY || exp.type == DATALOG_NON_EMPTY) {
@@ -7520,8 +7419,6 @@ bool set_feature(
 		return set_arg_constant<1, true>(exp.root, value);
 	case datalog_expression_root::FEATURE_ARG3_ONLY:
 		return set_arg_constant<2, true>(exp.root, value);
-	case datalog_expression_root::FEATURE_ARG1_STRING:
-		return set_arg_string<0>(exp.root, value);
 	case datalog_expression_root::FEATURE_ARG2_ARITY:
 		return set_arg_arity<1>(exp.root, value);
 
@@ -7748,8 +7645,6 @@ bool exclude_features(datalog_expression_root::feature feature,
 	case datalog_expression_root::FEATURE_ARG3:
 	case datalog_expression_root::FEATURE_ARG3_ONLY:
 		return exclude_arg_constant<2>(exp.root, values, count);
-	case datalog_expression_root::FEATURE_ARG1_STRING:
-		return false;
 	case datalog_expression_root::FEATURE_ARG2_ARITY:
 		return false;
 	case datalog_expression_root::FEATURE_NUMBER:
@@ -8114,9 +8009,9 @@ bool intersect(datalog_expression& intersection,
 		}
 	} else if (first->type == DATALOG_STRING) {
 		if (second->type == DATALOG_STRING) {
-			if (first->str.length == 1 && first->str[0] == DATALOG_LABEL_WILDCARD) {
+			if (first->str.length == 1 && first->str[0] == DATALOG_STRING_LABEL_WILDCARD) {
 				intersection.str = second->str;
-			} else if (second->str.length == 1 && second->str[0] == DATALOG_LABEL_WILDCARD) {
+			} else if (second->str.length == 1 && second->str[0] == DATALOG_STRING_LABEL_WILDCARD) {
 				intersection.str = first->str;
 			} else if (first->str == second->str) {
 				intersection.str = first->str;
@@ -11490,19 +11385,19 @@ inline bool set_number(datalog_expression_root& exp, const datalog_expression_ro
 
 inline bool any_string(const datalog_expression_root& src) {
 	return src.root.type == DATALOG_ANY || src.root.type == DATALOG_NON_EMPTY
-		|| (src.root.type == DATALOG_STRING && src.root.str.length == 1 && src.root.str[0] == DATALOG_LABEL_WILDCARD);
+		|| (src.root.type == DATALOG_STRING && src.root.str.length == 1 && src.root.str[0] == DATALOG_STRING_LABEL_WILDCARD);
 }
 
 /* NOTE: this function assumes src is not DATALOG_ANY or DATALOG_NON_EMPTY or a wildcard string */
-inline bool get_string(const datalog_expression_root& src, sequence& value) {
+inline bool get_string(const datalog_expression_root& src, string& value) {
 	if (src.root.type != DATALOG_STRING)
 		return false;
 	return init(value, src.root.str);
 }
 
-inline bool set_string(datalog_expression_root& exp, const datalog_expression_root& set, const sequence& value) {
+inline bool set_string(datalog_expression_root& exp, const datalog_expression_root& set, const string& value) {
 	if (set.root.type == DATALOG_STRING) {
-		bool is_wildcard = (set.root.str.length == 1 && set.root.str[0] == DATALOG_LABEL_WILDCARD);
+		bool is_wildcard = (set.root.str.length == 1 && set.root.str[0] == DATALOG_STRING_LABEL_WILDCARD);
 		if (!is_wildcard && set.root.str != value) return false;
 	} else if (set.root.type != DATALOG_ANY && set.root.type != DATALOG_NON_EMPTY) {
 		return false;
