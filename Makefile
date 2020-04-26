@@ -20,26 +20,44 @@ PARSER_OBJS=$(PARSER_CPP_SRCS:.cpp=.release.o)
 # Compile and link options
 #
 
+CPP=g++
+cc-option = $(shell $(CPP) -Werror $(1) -c -x c /dev/null -o /dev/null 2>/dev/null; echo $$?)
+
 LIBRARY_PKG_LIBS=
-PKG_LIBS=-Wl,--no-as-needed -lpthread
-GLIBC := $(word 2,$(shell getconf GNU_LIBC_VERSION))
-GLIBC_HAS_RT := $(shell expr $(GLIBC) \>= 2.17)
-ifeq "$(GLIBC_HAS_RT)" "0"
-	LIBRARY_PKG_LIBS += -lrt
-	PKG_LIBS += -lrt
+PKG_LIBS=-pthread
+NO_AS_NEEDED=-Wl,--no-as-needed
+ifeq ($(call cc-option, $(NO_AS_NEEDED)),0)
+	PKG_LIBS += $(NO_AS_NEEDED)
+endif
+GLIBC := $(word 2,$(shell getconf GNU_LIBC_VERSION 2>/dev/null))
+ifeq "$(.SHELLSTATUS)" "0"
+	GLIBC_HAS_RT := $(shell expr $(GLIBC) \>= 2.17)
+	ifeq "$(GLIBC_HAS_RT)" "0"
+		LIBRARY_PKG_LIBS += -lrt
+		PKG_LIBS += -lrt
+	endif
 endif
 
-CPP=g++
 WARNING_FLAGS=-Wall -Wpedantic
-override CPPFLAGS_DBG += $(WARNING_FLAGS) -I. -g -march=native -std=c++11 $(PKG_LIBS)
-override CPPFLAGS += $(WARNING_FLAGS) -I. -O3 -DNDEBUG -march=native -std=c++11 -fno-stack-protector $(PKG_LIBS)
-override LDFLAGS_DBG += -g $(LIB_PATHS)
-override LDFLAGS += $(LIB_PATHS) -fwhole-program
+override CPPFLAGS_DBG += $(WARNING_FLAGS) -I. -g -march=native -mtune=native -std=c++11
+override CPPFLAGS += $(WARNING_FLAGS) -I. -Ofast -DNDEBUG -march=native -mtune=native -std=c++11 -fno-stack-protector
+override LDFLAGS_DBG += -g $(LIB_PATHS) $(PKG_LIBS)
+override LDFLAGS += $(LIB_PATHS) -fwhole-program $(PKG_LIBS)
 
 
 #
-# Compile command
+# GNU Make: targets that don't build files
 #
+
+.PHONY: all debug clean distclean
+
+#
+# Make targets
+#
+
+all: datalog_to_lambda parser
+
+debug: datalog_to_lambda_dbg parser_dbg
 
 -include $(DATALOG_TO_LAMBDA_OBJS:.release.o=.release.d)
 -include $(DATALOG_TO_LAMBDA_DBG_OBJS:.debug.o=.debug.d)
@@ -65,21 +83,6 @@ endef
 %.debug.pic.o: %.cpp
 	$(call make_dependencies,$(CPP),$(CPPFLAGS_DBG),$*,cpp,debug.pic)
 
-
-#
-# GNU Make: targets that don't build files
-#
-
-.PHONY: all debug clean distclean
-
-#
-# Make targets
-#
-
-all: datalog_to_lambda parser
-
-debug: datalog_to_lambda_dbg parser_dbg
-
 datalog_to_lambda: $(LIBS) $(DATALOG_TO_LAMBDA_OBJS)
 		$(CPP) -o datalog_to_lambda $(CPPFLAGS) $(LDFLAGS) $(DATALOG_TO_LAMBDA_OBJS)
 
@@ -94,6 +97,3 @@ parser_dbg: $(LIBS) $(PARSER_DBG_OBJS)
 
 clean:
 	    ${RM} -f *.o */*.o */*/*.o *.d */*.d */*/*.d datalog_to_lambda datalog_to_lambda.exe datalog_to_lambda_dbg datalog_to_lambda_dbg.exe parser parser_dbg parser.exe parser_dbg.exe $(LIBS)
-
-distclean:  clean
-	    ${RM} -f *~
