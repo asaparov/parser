@@ -11363,14 +11363,14 @@ inline bool any_number(const datalog_expression_root& src) {
 }
 
 /* NOTE: this function assumes src is not DATALOG_ANY or DATALOG_NON_EMPTY */
-inline bool get_number(const datalog_expression_root& src, int& value) {
+inline bool get_number(const datalog_expression_root& src, int64_t& value) {
 	if (src.root.type != DATALOG_INTEGER)
 		return false;
 	value = src.root.integer;
 	return true;
 }
 
-inline bool set_number(datalog_expression_root& exp, const datalog_expression_root& set, int value) {
+inline bool set_number(datalog_expression_root& exp, const datalog_expression_root& set, int64_t value) {
 	if (set.root.type != DATALOG_ANY && set.root.type != DATALOG_NON_EMPTY
 	 && (set.root.type != DATALOG_INTEGER || set.root.integer != value))
 		return false;
