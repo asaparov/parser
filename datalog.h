@@ -11363,19 +11363,20 @@ inline bool any_number(const datalog_expression_root& src) {
 }
 
 /* NOTE: this function assumes src is not DATALOG_ANY or DATALOG_NON_EMPTY */
-inline bool get_number(const datalog_expression_root& src, int64_t& value) {
+inline bool get_number(const datalog_expression_root& src, int64_t& integer, uint64_t& decimal) {
 	if (src.root.type != DATALOG_INTEGER)
 		return false;
-	value = src.root.integer;
+	integer = src.root.integer;
+	decimal = 0;
 	return true;
 }
 
-inline bool set_number(datalog_expression_root& exp, const datalog_expression_root& set, int64_t value) {
+inline bool set_number(datalog_expression_root& exp, const datalog_expression_root& set, int64_t integer, uint64_t decimal) {
 	if (set.root.type != DATALOG_ANY && set.root.type != DATALOG_NON_EMPTY
-	 && (set.root.type != DATALOG_INTEGER || set.root.integer != value))
+	 && (set.root.type != DATALOG_INTEGER || set.root.integer != integer))
 		return false;
 	exp.root.type = DATALOG_INTEGER;
-	exp.root.integer = value;
+	exp.root.integer = integer;
 	exp.root.reference_count = 1;
 	exp.concord = set.concord;
 	exp.index = set.index;
