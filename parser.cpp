@@ -158,37 +158,28 @@ inline bool morphology_is_auxiliary_root(unsigned int root) {
 }
 
 template<typename Stream>
-unsigned int read_line(array<char>& line, Stream& input)
+bool read_line(array<char>& line, Stream& input)
 {
-	unsigned int bytes_read = 0;
 	while (true) {
-		int width;
-		wint_t next = fgetwc(input);
-		if (!line.ensure_capacity(line.length + MB_CUR_MAX)) {
-			fprintf(stderr, "read_line ERROR: Out of memory.\n");
-			return 0;
-		}
-		switch (next) {
-		case WEOF:
-			return bytes_read;
+		/* if `fgets` does not read a full line, then `line` will end with '\0' without a preceding newline */
+		line[line.capacity - 1] = '1';
+		if (fgets(line.data + line.length, (line.capacity - line.length) * sizeof(char), input) == nullptr)
+			return false;
 
-		case '\n':
-			return bytes_read + 1;
-
-		default:
-#if defined(_WIN32)
-			wctomb_s(&width, line.data + line.length, (line.capacity - line.length) * sizeof(char), next);
-#else
-			width = wctomb(line.data + line.length, next);
-#endif
-			if (width == -1)
-				return 0;
-			line.length += width;
-			bytes_read += width;
+		if (line[line.capacity - 1] == '\0' && line[line.capacity - 2] != '\n') {
+			/* we did not read a full line */
+			line.length = line.capacity - 1;
+			if (!line.ensure_capacity(line.capacity + 1)) {
+				fprintf(stderr, "read_line ERROR: Out of memory.\n");
+				return false;
+			}
+		} else {
+			line.length += strlen(line.data + line.length) - 1;
+			break;
 		}
 	}
 
-	return bytes_read;
+	return true;
 }
 
 template<typename Stream>
@@ -733,8 +724,7 @@ debug_nonterminal_printer = &nonterminal_printer;
 while (false) {
 	//while (true) {
 		printf("Enter sentence to parse:\n");
-		int read = read_line(line, stdin);
-		if (read == 0) {
+		if (!read_line(line, stdin)) {
 			break;
 		} else {
 			for (char& c : line)
